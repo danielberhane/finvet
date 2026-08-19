@@ -1,0 +1,313 @@
+"""LangGraph workflow for the FinVet verification pipeline.
+
+This module defines the 9-node verification workflow with HITL checkpointing:
+1. input_guardrails - Validate and sanitize input
+2. claim_parser - Parse claim into 6 fields
+3. period_resolver - Resolve time periods (for SEC claims)
+4. domain_agent - Run SEC/Market/News agent (routed by claim_type)
+5. consensus - Simple verdict propagation (single agent)
+6. output_guardrails - Check if HITL is needed
+7. hitl_checkpoint - INTERRUPT point for human review
+8. apply_hitl_decision - Apply human override if any
+9. response_generator - Format final response
+
+LangGraph checkpointing enables HITL:
+- Graph pauses at hitl_checkpoint when hitl_required=True
+- State persists via checkpointer (MemorySaver or PostgresSaver)
+- Human reviews via /review endpoint, graph resumes with decision
+"""
+
+from datetime import datetime
+from typing import Dict
+
+from langgraph.graph import StateGraph, END
+
+from ..models.state import VerificationState
+from .nodes import (
+    input_guardrails,
+    claim_parser,
+    period_resolver,
+    run_sec_agent,
+    run_market_agent,
+    run_news_agent,
+    output_guardrails,
+    response_generator,
+)
+from ..audit import get_audit_logger
+from ..config.constants import (
+    CONSENSUS_CLOSE_MATCH_BONUS,
+    CONSENSUS_CLOSE_MATCH_THRESHOLD,
+    CONSENSUS_LARGE_DIFF_PENALTY,
+    CONSENSUS_LARGE_DIFF_THRESHOLD,
+    CONSENSUS_MAX_CONFIDENCE,
+    CONSENSUS_THOROUGH_BONUS,
+    CONSENSUS_THOROUGH_TOOL_COUNT,
+)
+from ..utils.logging import get_logger
+from ..utils.helpers import get_confidence_label
+
+logger = get_logger(__name__)
+
+
+def create_verification_graph(checkpointer=None):
+    """
+    Create the LangGraph workflow for claim verification.
+
+    Args:
+        checkpointer: Optional LangGraph checkpointer (MemorySaver, PostgresSaver, etc.)
+                      for HITL persistence. If provided, compiles with interrupt_before
+                      so the graph pauses at hitl_checkpoint for human review.
+
+    Returns:
+        Compiled StateGraph ready for invocation
+    """
+    graph = StateGraph(VerificationState)
+
+    # Add nodes
+    graph.add_node("input_guardrails", input_guardrails)
+    graph.add_node("claim_parser", claim_parser)
+    graph.add_node("period_resolver", period_resolver)
+    graph.add_node("sec_agent", run_sec_agent)
+    graph.add_node("market_agent", run_market_agent)
+    graph.add_node("news_agent", run_news_agent)
+    graph.add_node("reject_handler", _handle_rejection)
+    graph.add_node("consensus", _simple_consensus)
+    graph.add_node("output_guardrails", output_guardrails)
+    graph.add_node("hitl_checkpoint", _hitl_checkpoint)
+    graph.add_node("apply_hitl_decision", _apply_hitl_decision)
+    graph.add_node("response_generator", response_generator)
+
+    # Define edges
+    graph.set_entry_point("input_guardrails")
+    graph.add_edge("input_guardrails", "claim_parser")
+
+    # After parsing, route based on claim type
+    graph.add_conditional_edges(
+        "claim_parser",
+        _route_after_parsing,
+        {
+            "sec": "period_resolver",
+            "market": "market_agent",
+            "news": "news_agent",
+            "reject": "reject_handler",
+        }
+    )
+
+    # After period resolution, run SEC agent
+    graph.add_edge("period_resolver", "sec_agent")
+
+    # All agents go to consensus
+    graph.add_edge("sec_agent", "consensus")
+    graph.add_edge("market_agent", "consensus")
+    graph.add_edge("news_agent", "consensus")
+
+    # Rejection goes directly to response
+    graph.add_edge("reject_handler", "response_generator")
+
+    # Consensus to output guardrails
+    graph.add_edge("consensus", "output_guardrails")
+
+    # After output guardrails, route based on whether HITL is needed
+    # Non-HITL claims skip hitl_checkpoint entirely (no interrupt)
+    graph.add_conditional_edges(
+        "output_guardrails",
+        _route_after_guardrails,
+        {
+            "needs_hitl": "hitl_checkpoint",
+            "no_hitl": "response_generator",
+        }
+    )
+
+    # HITL checkpoint → apply decision → generate response
+    # With a checkpointer, interrupt_before pauses BEFORE hitl_checkpoint.
+    # When resumed (after human review), hitl_checkpoint runs, then the
+    # decision is applied, and response_generator produces the final output.
+    graph.add_edge("hitl_checkpoint", "apply_hitl_decision")
+    graph.add_edge("apply_hitl_decision", "response_generator")
+
+    # Response generator is the end
+    graph.add_edge("response_generator", END)
+
+    # Compile with or without checkpointer
+    if checkpointer:
+        compiled = graph.compile(
+            checkpointer=checkpointer,
+            interrupt_before=["hitl_checkpoint"],
+        )
+        logger.info("Graph compiled with checkpointer and HITL interrupt support")
+    else:
+        compiled = graph.compile()
+        logger.warning("Graph compiled WITHOUT checkpointer - HITL interrupts disabled")
+
+    return compiled
+
+
+def _route_after_parsing(state: VerificationState) -> str:
+    """Route to appropriate agent based on claim_type."""
+    parsed_claim = state.get("parsed_claim")
+
+    if not parsed_claim:
+        logger.error("No parsed claim in state")
+        return "reject"
+
+    claim_type = parsed_claim.claim_type
+    logger.info(f"Routing claim type: {claim_type}")
+    return claim_type
+
+
+def _handle_rejection(state: VerificationState) -> Dict:
+    """Handle rejected claims."""
+    return {
+        "verdict": "REJECTED",
+        "confidence": 1.0,
+        "confidence_label": "HIGH",
+    }
+
+
+def _simple_consensus(state: VerificationState) -> Dict:
+    """Simple consensus for single-agent architecture."""
+    agent_evidence = state.get("agent_evidence", {})
+
+    if not agent_evidence:
+        return {
+            "verdict": "NOT_ENOUGH_INFO",
+            "confidence": 0.2,
+            "confidence_label": "LOW",
+            "consensus_reasons": ["No agent evidence available"],
+        }
+
+    verdict = agent_evidence.get("verdict", "NOT_ENOUGH_INFO")
+    confidence = agent_evidence.get("confidence", 0.5)
+
+    adjustments = []
+    parsed_claim = state.get("parsed_claim")
+    comparison = getattr(parsed_claim, "comparison", None) or "eq" if parsed_claim else "eq"
+    magnitude_diff = agent_evidence.get("magnitude_difference_percent")
+    # Only apply magnitude-based adjustments for equality comparisons.
+    # Directional claims (gt/gte/lt/lte) expect large differences.
+    if magnitude_diff is not None and comparison == "eq":
+        if magnitude_diff > CONSENSUS_LARGE_DIFF_THRESHOLD:
+            confidence += CONSENSUS_LARGE_DIFF_PENALTY
+            adjustments.append({"reason": "large_magnitude_difference", "amount": CONSENSUS_LARGE_DIFF_PENALTY})
+        elif magnitude_diff < CONSENSUS_CLOSE_MATCH_THRESHOLD:
+            confidence += CONSENSUS_CLOSE_MATCH_BONUS
+            adjustments.append({"reason": "close_match", "amount": CONSENSUS_CLOSE_MATCH_BONUS})
+
+    tools_called = agent_evidence.get("tools_called", [])
+    if len(tools_called) >= CONSENSUS_THOROUGH_TOOL_COUNT:
+        confidence += CONSENSUS_THOROUGH_BONUS
+        adjustments.append({"reason": "thorough_investigation", "amount": CONSENSUS_THOROUGH_BONUS})
+
+    confidence = max(0.0, min(CONSENSUS_MAX_CONFIDENCE, confidence))
+
+    return {
+        "verdict": verdict,
+        "confidence": confidence,
+        "confidence_label": get_confidence_label(confidence),
+        "confidence_adjustments": adjustments,
+        "consensus_reasons": [agent_evidence.get("reasoning", "")],
+    }
+
+
+def _route_after_guardrails(state: VerificationState) -> str:
+    """Route after output guardrails based on whether HITL review is needed.
+
+    Non-HITL claims skip hitl_checkpoint entirely so they aren't
+    paused by interrupt_before.
+    """
+    if state.get("hitl_required", False):
+        return "needs_hitl"
+    return "no_hitl"
+
+
+def _hitl_checkpoint(state: VerificationState) -> Dict:
+    """
+    HITL checkpoint node.
+
+    If hitl_required is True, the graph will be interrupted BEFORE this node
+    (due to interrupt_before config). When resumed, this node executes.
+
+    This node just logs and passes through - the actual pause happens
+    via LangGraph's interrupt mechanism.
+    """
+    request_id = state.get("request_id", "unknown")
+    hitl_required = state.get("hitl_required", False)
+
+    if hitl_required:
+        # Log HITL checkpoint to audit trail
+        audit = get_audit_logger()
+        audit.log_event(
+            event_type="hitl_checkpoint_reached",
+            request_id=request_id,
+            data={
+                "hitl_triggers": state.get("hitl_triggers", []),
+                "verdict_before_hitl": state.get("verdict"),
+                "confidence_before_hitl": state.get("confidence"),
+            }
+        )
+        logger.info(f"HITL checkpoint: would require review (request: {request_id})")
+
+    return {
+        "hitl_checkpoint_passed": True,
+    }
+
+
+def _apply_hitl_decision(state: VerificationState) -> Dict:
+    """Apply human reviewer's decision if any."""
+    request_id = state.get("request_id", "unknown")
+    hitl_decision = state.get("hitl_decision")
+    hitl_override_verdict = state.get("hitl_override_verdict")
+    hitl_reviewer_notes = state.get("hitl_reviewer_notes")
+
+    if hitl_decision is None:
+        # No HITL decision (running without checkpointer, or non-HITL claim)
+        return {}
+
+    audit = get_audit_logger()
+
+    if hitl_decision == "approve":
+        audit.log_event(
+            event_type="hitl_approved",
+            request_id=request_id,
+            data={"notes": hitl_reviewer_notes}
+        )
+        logger.info(f"HITL approved automated verdict (request: {request_id})")
+        return {"hitl_applied": True}
+
+    elif hitl_decision == "override":
+        audit.log_event(
+            event_type="hitl_overridden",
+            request_id=request_id,
+            data={
+                "original_verdict": state.get("verdict"),
+                "override_verdict": hitl_override_verdict,
+                "notes": hitl_reviewer_notes,
+            }
+        )
+        logger.info(
+            f"HITL overrode verdict to {hitl_override_verdict} (request: {request_id})"
+        )
+        return {
+            "verdict": hitl_override_verdict,
+            "confidence": 0.95,
+            "confidence_label": "HIGH",
+            "hitl_applied": True,
+        }
+
+    elif hitl_decision == "reject":
+        audit.log_event(
+            event_type="hitl_rejected",
+            request_id=request_id,
+            data={"notes": hitl_reviewer_notes}
+        )
+        logger.info(f"HITL rejected claim (request: {request_id})")
+        return {
+            "verdict": "REJECTED",
+            "confidence": 1.0,
+            "confidence_label": "HIGH",
+            "hitl_applied": True,
+        }
+
+    return {}
+
+
