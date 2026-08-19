@@ -2,6 +2,8 @@
 
 import streamlit as st
 
+from finvet import __version__
+
 from api_client import get_pending_reviews, health_check
 from components.formatting import _escape
 from styles import STYLES
@@ -144,11 +146,10 @@ with st.sidebar:
     st.markdown("\n".join(status_parts), unsafe_allow_html=True)
 
     # Footer (version only, no model details)
-    st.markdown("""
-    <div class="sidebar-footer">
-        FinVet v2.0.8
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="sidebar-footer">FinVet v{__version__}</div>',
+        unsafe_allow_html=True,
+    )
 
 # Header - Large centered FinVet
 st.markdown("""
@@ -179,9 +180,9 @@ if st.session_state.current_page == 'audit':
 render_verify()
 
 # Footer
-st.markdown("""
+st.markdown(f"""
 <div class="footer">
-    <strong>FinVet v2.0.8</strong> — Autonomous financial claim verification<br>
+    <strong>FinVet v{__version__}</strong> — Autonomous financial claim verification<br>
     Powered by SEC EDGAR, Finnhub, Tavily
 </div>
 """, unsafe_allow_html=True)

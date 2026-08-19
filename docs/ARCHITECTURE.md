@@ -1,4 +1,4 @@
-# FinVet v2.0.8 -- System Architecture
+# FinVet -- System Architecture
 
 ## 1. High-Level Architecture
 
