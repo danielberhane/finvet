@@ -1,7 +1,8 @@
 """SEC EDGAR MCP server adapter — typed methods backed by the real MCP server."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
+import httpx
 from pydantic import BaseModel, Field
 
 from ..config.settings import settings
@@ -45,6 +46,11 @@ class FinancialItem(BaseModel):
     period_end: Optional[str] = Field(None, description="End date of the period (YYYY-MM-DD)")
     decimals: Optional[str] = Field(None, description="Precision indicator")
     context_ref: Optional[str] = Field(None, description="XBRL context reference")
+    consolidated: Optional[bool] = Field(
+        None,
+        description="True if confirmed as an entity-wide fact, False if unverified, "
+                    "None if the concept is not consolidation-sensitive",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +99,28 @@ CONCEPTS_BY_TYPE = {
 }
 
 
+# Concepts a filing commonly tags BOTH entity-wide and broken out by product,
+# segment or geography. The MCP server returns whichever XBRL fact it meets
+# first, so for these the dimensioned member can shadow the consolidated total
+# (Apple FY2024: Products $294.866B instead of net sales $391.035B). For these
+# concepts the entity-wide value is re-read from SEC's companyconcept API,
+# which exposes undimensioned facts only.
+CONSOLIDATION_SENSITIVE_CONCEPTS = frozenset({
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
+    "Revenues",
+    "SalesRevenueNet",
+    "SalesRevenueGoodsNet",
+    "CostOfRevenue",
+    "CostOfGoodsAndServicesSold",
+    "GrossProfit",
+    "OperatingIncomeLoss",
+})
+
+SEC_COMPANY_CONCEPT_URL = (
+    "https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{concept}.json"
+)
+
+
 # ---------------------------------------------------------------------------
 # Client
 # ---------------------------------------------------------------------------
@@ -104,6 +132,7 @@ class SECEdgarClient:
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = base_url or settings.sec_edgar_mcp_url
         self._mcp = MCPClient(self.base_url)
+        self._concept_cache: Dict[tuple, Optional[Dict]] = {}
 
     # -- company info --------------------------------------------------------
 
@@ -165,7 +194,81 @@ class SECEdgarClient:
             args["accession_number"] = accession_number
 
         result = self._mcp.call_tool("get_xbrl_concepts", args)
-        return self._parse_xbrl_result(result)
+        items = self._parse_xbrl_result(result)
+
+        ref = result if isinstance(result, dict) else {}
+        return self._resolve_consolidated(
+            items,
+            cik=ref.get("cik"),
+            accession_number=ref.get("accession_number") or accession_number,
+        )
+
+    # -- consolidated-fact resolution ----------------------------------------
+
+    def _resolve_consolidated(
+        self,
+        items: List[FinancialItem],
+        cik: Optional[Any],
+        accession_number: Optional[str],
+    ) -> List[FinancialItem]:
+        """Re-read consolidation-sensitive concepts from SEC's undimensioned feed.
+
+        A value is only marked consolidated=True once an entity-wide fact for the
+        same period has confirmed it. Anything we cannot confirm stays at the
+        filing value but is flagged False rather than silently trusted.
+        """
+        for item in items:
+            if item.line_item not in CONSOLIDATION_SENSITIVE_CONCEPTS:
+                continue
+
+            item.consolidated = False
+            if cik is None:
+                continue
+
+            payload = self._fetch_company_concept(cik, item.line_item)
+            if not payload:
+                continue
+
+            value = _select_entity_wide_fact(payload, accession_number, item.period_end)
+            if value is None:
+                continue
+
+            if value != item.value:
+                logger.info(
+                    f"{item.line_item}: filing fact {item.value:,.0f} "
+                    f"(context {item.context_ref}) superseded by entity-wide "
+                    f"{value:,.0f} for period {item.period_end}"
+                )
+            item.value = value
+            item.consolidated = True
+
+        return items
+
+    def _fetch_company_concept(self, cik: Any, concept: str) -> Optional[Dict]:
+        """Fetch one concept from data.sec.gov. Returns None on any failure."""
+        key = (str(cik), concept)
+        if key in self._concept_cache:
+            return self._concept_cache[key]
+
+        url = SEC_COMPANY_CONCEPT_URL.format(
+            cik=str(cik).lstrip("0").zfill(10), concept=concept
+        )
+        payload: Optional[Dict] = None
+        try:
+            resp = httpx.get(
+                url,
+                headers={"User-Agent": settings.sec_edgar_user_agent},
+                timeout=10.0,
+            )
+            if resp.status_code == 200:
+                payload = resp.json()
+            elif resp.status_code != 404:
+                logger.warning(f"companyconcept {concept}: HTTP {resp.status_code}")
+        except Exception as e:
+            logger.warning(f"companyconcept {concept} unavailable: {e}")
+
+        self._concept_cache[key] = payload
+        return payload
 
     @staticmethod
     def _parse_xbrl_result(result) -> List[FinancialItem]:
@@ -217,3 +320,31 @@ class SECEdgarClient:
 
     def close(self) -> None:
         self._mcp.close()
+
+
+def _select_entity_wide_fact(
+    payload: Dict,
+    accession_number: Optional[str],
+    period_end: Optional[str],
+) -> Optional[float]:
+    """Pick the entity-wide fact matching this filing's reporting period.
+
+    companyconcept carries only undimensioned facts, but a 10-K reports three
+    comparative years, so the period end is what disambiguates them. Facts from
+    the filing under inspection win; otherwise any filing reporting the same
+    period end is acceptable.
+    """
+    if not period_end:
+        return None
+
+    units = (payload.get("units") or {}).get("USD") or []
+    matches = [f for f in units if f.get("end") == period_end and f.get("val") is not None]
+    if not matches:
+        return None
+
+    same_filing = [f for f in matches if f.get("accn") == accession_number]
+    chosen = same_filing or matches
+    try:
+        return float(chosen[0]["val"])
+    except (TypeError, ValueError):
+        return None
