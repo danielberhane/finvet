@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "FinVet: agentic financial claim verification"
+message: "If you use this software, please cite the paper below."
+type: software
+authors:
+  - family-names: "Berhane Araya"
+    given-names: "Daniel"
+repository-code: "https://github.com/GH_USER/finvet"
+license: Apache-2.0
+preferred-citation:
+  type: article
+  title: "FinVet: A Collaborative Framework of RAG and External Fact-Checking Agents for Financial Misinformation Detection"
+  authors:
+    - family-names: "Berhane Araya"
+      given-names: "Daniel"
+    - family-names: "Liao"
+      given-names: "Duoduo"
+  year: 2025
+  journal: "arXiv preprint"
+  url: "https://arxiv.org/abs/2510.11654"

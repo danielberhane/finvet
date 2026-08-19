@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: finvet-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-finvet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finvet_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-finvet}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finvet}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Requires the SEC EDGAR MCP server checked out alongside this repo:
+  #   git clone https://github.com/stefanoamorelli/sec-edgar-mcp ../sec-edgar-mcp
+  # Start with:  docker compose --profile sec up -d
+  sec-edgar-mcp:
+    profiles: ["sec"]
+    build:
+      context: ../sec-edgar-mcp
+    container_name: finvet-sec-edgar-mcp
+    command: ["python", "-m", "sec_edgar_mcp.server", "--transport", "streamable-http", "--port", "9870"]
+    environment:
+      SEC_EDGAR_USER_AGENT: ${SEC_EDGAR_USER_AGENT:-FinVet (your@email.com)}
+    ports:
+      - "9870:9870"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost',9870),2); s.close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Semantic guardrail layer (Llama Guard 3). Off by default — the regex guard
+  # runs standalone. Enable with ENABLE_LLAMA_GUARD=true and:
+  #   docker compose --profile guards up -d
+  #   docker exec finvet-ollama ollama pull llama-guard3:8b
+  ollama:
+    profiles: ["guards"]
+    image: ollama/ollama
+    container_name: finvet-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  ollama_data:
