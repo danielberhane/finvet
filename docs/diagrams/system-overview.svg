@@ -50,7 +50,7 @@
   <!-- Title -->
   <rect x="0" y="0" width="1200" height="56" fill="url(#headerGrad)" rx="12"/>
   <rect x="0" y="40" width="1200" height="16" fill="url(#headerGrad)"/>
-  <text x="600" y="36" text-anchor="middle" fill="white" font-size="20" font-weight="700" letter-spacing="0.5">FinVet v2.0.8 — System Architecture</text>
+  <text x="600" y="36" text-anchor="middle" fill="white" font-size="20" font-weight="700" letter-spacing="0.5">FinVet v2.0.9 — System Architecture</text>
 
   <!-- === LAYER 1: Client === -->
   <text x="40" y="92" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="1">CLIENT LAYER</text>

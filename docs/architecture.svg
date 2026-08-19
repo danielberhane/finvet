@@ -43,7 +43,7 @@
   <rect width="1500" height="58" fill="url(#headerGrad)" rx="0"/>
   <text x="40" y="37" fill="#f8fafc" font-size="22" font-weight="700" letter-spacing="0.5">FinVet</text>
   <text x="120" y="37" fill="#94a3b8" font-size="16" font-weight="400">Financial Claim Verification — System Architecture</text>
-  <text x="1350" y="37" fill="#64748b" font-size="13" font-weight="500">v2.0.8</text>
+  <text x="1350" y="37" fill="#64748b" font-size="13" font-weight="500">v2.0.9</text>
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- PRESENTATION LAYER                              -->
@@ -661,7 +661,7 @@
   <!-- FOOTER                                          -->
   <!-- ═══════════════════════════════════════════════ -->
   <rect x="0" y="2210" width="1500" height="140" fill="url(#headerGrad)"/>
-  <text x="40" y="2240" fill="#e2e8f0" font-size="13" font-weight="600">FinVet v2.0.8 — AI-Powered Financial Claim Verification</text>
+  <text x="40" y="2240" fill="#e2e8f0" font-size="13" font-weight="600">FinVet v2.0.9 — AI-Powered Financial Claim Verification</text>
   <text x="40" y="2260" fill="#94a3b8" font-size="10">Agentic AI model validation for bank MRM teams · Demo/showcase for startup</text>
 
   <!-- Tech Stack -->

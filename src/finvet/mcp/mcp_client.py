@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from .. import __version__
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -38,7 +39,7 @@ class MCPClient:
             "params": {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {},
-                "clientInfo": {"name": "finvet", "version": "2.0.8"},
+                "clientInfo": {"name": "finvet", "version": __version__},
             },
         }
         try:
