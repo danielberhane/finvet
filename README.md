@@ -151,7 +151,7 @@ python -m finvet.rag.ingest --dir data/filings/AAPL
 ### Tests
 
 ```bash
-pytest tests/unit -q         # 160 tests, <1s, fully mocked — no keys or database needed
+pytest tests/unit -q         # 167 tests, ~1s, fully mocked — no keys or database needed
 pytest tests/integration     # needs Postgres and the MCP server running
 ```
 
