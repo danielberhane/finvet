@@ -1,0 +1,347 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="Inter, -apple-system, sans-serif">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+    </filter>
+    <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="apiGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="pipeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="agentGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="extGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="dbGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </linearGradient>
+    <marker id="arrowBlack" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748B"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3B82F6"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10B981"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#F59E0B"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#EF4444"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="900" fill="#F8FAFC" rx="12"/>
+
+  <!-- Title -->
+  <rect x="0" y="0" width="1200" height="56" fill="url(#headerGrad)" rx="12"/>
+  <rect x="0" y="40" width="1200" height="16" fill="url(#headerGrad)"/>
+  <text x="600" y="36" text-anchor="middle" fill="white" font-size="20" font-weight="700" letter-spacing="0.5">FinVet v2.0.8 — System Architecture</text>
+
+  <!-- === LAYER 1: Client === -->
+  <text x="40" y="92" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="1">CLIENT LAYER</text>
+
+  <!-- Streamlit UI -->
+  <rect x="420" y="78" width="360" height="60" rx="10" fill="white" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="420" y="78" width="4" height="60" rx="2" fill="#3B82F6"/>
+  <text x="444" y="104" fill="#1E293B" font-size="14" font-weight="700">Streamlit UI</text>
+  <text x="444" y="122" fill="#64748B" font-size="11">Verify · Pending Reviews · Review Detail</text>
+  <text x="730" y="113" fill="#94A3B8" font-size="11" text-anchor="end">:8501</text>
+
+  <!-- Arrow: UI -> API -->
+  <line x1="600" y1="138" x2="600" y2="168" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrowBlack)" stroke-dasharray="4,3"/>
+  <text x="614" y="158" fill="#94A3B8" font-size="9">HTTP/JSON</text>
+
+  <!-- === LAYER 2: API === -->
+  <text x="40" y="187" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="1">API LAYER</text>
+
+  <!-- FastAPI -->
+  <rect x="280" y="172" width="640" height="72" rx="10" fill="white" stroke="#BFDBFE" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="280" y="172" width="4" height="72" rx="2" fill="url(#apiGrad)"/>
+  <text x="304" y="198" fill="#1E293B" font-size="14" font-weight="700">FastAPI</text>
+  <text x="370" y="198" fill="#3B82F6" font-size="11" font-weight="500">:8000</text>
+
+  <!-- API Routes -->
+  <g transform="translate(304, 210)">
+    <rect x="0" y="0" width="80" height="24" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="40" y="16" text-anchor="middle" fill="#2563EB" font-size="10" font-weight="500">/verify</text>
+  </g>
+  <g transform="translate(394, 210)">
+    <rect x="0" y="0" width="80" height="24" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="40" y="16" text-anchor="middle" fill="#2563EB" font-size="10" font-weight="500">/review/{id}</text>
+  </g>
+  <g transform="translate(484, 210)">
+    <rect x="0" y="0" width="100" height="24" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="50" y="16" text-anchor="middle" fill="#2563EB" font-size="10" font-weight="500">/memory-check</text>
+  </g>
+  <g transform="translate(594, 210)">
+    <rect x="0" y="0" width="80" height="24" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="40" y="16" text-anchor="middle" fill="#2563EB" font-size="10" font-weight="500">/audit/{id}</text>
+  </g>
+  <g transform="translate(684, 210)">
+    <rect x="0" y="0" width="80" height="24" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="40" y="16" text-anchor="middle" fill="#2563EB" font-size="10" font-weight="500">/health</text>
+  </g>
+  <g transform="translate(774, 210)">
+    <rect x="0" y="0" width="110" height="24" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="55" y="16" text-anchor="middle" fill="#2563EB" font-size="10" font-weight="500">/search-history</text>
+  </g>
+
+  <!-- Arrow: API -> Pipeline -->
+  <line x1="600" y1="244" x2="600" y2="276" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrowBlack)"/>
+
+  <!-- === LAYER 3: Pipeline === -->
+  <text x="40" y="295" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="1">PIPELINE LAYER</text>
+
+  <!-- LangGraph Pipeline -->
+  <rect x="160" y="280" width="880" height="100" rx="10" fill="white" stroke="#DDD6FE" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="160" y="280" width="4" height="100" rx="2" fill="url(#pipeGrad)"/>
+  <text x="184" y="304" fill="#1E293B" font-size="14" font-weight="700">LangGraph Pipeline</text>
+  <text x="342" y="304" fill="#8B5CF6" font-size="11" font-weight="500">9-Node DAG + MemorySaver HITL</text>
+
+  <!-- Pipeline nodes -->
+  <g transform="translate(184, 314)">
+    <rect x="0" y="0" width="86" height="28" rx="5" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1"/>
+    <text x="43" y="18" text-anchor="middle" fill="#6D28D9" font-size="9" font-weight="600">Guardrails In</text>
+  </g>
+  <g transform="translate(280, 314)">
+    <rect x="0" y="0" width="76" height="28" rx="5" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1"/>
+    <text x="38" y="18" text-anchor="middle" fill="#6D28D9" font-size="9" font-weight="600">Parser</text>
+  </g>
+  <g transform="translate(366, 314)">
+    <rect x="0" y="0" width="82" height="28" rx="5" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1"/>
+    <text x="41" y="18" text-anchor="middle" fill="#6D28D9" font-size="9" font-weight="600">Period Res.</text>
+  </g>
+  <g transform="translate(458, 314)">
+    <rect x="0" y="0" width="200" height="28" rx="5" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
+    <text x="100" y="18" text-anchor="middle" fill="#6D28D9" font-size="9" font-weight="700">Domain Agents (SEC / Market / News)</text>
+  </g>
+  <g transform="translate(668, 314)">
+    <rect x="0" y="0" width="80" height="28" rx="5" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1"/>
+    <text x="40" y="18" text-anchor="middle" fill="#6D28D9" font-size="9" font-weight="600">Consensus</text>
+  </g>
+  <g transform="translate(758, 314)">
+    <rect x="0" y="0" width="90" height="28" rx="5" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1"/>
+    <text x="45" y="18" text-anchor="middle" fill="#6D28D9" font-size="9" font-weight="600">Guardrails Out</text>
+  </g>
+  <g transform="translate(858, 314)">
+    <rect x="0" y="0" width="70" height="28" rx="5" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1"/>
+    <text x="35" y="18" text-anchor="middle" fill="#92400E" font-size="9" font-weight="600">HITL</text>
+  </g>
+  <g transform="translate(938, 314)">
+    <rect x="0" y="0" width="86" height="28" rx="5" fill="#F5F3FF" stroke="#DDD6FE" stroke-width="1"/>
+    <text x="43" y="18" text-anchor="middle" fill="#6D28D9" font-size="9" font-weight="600">Response Gen</text>
+  </g>
+
+  <!-- Arrows between pipeline nodes -->
+  <line x1="270" y1="328" x2="280" y2="328" stroke="#A78BFA" stroke-width="1"/>
+  <line x1="356" y1="328" x2="366" y2="328" stroke="#A78BFA" stroke-width="1"/>
+  <line x1="448" y1="328" x2="458" y2="328" stroke="#A78BFA" stroke-width="1"/>
+  <line x1="658" y1="328" x2="668" y2="328" stroke="#A78BFA" stroke-width="1"/>
+  <line x1="748" y1="328" x2="758" y2="328" stroke="#A78BFA" stroke-width="1"/>
+  <line x1="848" y1="328" x2="858" y2="328" stroke="#A78BFA" stroke-width="1"/>
+  <line x1="928" y1="328" x2="938" y2="328" stroke="#A78BFA" stroke-width="1"/>
+
+  <!-- Flow label -->
+  <text x="184" y="368" fill="#8B5CF6" font-size="9">VerificationState TypedDict flows left → right through all nodes</text>
+
+  <!-- === LAYER 4: Agents === -->
+  <text x="40" y="414" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="1">AGENT LAYER</text>
+
+  <!-- SEC Agent -->
+  <rect x="80" y="428" width="300" height="130" rx="10" fill="white" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="80" y="428" width="4" height="130" rx="2" fill="url(#agentGrad)"/>
+  <text x="104" y="452" fill="#1E293B" font-size="13" font-weight="700">SEC Agent</text>
+  <text x="194" y="452" fill="#059669" font-size="10" font-weight="500">ReAct (5 iter max)</text>
+  <text x="104" y="472" fill="#64748B" font-size="10">Tools:</text>
+  <g transform="translate(104, 478)">
+    <rect x="0" y="0" width="108" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="54" y="14" text-anchor="middle" fill="#047857" font-size="9">get_income_statement</text>
+  </g>
+  <g transform="translate(118, 500)">
+    <rect x="0" y="0" width="102" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="51" y="14" text-anchor="middle" fill="#047857" font-size="9">get_balance_sheet</text>
+  </g>
+  <g transform="translate(226, 500)">
+    <rect x="0" y="0" width="86" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="43" y="14" text-anchor="middle" fill="#047857" font-size="9">get_cash_flow</text>
+  </g>
+  <g transform="translate(218, 478)">
+    <rect x="0" y="0" width="100" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="50" y="14" text-anchor="middle" fill="#047857" font-size="9">get_company_info</text>
+  </g>
+  <g transform="translate(104, 524)">
+    <rect x="0" y="0" width="108" height="20" rx="3" fill="#EDE9FE" stroke="#C4B5FD" stroke-width="1"/>
+    <text x="54" y="14" text-anchor="middle" fill="#6D28D9" font-size="9">search_filing_text</text>
+  </g>
+  <g transform="translate(218, 524)">
+    <rect x="0" y="0" width="132" height="20" rx="3" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1"/>
+    <text x="66" y="14" text-anchor="middle" fill="#92400E" font-size="9">corroborate_with_news</text>
+  </g>
+
+  <!-- Market Agent -->
+  <rect x="420" y="428" width="300" height="130" rx="10" fill="white" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="420" y="428" width="4" height="130" rx="2" fill="url(#agentGrad)"/>
+  <text x="444" y="452" fill="#1E293B" font-size="13" font-weight="700">Market Agent</text>
+  <text x="554" y="452" fill="#059669" font-size="10" font-weight="500">ReAct (5 iter max)</text>
+  <text x="444" y="472" fill="#64748B" font-size="10">Tools:</text>
+  <g transform="translate(444, 478)">
+    <rect x="0" y="0" width="100" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="50" y="14" text-anchor="middle" fill="#047857" font-size="9">get_stock_quote</text>
+  </g>
+  <g transform="translate(550, 478)">
+    <rect x="0" y="0" width="100" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="50" y="14" text-anchor="middle" fill="#047857" font-size="9">get_daily_prices</text>
+  </g>
+  <g transform="translate(444, 502)">
+    <rect x="0" y="0" width="126" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="63" y="14" text-anchor="middle" fill="#047857" font-size="9">get_company_overview</text>
+  </g>
+  <g transform="translate(576, 502)">
+    <rect x="0" y="0" width="90" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="45" y="14" text-anchor="middle" fill="#047857" font-size="9">get_earnings</text>
+  </g>
+
+  <!-- News Agent -->
+  <rect x="760" y="428" width="300" height="130" rx="10" fill="white" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="760" y="428" width="4" height="130" rx="2" fill="url(#agentGrad)"/>
+  <text x="784" y="452" fill="#1E293B" font-size="13" font-weight="700">News Agent</text>
+  <text x="880" y="452" fill="#059669" font-size="10" font-weight="500">ReAct (5 iter max)</text>
+  <text x="784" y="472" fill="#64748B" font-size="10">Tools:</text>
+  <g transform="translate(784, 478)">
+    <rect x="0" y="0" width="130" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="65" y="14" text-anchor="middle" fill="#047857" font-size="9">search_financial_news</text>
+  </g>
+  <g transform="translate(784, 502)">
+    <rect x="0" y="0" width="114" height="20" rx="3" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="57" y="14" text-anchor="middle" fill="#047857" font-size="9">verify_news_source</text>
+  </g>
+
+  <!-- A2A arrow from SEC to News -->
+  <path d="M 356 544 Q 400 590 760 544" fill="none" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowAmber)"/>
+  <text x="530" y="585" text-anchor="middle" fill="#D97706" font-size="10" font-weight="600">A2A Corroboration</text>
+  <text x="530" y="597" text-anchor="middle" fill="#D97706" font-size="9">(spawns mini NewsAgent, 3 iter)</text>
+
+  <!-- === LAYER 5: External Services === -->
+  <text x="40" y="636" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="1">EXTERNAL SERVICES</text>
+
+  <!-- SEC EDGAR MCP -->
+  <rect x="80" y="648" width="200" height="62" rx="10" fill="white" stroke="#FDE68A" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="80" y="648" width="4" height="62" rx="2" fill="url(#extGrad)"/>
+  <text x="104" y="672" fill="#1E293B" font-size="12" font-weight="700">SEC EDGAR MCP</text>
+  <text x="104" y="690" fill="#64748B" font-size="10">Streamable-HTTP · XBRL · Filings</text>
+  <text x="254" y="672" fill="#D97706" font-size="10" text-anchor="end">:9870</text>
+
+  <!-- Finnhub -->
+  <rect x="320" y="648" width="200" height="62" rx="10" fill="white" stroke="#FDE68A" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="320" y="648" width="4" height="62" rx="2" fill="url(#extGrad)"/>
+  <text x="344" y="672" fill="#1E293B" font-size="12" font-weight="700">Finnhub + Yahoo</text>
+  <text x="344" y="690" fill="#64748B" font-size="10">REST · Quotes · Candles · Overview</text>
+
+  <!-- Tavily -->
+  <rect x="560" y="648" width="200" height="62" rx="10" fill="white" stroke="#FDE68A" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="560" y="648" width="4" height="62" rx="2" fill="url(#extGrad)"/>
+  <text x="584" y="672" fill="#1E293B" font-size="12" font-weight="700">Tavily</text>
+  <text x="584" y="690" fill="#64748B" font-size="10">News search · 3-tier credibility</text>
+
+  <!-- DeepSeek LLM -->
+  <rect x="800" y="648" width="200" height="62" rx="10" fill="white" stroke="#FDE68A" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="800" y="648" width="4" height="62" rx="2" fill="url(#extGrad)"/>
+  <text x="824" y="672" fill="#1E293B" font-size="12" font-weight="700">DeepSeek LLM</text>
+  <text x="824" y="690" fill="#64748B" font-size="10">Parser · Agent · Verdict (3 roles)</text>
+
+  <!-- Arrows: Agents to External Services -->
+  <line x1="180" y1="558" x2="180" y2="648" stroke="#64748B" stroke-width="1.2" marker-end="url(#arrowBlack)" stroke-dasharray="4,3"/>
+  <line x1="520" y1="558" x2="420" y2="648" stroke="#64748B" stroke-width="1.2" marker-end="url(#arrowBlack)" stroke-dasharray="4,3"/>
+  <line x1="860" y1="558" x2="660" y2="648" stroke="#64748B" stroke-width="1.2" marker-end="url(#arrowBlack)" stroke-dasharray="4,3"/>
+
+  <!-- === LAYER 6: Data === -->
+  <text x="40" y="744" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="1">DATA LAYER</text>
+
+  <!-- PostgreSQL -->
+  <rect x="80" y="756" width="720" height="62" rx="10" fill="white" stroke="#FECACA" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="80" y="756" width="4" height="62" rx="2" fill="url(#dbGrad)"/>
+  <text x="104" y="780" fill="#1E293B" font-size="13" font-weight="700">PostgreSQL 16 + pgvector</text>
+  <text x="320" y="780" fill="#EF4444" font-size="11" font-weight="500">:5432</text>
+
+  <!-- DB Tables -->
+  <g transform="translate(104, 790)">
+    <rect x="0" y="0" width="108" height="20" rx="3" fill="#FEF2F2" stroke="#FECACA" stroke-width="1"/>
+    <text x="54" y="14" text-anchor="middle" fill="#991B1B" font-size="9" font-weight="500">audit_events</text>
+  </g>
+  <g transform="translate(220, 790)">
+    <rect x="0" y="0" width="118" height="20" rx="3" fill="#FEF2F2" stroke="#FECACA" stroke-width="1"/>
+    <text x="59" y="14" text-anchor="middle" fill="#991B1B" font-size="9" font-weight="500">audit_executions</text>
+  </g>
+  <g transform="translate(346, 790)">
+    <rect x="0" y="0" width="100" height="20" rx="3" fill="#FEF2F2" stroke="#FECACA" stroke-width="1"/>
+    <text x="50" y="14" text-anchor="middle" fill="#991B1B" font-size="9" font-weight="500">claim_memory</text>
+  </g>
+  <g transform="translate(454, 790)">
+    <rect x="0" y="0" width="100" height="20" rx="3" fill="#FEF2F2" stroke="#FECACA" stroke-width="1"/>
+    <text x="50" y="14" text-anchor="middle" fill="#991B1B" font-size="9" font-weight="500">filing_chunks</text>
+  </g>
+
+  <!-- RAG box -->
+  <rect x="840" y="756" width="220" height="62" rx="10" fill="white" stroke="#E9D5FF" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="840" y="756" width="4" height="62" rx="2" fill="#8B5CF6"/>
+  <text x="864" y="780" fill="#1E293B" font-size="12" font-weight="700">Hybrid RAG</text>
+  <text x="864" y="796" fill="#64748B" font-size="10">pgvector + tsvector + RRF (k=60)</text>
+
+  <!-- Arrows: SEC Agent -> RAG and DB -->
+  <line x1="230" y1="558" x2="230" y2="648" stroke="#8B5CF6" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="248" y="610" fill="#8B5CF6" font-size="9">RAG</text>
+
+  <!-- Arrow: Pipeline -> DB (audit) -->
+  <path d="M 600 380 L 600 410 L 50 410 L 50 787 L 80 787" fill="none" stroke="#EF4444" stroke-width="1.2" marker-end="url(#arrowRed)" stroke-dasharray="4,3"/>
+  <text x="54" y="600" fill="#EF4444" font-size="9" transform="rotate(-90, 54, 600)">Audit Trail</text>
+
+  <!-- Legend -->
+  <rect x="40" y="844" width="1120" height="44" rx="8" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+  <g transform="translate(60, 860)">
+    <rect x="0" y="0" width="12" height="12" rx="2" fill="#3B82F6"/>
+    <text x="18" y="11" fill="#64748B" font-size="10">API</text>
+  </g>
+  <g transform="translate(120, 860)">
+    <rect x="0" y="0" width="12" height="12" rx="2" fill="#8B5CF6"/>
+    <text x="18" y="11" fill="#64748B" font-size="10">Pipeline</text>
+  </g>
+  <g transform="translate(210, 860)">
+    <rect x="0" y="0" width="12" height="12" rx="2" fill="#10B981"/>
+    <text x="18" y="11" fill="#64748B" font-size="10">Agents</text>
+  </g>
+  <g transform="translate(300, 860)">
+    <rect x="0" y="0" width="12" height="12" rx="2" fill="#F59E0B"/>
+    <text x="18" y="11" fill="#64748B" font-size="10">External</text>
+  </g>
+  <g transform="translate(400, 860)">
+    <rect x="0" y="0" width="12" height="12" rx="2" fill="#EF4444"/>
+    <text x="18" y="11" fill="#64748B" font-size="10">Storage</text>
+  </g>
+  <g transform="translate(500, 860)">
+    <line x1="0" y1="6" x2="20" y2="6" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <text x="26" y="11" fill="#64748B" font-size="10">A2A</text>
+  </g>
+  <g transform="translate(580, 860)">
+    <line x1="0" y1="6" x2="20" y2="6" stroke="#8B5CF6" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="26" y="11" fill="#64748B" font-size="10">RAG</text>
+  </g>
+  <g transform="translate(660, 860)">
+    <line x1="0" y1="6" x2="20" y2="6" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="26" y="11" fill="#64748B" font-size="10">Audit</text>
+  </g>
+</svg>
