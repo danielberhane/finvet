@@ -27,6 +27,10 @@ dependencies = [
     "pgvector>=0.4.2",
     "beautifulsoup4>=4.14.3",
     "openai>=2.16.0",
+    # UI (ui/app.py)
+    "streamlit>=1.40.0",
+    "pandas>=2.0.0",
+    "requests>=2.32.0",
 ]
 
 [project.optional-dependencies]
