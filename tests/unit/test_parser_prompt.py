@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from finvet.eval.dataset import eval_data_dir
 from finvet.config.metrics import METRIC_WHITELIST
 from finvet.graph.nodes.claim_parser import PARSER_SYSTEM_PROMPT, _PROMPT_PATH
 
@@ -98,10 +99,10 @@ class TestVerdictPromptKnowsApprox:
         assert "approx" in src
 
 
-GOLD_DIR = Path.home() / "Projects/Active/claim_parser_fine-tuned/data/clean"
+GOLD_DIR = eval_data_dir() or Path("/nonexistent")
 
 
-@pytest.mark.skipif(not GOLD_DIR.exists(), reason="parser gold not present")
+@pytest.mark.skipif(not GOLD_DIR.exists(), reason="eval dataset not present")
 class TestPromptExamplesAreNotEvalRows:
     """The evaluation-data policy (internal), enforced in code. The stage-06 rewrite lifted four
     worked examples verbatim from eval sets — caught by audit, worth ~0.3%
