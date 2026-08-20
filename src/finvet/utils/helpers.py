@@ -1,6 +1,6 @@
 """Shared utility functions used across the FinVet pipeline."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from ..config.constants import CONFIDENCE_HIGH_THRESHOLD, CONFIDENCE_MODERATE_THRESHOLD
 
@@ -44,6 +44,9 @@ def build_preliminary_analysis(
         "reasoning": agent_evidence.get("reasoning", ""),
         "retrieved_value": agent_evidence.get("retrieved_value"),
         "claimed_value": parsed_claim.value if parsed_claim else None,
+        # Names what claimed_value is a value OF — reviewers previously saw a
+        # bare number with no label.
+        "metric": getattr(parsed_claim, "metric", None) if parsed_claim else None,
         "magnitude_difference_percent": agent_evidence.get("magnitude_difference_percent"),
         "tools_called": agent_evidence.get("tools_called", []),
         "tool_calls_detail": agent_evidence.get("tool_calls_detail", []),
