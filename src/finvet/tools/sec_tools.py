@@ -13,7 +13,9 @@ Tool Selection Guide for the LLM:
 5. get_cash_flow: For operating cash flow, free cash flow, capex, dividends
 """
 
-from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Any, Dict, List, Optional, Tuple
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
@@ -32,6 +34,46 @@ def _get_client() -> SECEdgarClient:
     if _sec_client is None:
         _sec_client = SECEdgarClient()
     return _sec_client
+
+
+# The period the claim actually refers to, resolved upstream by period_resolver.
+# Carried out-of-band rather than as a tool argument: it is already known
+# deterministically, so routing it through the model would only add a channel
+# for it to be transcribed wrongly. A ContextVar keeps it per-request, so
+# concurrent verifications cannot see each other's period.
+_period_target: ContextVar[Tuple[Optional[str], Optional[str]]] = ContextVar(
+    "finvet_sec_period_target", default=(None, None)
+)
+
+# Period types that name a real reporting date. "current" and "event_relative"
+# carry today's date as a placeholder — targeting XBRL with it would match
+# nothing and flag every value unverified.
+_DATABLE_PERIOD_TYPES = frozenset({"annual", "quarterly", "half_year", "date"})
+
+
+def period_target_for(canonical_period: Any) -> Optional[Tuple[str, str]]:
+    """(end date, period type) for a period that names a real reporting date."""
+    if canonical_period is None:
+        return None
+    period_type = getattr(canonical_period, "period_type", None)
+    end_date = getattr(canonical_period, "end_date", None)
+    if period_type not in _DATABLE_PERIOD_TYPES or not end_date:
+        return None
+    return end_date, period_type
+
+
+@contextmanager
+def use_period_target(period_end: Optional[str], period_type: Optional[str]):
+    """Apply a resolved period to every SEC tool call made inside the block."""
+    token = _period_target.set((period_end, period_type))
+    try:
+        yield
+    finally:
+        _period_target.reset(token)
+
+
+def _current_period_target() -> Tuple[Optional[str], Optional[str]]:
+    return _period_target.get()
 
 
 def _set_client(client: SECEdgarClient) -> None:
@@ -201,11 +243,13 @@ def get_income_statement(
     """
     try:
         client = _get_client()
+        period_end, resolved_period = _current_period_target()
         financials = client.get_financials(
             identifier=cik,
             accession_number=accession_number,
             statement_type="income",
-            period=period,
+            period=resolved_period or period,
+            period_end=period_end,
         )
         if financials:
             logger.info(f"Income statement: {len(financials)} items, periods: {set(f.period for f in financials)}")
@@ -255,11 +299,13 @@ def get_balance_sheet(
     """
     try:
         client = _get_client()
+        period_end, resolved_period = _current_period_target()
         financials = client.get_financials(
             identifier=cik,
             accession_number=accession_number,
             statement_type="balance",
-            period="quarterly",
+            period=resolved_period or "quarterly",
+            period_end=period_end,
         )
         if financials:
             logger.info(f"Balance sheet: {len(financials)} items, periods: {set(f.period for f in financials)}")
@@ -310,11 +356,13 @@ def get_cash_flow(
     """
     try:
         client = _get_client()
+        period_end, resolved_period = _current_period_target()
         financials = client.get_financials(
             identifier=cik,
             accession_number=accession_number,
             statement_type="cashflow",
-            period=period,
+            period=resolved_period or period,
+            period_end=period_end,
         )
         if financials:
             logger.info(f"Cash flow: {len(financials)} items, periods: {set(f.period for f in financials)}")
