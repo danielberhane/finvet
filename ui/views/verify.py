@@ -5,7 +5,7 @@ from datetime import datetime
 
 import streamlit as st
 
-from api_client import memory_accept, memory_check, verify_claim, verify_claim_stream
+from api_client import memory_accept, memory_check, verify_claim_stream
 from components.evidence import render_evidence
 from components.formatting import _escape
 from components.source_badges import _data_source_badges_html

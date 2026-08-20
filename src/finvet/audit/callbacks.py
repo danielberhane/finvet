@@ -14,7 +14,7 @@ Usage in verify.py:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler

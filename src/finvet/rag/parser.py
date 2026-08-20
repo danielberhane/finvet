@@ -5,7 +5,7 @@ then splits each section into overlapping chunks suitable for RAG.
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from bs4 import BeautifulSoup

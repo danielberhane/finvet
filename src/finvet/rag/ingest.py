@@ -7,7 +7,6 @@ Usage:
 
 import argparse
 import re
-import sys
 from pathlib import Path
 
 from .service import get_rag_service
@@ -104,7 +103,7 @@ def ingest_all_filings(filings_dir: str | Path) -> dict:
 
     # Print summary
     print(f"\n{'='*50}")
-    print(f"Ingestion Complete")
+    print("Ingestion Complete")
     print(f"{'='*50}")
     print(f"  Files processed: {stats['total_files']}")
     print(f"  Total chunks: {stats['total_chunks']}")

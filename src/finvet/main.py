@@ -1,6 +1,5 @@
 """FastAPI application for FinVet financial claim verification service."""
 
-import os
 from dotenv import load_dotenv
 
 # Load .env and set LangSmith tracing BEFORE any LangChain imports
@@ -99,7 +98,7 @@ async def startup_event():
     logger.info(f"FinVet v{__version__} Starting Up")
     logger.info("=" * 60)
     logger.info(f"Log Level: {settings.log_level}")
-    logger.info(f"HITL Checkpointer: MemorySaver (in-memory)")
+    logger.info("HITL Checkpointer: MemorySaver (in-memory)")
     logger.info(f"HITL Confidence Threshold: {settings.confidence_threshold_hitl}")
     logger.info("Graph compiled with interrupt support")
     logger.info("=" * 60)

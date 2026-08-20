@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from ..mcp.finnhub import FinnhubClient, DailyPrice, Quote, CompanyOverview
+from ..mcp.finnhub import FinnhubClient
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
