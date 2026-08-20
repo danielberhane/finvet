@@ -35,6 +35,26 @@ from ..utils.logging import get_logger
 logger = get_logger(__name__)
 
 
+def compose_failure_reasoning(error_msg: str) -> str:
+    """Reviewer-facing summary of an agent crash. The raw error is preserved
+    in the audit trail's node_error event; the HITL screen gets prose, not a
+    framework exception with a docs link."""
+    first_line = (error_msg or "").strip().splitlines()[0:1]
+    first = first_line[0] if first_line else "no error detail was captured"
+    if "Recursion limit" in first:
+        return (
+            "The agent used up its tool-call budget without retrieving the "
+            "claimed figure from its data sources, and stopped rather than "
+            "guess. Escalated for human review; the full error is preserved "
+            "in the audit trail."
+        )
+    return (
+        f"The agent stopped before reaching a verdict: {first[:160]}. "
+        "Escalated for human review; the full error is preserved in the "
+        "audit trail."
+    )
+
+
 class VerdictOutput(BaseModel):
     """Structured verdict output from the LLM."""
     verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]
@@ -432,7 +452,7 @@ class BaseVerificationAgent(ABC):
             "tools_called": tools_called or [],
             "tool_calls_detail": tool_calls_detail or [],
             "provenance": [],
-            "reasoning": f"Agent execution failed: {error_msg}",
+            "reasoning": compose_failure_reasoning(error_msg),
             "execution_time_ms": execution_time_ms,
         }
 

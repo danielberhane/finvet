@@ -9,7 +9,7 @@ from typing import Dict, Type
 from ...config.constants import AGENT_MAX_ITERATIONS
 from ...models.state import VerificationState
 from ...agents import SECAgent, MarketAgent, NewsAgent
-from ...agents.base import BaseVerificationAgent
+from ...agents.base import BaseVerificationAgent, compose_failure_reasoning
 from ...tools.sec_tools import period_target_for, use_period_target
 from ...utils.logging import get_logger
 
@@ -28,7 +28,7 @@ def _error_evidence(agent_type: str, source_desc: str, error_msg: str) -> Dict:
         "magnitude_difference_percent": None,
         "tools_called": [],
         "tool_calls_detail": [],
-        "reasoning": f"Agent execution failed: {error_msg}",
+        "reasoning": compose_failure_reasoning(error_msg),
         "execution_time_ms": 0,
     }
 

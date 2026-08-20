@@ -118,7 +118,8 @@ class TestGetFinancialsTargetsThePeriod:
         """Never silently pass off an unverified figure as the requested period."""
         client = self._client()
         with patch.object(client._mcp, "call_tool", return_value=self.MCP_WRONG_PERIOD), \
-             patch.object(client, "_fetch_company_concept", return_value=None):
+             patch.object(client, "_fetch_company_concept", return_value=None), \
+             patch.object(client, "_fetch_frame_facts", return_value={}):
             items = client.get_financials(
                 "0000004962", ACCN, "income", period="quarterly",
                 period_end="2024-06-30",
@@ -174,8 +175,11 @@ class TestRequestPeriodMissFallsBackToConsolidation:
     def _get(self, cc_payload):
         from unittest.mock import patch
         client = SECEdgarClient()
+        # frames patched empty: this class pins the behaviour when frames ALSO
+        # misses, so the pre-period-fix consolidation fallback is what's tested.
         with patch.object(client._mcp, "call_tool", return_value=self.APPLE_MCP), \
-             patch.object(client, "_fetch_company_concept", return_value=cc_payload):
+             patch.object(client, "_fetch_company_concept", return_value=cc_payload), \
+             patch.object(client, "_fetch_frame_facts", return_value={}):
             items = client.get_financials(
                 "0000320193", "0000320193-24-000123", "income",
                 period="annual", period_end="2024-12-31",   # the calendar miss
