@@ -1,5 +1,7 @@
 """Tests for workflow routing, consensus, and HITL logic."""
 
+import pytest
+
 from finvet.graph.workflow import (
     _route_after_parsing,
     _simple_consensus,
@@ -8,17 +10,21 @@ from finvet.graph.workflow import (
     _apply_hitl_decision,
 )
 from finvet.config.constants import (
-    CONSENSUS_CLOSE_MATCH_THRESHOLD,
-    CONSENSUS_LARGE_DIFF_THRESHOLD,
     CONSENSUS_MAX_CONFIDENCE,
 )
 from finvet.models.claim import ParsedClaim
 
 
 def _make_parsed(claim_type="sec", **kwargs):
-    """Helper to create a ParsedClaim for routing tests."""
+    """Helper to create a ParsedClaim for routing tests.
+
+    The contract pairs operator and value (non-null iff non-null), so a test
+    that asks for a comparator gets a value alongside it unless it brought
+    its own."""
     if claim_type == "reject":
         return ParsedClaim(claim_type="reject", reject_reason="non_financial", **kwargs)
+    if kwargs.get("operator") is not None and "value" not in kwargs:
+        kwargs["value"] = 1_000_000_000.0
     return ParsedClaim(claim_type=claim_type, ticker="AAPL", **kwargs)
 
 
@@ -59,7 +65,7 @@ class TestSimpleConsensus:
                 "confidence": 0.85,
                 "tools_called": ["get_income_statement"],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["verdict"] == "SUPPORTS"
@@ -73,7 +79,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 1.0,
                 "tools_called": [],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["confidence"] > 0.80
@@ -87,7 +93,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 25.0,
                 "tools_called": [],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["confidence"] < 0.80
@@ -114,7 +120,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 0.5,
                 "tools_called": ["t1", "t2", "t3"],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["confidence"] <= CONSENSUS_MAX_CONFIDENCE
@@ -128,7 +134,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 50.0,
                 "tools_called": [],
             },
-            "parsed_claim": _make_parsed("sec", comparison="gt"),
+            "parsed_claim": _make_parsed("sec", operator="gt"),
         }
         result = _simple_consensus(state)
         # No penalty applied, confidence unchanged
@@ -187,3 +193,93 @@ class TestApplyHITLDecision:
     def test_no_decision(self):
         result = _apply_hitl_decision({"request_id": "test"})
         assert result == {}
+
+
+class TestDisposition:
+    """Every terminal path must record why the run ended.
+
+    verdict="REJECTED" has two producers — the parser reject path and a human
+    reviewer's reject — so the verdict alone cannot tell an auditor which one
+    refused the claim.
+    """
+
+    def test_parser_reject_records_disposition(self):
+        state = {"parsed_claim": _make_parsed("reject")}
+        result = _handle_rejection(state)
+        assert result["verdict"] == "REJECTED"
+        assert result["disposition"] == "rejected_parser"
+        assert result["disposition_detail"] == "non_financial"
+
+    def test_human_reject_records_disposition(self):
+        state = {
+            "request_id": "test",
+            "hitl_decision": "reject",
+            "hitl_reviewer_notes": "Agent misread the restatement",
+            "verdict": "SUPPORTS",
+        }
+        result = _apply_hitl_decision(state)
+        assert result["verdict"] == "REJECTED"
+        assert result["disposition"] == "rejected_human"
+        assert result["disposition_detail"] == "Agent misread the restatement"
+
+    def test_reject_dispositions_are_distinguishable(self):
+        parser = _handle_rejection({"parsed_claim": _make_parsed("reject")})
+        human = _apply_hitl_decision({
+            "request_id": "test", "hitl_decision": "reject", "verdict": "SUPPORTS",
+        })
+        assert parser["verdict"] == human["verdict"] == "REJECTED"
+        assert parser["disposition"] != human["disposition"]
+
+    def test_approve_records_disposition(self):
+        result = _apply_hitl_decision({
+            "request_id": "test", "hitl_decision": "approve", "verdict": "SUPPORTS",
+        })
+        assert result["disposition"] == "approved_human"
+
+    def test_override_records_disposition(self):
+        result = _apply_hitl_decision({
+            "request_id": "test",
+            "hitl_decision": "override",
+            "hitl_override_verdict": "REFUTES",
+            "verdict": "SUPPORTS",
+        })
+        assert result["disposition"] == "overridden_human"
+        assert result["verdict"] == "REFUTES"
+
+    def test_no_decision_leaves_state_untouched(self):
+        assert _apply_hitl_decision({"request_id": "test", "verdict": "SUPPORTS"}) == {}
+
+
+class TestConsensusReadsOperator:
+    """Stage 05, reader 2: the magnitude gate reads the contract name, so the
+    CONTRACT-phase removal of `comparison` cannot silently disable it."""
+
+    def _evidence(self, diff):
+        return {"verdict": "SUPPORTS", "confidence": 0.80,
+                "magnitude_difference_percent": diff,
+                "tools_called": [], "reasoning": "r"}
+
+    def test_gate_works_on_an_object_without_a_comparison_attribute(self):
+        """Post-CONTRACT shape: operator exists, comparison does not."""
+        from types import SimpleNamespace
+        state = {"agent_evidence": self._evidence(0.5),
+                 "parsed_claim": SimpleNamespace(operator="eq")}
+        result = _simple_consensus(state)
+        assert result["confidence"] == pytest.approx(0.85)   # close-match bonus
+
+    def test_directional_operator_still_skips_magnitude_adjustment(self):
+        from types import SimpleNamespace
+        state = {"agent_evidence": self._evidence(50.0),
+                 "parsed_claim": SimpleNamespace(operator="gt")}
+        result = _simple_consensus(state)
+        assert result["confidence"] == pytest.approx(0.80)   # no penalty
+
+    def test_approx_gets_no_magnitude_adjustment(self):
+        """Stated imprecision: neither a close-match bonus (the claim never
+        promised precision) nor a large-diff penalty (the override already
+        judged it at the widened tolerance). Pinned as deliberate."""
+        from types import SimpleNamespace
+        state = {"agent_evidence": self._evidence(0.5),
+                 "parsed_claim": SimpleNamespace(operator="approx")}
+        result = _simple_consensus(state)
+        assert result["confidence"] == pytest.approx(0.80)

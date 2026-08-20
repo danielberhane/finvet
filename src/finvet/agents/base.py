@@ -16,7 +16,10 @@ from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
 
 from ..config.constants import (
+    AGENT_MAX_ITERATIONS,
     AGENT_MAX_RESULT_CHARS,
+    TOOL_RESULT_PREVIEW_CHARS,
+    TOLERANCE_APPROX_MULTIPLIER,
     TOLERANCE_DEFAULT,
     TOLERANCE_LARGE_VALUE_THRESHOLD,
     TOLERANCE_MARKET,
@@ -61,7 +64,7 @@ class BaseVerificationAgent(ABC):
         agent_type: str,
         tools: List[BaseTool],
         system_prompt: str,
-        max_iterations: int = 5,
+        max_iterations: int = AGENT_MAX_ITERATIONS,
     ):
         """
         Initialize the verification agent.
@@ -201,7 +204,7 @@ class BaseVerificationAgent(ABC):
                 tool_calls_detail.append({
                     "tool": tool_name,
                     "args": call_info.get("args", {}),
-                    "result": content[:1000],
+                    "result": content[:TOOL_RESULT_PREVIEW_CHARS],
                     "success": True,
                 })
 
@@ -279,7 +282,9 @@ class BaseVerificationAgent(ABC):
                 f"- SEC/financial values > $1B: {TOLERANCE_SEC_LARGE}% tolerance\n"
                 f"- SEC/financial values < $1B: {TOLERANCE_SEC_SMALL}% tolerance\n"
                 f"- Market data (stock prices, market cap): {TOLERANCE_MARKET}% tolerance\n"
-                f"- News-reported values: {TOLERANCE_NEWS}% tolerance\n\n"
+                f"- News-reported values: {TOLERANCE_NEWS}% tolerance\n"
+                f"- Claims stated approximately ('about', 'roughly') or as a "
+                f"range: {TOLERANCE_APPROX_MULTIPLIER}x the above tolerances\n\n"
                 "Verdict:\n"
                 "- Difference <= tolerance → SUPPORTS\n"
                 "- Difference > tolerance → REFUTES\n"
@@ -340,8 +345,14 @@ class BaseVerificationAgent(ABC):
 
         # Override verdict based on deterministic comparison
         if magnitude_diff is not None:
-            comparison = getattr(parsed_claim, "comparison", None) or "eq"
+            comparison = getattr(parsed_claim, "operator", None) or "eq"
             tolerance = self._get_tolerance(claimed_val)
+            # approx/range are equality with stated imprecision: gold carries
+            # the midpoint for range and no band, so both widen the tolerance
+            # by the measured multiplier rather than inventing a band.
+            if comparison in ("approx", "range"):
+                tolerance *= TOLERANCE_APPROX_MULTIPLIER
+                comparison = "eq"
 
             if comparison == "eq":
                 if magnitude_diff <= tolerance:
@@ -386,6 +397,18 @@ class BaseVerificationAgent(ABC):
                     )
                 verdict = new_verdict
                 confidence = max(confidence, 0.90)
+            else:
+                # Fail closed. An operator we cannot interpret means we hold
+                # both numbers but no way to compare them — the deterministic
+                # layer declines to verify rather than letting the LLM verdict
+                # pass unchecked, which is what silently falling through every
+                # branch used to do. Reachable only through schema drift.
+                logger.error(
+                    f"{self.agent_type} unknown operator {comparison!r}; "
+                    f"failing closed to NOT_ENOUGH_INFO"
+                )
+                verdict = "NOT_ENOUGH_INFO"
+                confidence = min(confidence, 0.5)
 
         logger.info(f"{self.agent_type} final verdict: {verdict} (confidence: {confidence:.2f})")
         return verdict, confidence, magnitude_diff
@@ -428,12 +451,16 @@ class BaseVerificationAgent(ABC):
             context_parts.append("# Parsed Information")
             if parsed_claim.ticker:
                 context_parts.append(f"- Ticker: {parsed_claim.ticker}")
+            # The canonical metric, when the parser resolved one. Null stays
+            # silent — the fall-through policy for absent and derived metrics
+            # is that the agent infers from claim text, exactly the
+            # pre-migration behaviour.
+            if getattr(parsed_claim, "metric", None):
+                context_parts.append(f"- Metric: {parsed_claim.metric}")
             if parsed_claim.value is not None:
                 context_parts.append(f"- Claimed Value: {parsed_claim.value:,.0f}")
             if parsed_claim.period:
                 context_parts.append(f"- Period: {parsed_claim.period}")
-            if parsed_claim.currency:
-                context_parts.append(f"- Currency: {parsed_claim.currency}")
             context_parts.append("")
 
         if canonical_period:
@@ -499,48 +526,37 @@ class BaseVerificationAgent(ABC):
         tool_calls_detail: List[Dict[str, Any]],
         parsed_claim: Any,
     ) -> Optional[float]:
-        """Extract the most relevant numeric value from financial tool results.
+        """Fallback when the verdict LLM leaves retrieved_value empty.
 
-        Called when the verdict LLM fails to populate retrieved_value.
-        Scans tool results for financial items and picks the best match.
+        Metric-guided since stage 07c. The previous version picked the tool-
+        result number CLOSEST to the claimed value — selecting whichever
+        figure best agreed with the claim being checked, a confirmation bias
+        sitting directly under the deterministic override. Now the claim's
+        metric selects by XBRL concept; with no metric to guide it, this
+        declines, and NOT_ENOUGH_INFO is the honest downstream answer.
         """
         import re
 
-        financial_tools = {
-            "get_income_statement", "get_balance_sheet", "get_cash_flow",
-            "get_stock_quote", "get_company_overview",
-        }
-        claimed_val = parsed_claim.value if parsed_claim else None
+        from ..config.metrics import METRIC_TO_CONCEPTS
 
-        all_values: List[float] = []
-        for tc in tool_calls_detail:
-            if tc.get("tool") not in financial_tools or not tc.get("success"):
-                continue
-            result_str = tc.get("result", "")
-            # Parse 'value': <number> from the tool result string
-            for m in re.finditer(r"'value':\s*([\d.eE+\-]+)", result_str):
-                try:
-                    v = float(m.group(1))
-                    if v != 0:
-                        all_values.append(v)
-                except ValueError:
-                    continue
-
-        if not all_values:
+        metric = getattr(parsed_claim, "metric", None) if parsed_claim else None
+        concepts = METRIC_TO_CONCEPTS.get(metric) if metric else None
+        if not concepts:
             return None
 
-        # If we know the claimed value, pick the value closest in order of
-        # magnitude (likely the matching concept, not an unrelated line item).
-        if claimed_val is not None and claimed_val != 0:
-            # Sort by how close each is to claimed value (ratio-based)
-            all_values.sort(
-                key=lambda v: abs(v - claimed_val) / max(abs(claimed_val), abs(v))
-            )
-            return all_values[0]
-
-        # No claimed value to anchor on — return the largest (most likely
-        # consolidated/total figure).
-        return max(all_values)
+        pattern = re.compile(
+            r"'line_item':\s*'(\w+)'[^{}]*?'value':\s*([\d.eE+\-]+)"
+        )
+        for tc in tool_calls_detail:
+            if not tc.get("success"):
+                continue
+            for concept, raw in pattern.findall(tc.get("result", "")):
+                if concept in concepts:
+                    try:
+                        return float(raw)
+                    except ValueError:
+                        continue
+        return None
 
     @abstractmethod
     def _get_source_description(self) -> str:

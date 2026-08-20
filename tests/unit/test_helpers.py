@@ -29,20 +29,20 @@ class TestGetConfidenceLabel:
 
 class TestBuildPreliminaryAnalysis:
 
-    def _make_parsed_claim(self, value=None, comparison=None):
+    def _make_parsed_claim(self, value=None, operator=None):
         """Helper to create a mock ParsedClaim."""
         from finvet.models.claim import ParsedClaim
         return ParsedClaim(
             claim_type="sec",
             ticker="AAPL",
             value=value,
-            comparison=comparison,
+            operator=operator,
             period="FY2024",
         )
 
     def test_equality_claim_with_values(self):
         """Equality claim should include claimed_value and retrieved_value."""
-        parsed = self._make_parsed_claim(value=94_000_000_000, comparison="eq")
+        parsed = self._make_parsed_claim(value=94_000_000_000, operator="eq")
         state = {
             "parsed_claim": parsed,
             "confidence": 0.90,
@@ -67,8 +67,11 @@ class TestBuildPreliminaryAnalysis:
         assert result["magnitude_difference_percent"] == 0.21
 
     def test_equality_claim_no_comparison_field(self):
-        """Claim with comparison=None should still show comparison (defaults to eq)."""
-        parsed = self._make_parsed_claim(value=100.0, comparison=None)
+        """A value now always arrives with a comparator: the boundary defaults
+        a bare value to eq before construction (see
+        test_normalize_parser_output), and the contract forbids the pair
+        diverging. The display path sees eq, same as before."""
+        parsed = self._make_parsed_claim(value=100.0, operator="eq")
         state = {"parsed_claim": parsed}
         evidence = {
             "verdict": "SUPPORTS",
@@ -83,7 +86,7 @@ class TestBuildPreliminaryAnalysis:
 
     def test_directional_claim_shows_values(self):
         """Directional claims (gt) now include claimed/retrieved values."""
-        parsed = self._make_parsed_claim(value=100.0, comparison="gt")
+        parsed = self._make_parsed_claim(value=100.0, operator="gt")
         state = {"parsed_claim": parsed}
         evidence = {
             "verdict": "SUPPORTS",
@@ -114,10 +117,27 @@ class TestBuildPreliminaryAnalysis:
 
     def test_confidence_from_evidence_fallback(self):
         """When state has no confidence, use evidence confidence."""
-        parsed = self._make_parsed_claim(value=50.0)
+        parsed = self._make_parsed_claim(value=50.0, operator="eq")
         state = {"parsed_claim": parsed}
         evidence = {"confidence": 0.72, "agent": "sec"}
 
         result = build_preliminary_analysis(state, evidence)
         assert result["confidence"] == 0.72
         assert result["confidence_label"] == "MODERATE"
+
+
+class TestPreliminaryAnalysisCarriesMetric:
+    """Stage 05, reader 5: a HITL reviewer previously saw claimed_value as a
+    bare number with no label — 94000000000 of what? The metric names it."""
+
+    def test_metric_reaches_the_reviewer(self):
+        from finvet.models.claim import ParsedClaim
+        parsed = ParsedClaim(claim_type="sec", ticker="AAPL",
+                             metric="revenue", value=94e9, operator="eq")
+        result = build_preliminary_analysis({"parsed_claim": parsed}, {})
+        assert result["metric"] == "revenue"
+        assert result["claimed_value"] == 94e9
+
+    def test_absent_metric_is_an_explicit_null(self):
+        result = build_preliminary_analysis({}, {})
+        assert "metric" in result and result["metric"] is None

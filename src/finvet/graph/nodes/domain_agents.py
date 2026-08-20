@@ -10,6 +10,7 @@ from ...config.constants import AGENT_MAX_ITERATIONS
 from ...models.state import VerificationState
 from ...agents import SECAgent, MarketAgent, NewsAgent
 from ...agents.base import BaseVerificationAgent
+from ...tools.sec_tools import period_target_for, use_period_target
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -80,8 +81,18 @@ def run_news_agent(state: VerificationState) -> Dict:
 
 
 def run_sec_agent(state: VerificationState) -> Dict:
-    """Run the SEC ReAct agent with RAG/A2A provenance extraction."""
-    result = _run_agent(SECAgent, "sec", "SEC EDGAR", state)
+    """Run the SEC ReAct agent with RAG/A2A provenance extraction.
+
+    The period resolved upstream is applied to every SEC tool call the agent
+    makes. It is injected rather than passed as a tool argument: period_resolver
+    already determined it, so routing it through the model would only create a
+    chance for it to arrive wrong.
+    """
+    target = period_target_for(state.get("canonical_period"))
+    if target:
+        logger.info(f"SEC retrieval targeting period {target[0]} ({target[1]})")
+    with use_period_target(*(target or (None, None))):
+        result = _run_agent(SECAgent, "sec", "SEC EDGAR", state)
 
     # SEC-specific: extract RAG and A2A provenance into dedicated state fields
     evidence = result.get("agent_evidence", {})

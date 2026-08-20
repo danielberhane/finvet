@@ -57,11 +57,37 @@ def period_resolver(state: VerificationState) -> Dict:
         period_str = parsed_claim.period
         assumptions = []
 
+        # Both notations put the digit on either side of the letter: "H1 2024"
+        # and "1H 2024" are the same half.
+        half_match = re.search(
+            r'\b(?:H([12])|([12])H)\s*(\d{4})\b', period_str, re.IGNORECASE
+        )
+        qtr_trailing = re.search(
+            r'\b([1-4])\s*Q\s*(?:FY)?\s*(\d{4})\b', period_str, re.IGNORECASE
+        )
+        qtr_leading = re.search(r'Q?(\d)\s*(?:FY)?(\d{4})', period_str, re.IGNORECASE)
+        qtr_year_first = re.search(r'(\d{4})\s*Q(\d)', period_str, re.IGNORECASE)
+
+        # --- Explicit ISO date (must precede every arm below: "2024-03-31"
+        # contains "2024" and would otherwise be widened to the calendar year).
+        # fullmatch, not match — start_date is an unvalidated str, so a partial
+        # match would store the whole string in a date field.
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', period_str.strip()):
+            canonical_period = CanonicalPeriod(
+                period_type="date",
+                start_date=period_str.strip(),
+                end_date=period_str.strip(),
+                fiscal_year=None,
+                fiscal_quarter=None,
+                is_assumption=False,
+                assumptions=[],
+                original_mention=period_str,
+            )
+
         # --- H1 / H2 half-year (must precede annual: "H1 2024" contains "2024") ---
-        half_match = re.search(r'\bH([12])\s*(\d{4})\b', period_str, re.IGNORECASE)
-        if half_match:
-            half = int(half_match.group(1))
-            year = int(half_match.group(2))
+        elif half_match:
+            half = int(half_match.group(1) or half_match.group(2))
+            year = int(half_match.group(3))
             if half == 1:
                 start_date, end_date = f"{year}-01-01", f"{year}-06-30"
             else:
@@ -82,16 +108,19 @@ def period_resolver(state: VerificationState) -> Dict:
             )
 
         # --- Quarter format: Q4 2024 / Q4 FY2024 / 4Q 2024 / 2024Q4 ---
-        elif re.search(r'Q?(\d)\s*(?:FY)?(\d{4})', period_str, re.IGNORECASE) or \
-                re.search(r'(\d{4})\s*Q(\d)', period_str, re.IGNORECASE):
-            quarter_match = re.search(r'Q?(\d)\s*(?:FY)?(\d{4})', period_str, re.IGNORECASE)
-            if quarter_match:
-                quarter = int(quarter_match.group(1))
-                year = int(quarter_match.group(2))
+        # Tried most specific first. The trailing-Q form ("4Q 2024") needs its
+        # own pattern: the leading-Q one requires the digit after the Q, so this
+        # notation used to fall through to the annual arm.
+        elif qtr_trailing or qtr_leading or qtr_year_first:
+            if qtr_trailing:
+                quarter = int(qtr_trailing.group(1))
+                year = int(qtr_trailing.group(2))
+            elif qtr_leading:
+                quarter = int(qtr_leading.group(1))
+                year = int(qtr_leading.group(2))
             else:
-                alt_match = re.search(r'(\d{4})\s*Q(\d)', period_str, re.IGNORECASE)
-                year = int(alt_match.group(1))
-                quarter = int(alt_match.group(2))
+                year = int(qtr_year_first.group(1))
+                quarter = int(qtr_year_first.group(2))
 
             start_date, end_date = _get_calendar_quarter_dates(quarter, year)
             assumptions.append(f"Interpreted '{period_str}' as calendar Q{quarter} {year}")
@@ -121,19 +150,6 @@ def period_resolver(state: VerificationState) -> Dict:
                 fiscal_quarter=None,
                 is_assumption=True,
                 assumptions=assumptions,
-                original_mention=period_str,
-            )
-
-        # --- Explicit ISO date ---
-        elif re.match(r'\d{4}-\d{2}-\d{2}', period_str):
-            canonical_period = CanonicalPeriod(
-                period_type="date",
-                start_date=period_str,
-                end_date=period_str,
-                fiscal_year=None,
-                fiscal_quarter=None,
-                is_assumption=False,
-                assumptions=[],
                 original_mention=period_str,
             )
 

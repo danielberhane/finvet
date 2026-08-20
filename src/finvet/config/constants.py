@@ -7,12 +7,21 @@ embedding config, and consensus adjustments.
 # ---------------------------------------------------------------------------
 # Verdict tolerance thresholds (used in base.py Python verdict override)
 # ---------------------------------------------------------------------------
-TOLERANCE_SEC_LARGE = 1.0       # SEC/financial values > $1B
+# Measured across 255 real-sourced eq rows (claimed vs SEC-filed value):
+# median 0.004%, p95 1.034%, max 3.067%. 1.0% sat below p95, so true claims
+# were refuted on rounding alone; 1.5% covers p95 with margin while staying
+# far under the 3.067% outlier.
+TOLERANCE_SEC_LARGE = 1.5       # SEC/financial values > $1B
 TOLERANCE_SEC_SMALL = 2.0       # SEC/financial values <= $1B
 TOLERANCE_MARKET = 5.0          # Market data (stock prices, market cap)
 TOLERANCE_NEWS = 5.0            # News-reported values
 TOLERANCE_DEFAULT = 2.0         # Fallback
 TOLERANCE_LARGE_VALUE_THRESHOLD = 1_000_000_000  # $1B boundary
+# approx/range widen the base tolerance by this factor. Measured across the 36
+# approx rows with a filed value: spread median 0.014%, p95 1.25%, max 2.14%;
+# 2.0x the SEC-large tolerance captures 97% of them, and 3.0x would buy only a
+# single 2.14% outlier at real cost to REFUTES discrimination.
+TOLERANCE_APPROX_MULTIPLIER = 2.0
 
 # ---------------------------------------------------------------------------
 # Consensus adjustments (used in workflow.py _simple_consensus)
@@ -28,7 +37,7 @@ CONSENSUS_MAX_CONFIDENCE = 0.95         # confidence cap
 # ---------------------------------------------------------------------------
 # Agent limits (used in base.py)
 # ---------------------------------------------------------------------------
-AGENT_MAX_ITERATIONS = 10
+AGENT_MAX_ITERATIONS = 5
 AGENT_MAX_RESULT_CHARS = 50000  # ~12K tokens, safe for 131K context
 
 # ---------------------------------------------------------------------------
@@ -56,3 +65,9 @@ MEMORY_SIMILAR_THRESHOLD = 0.60 # broad similarity for "People Also Verified"
 # Audit callback truncation (used in audit/callbacks.py)
 # ---------------------------------------------------------------------------
 MAX_CALLBACK_DATA_CHARS = 1000  # max chars for tool output/error in audit events
+# Stored tool-result preview in tool_calls_detail. Must cover a full income
+# statement: 14 line-item dicts run ~2,000 chars, and a 1,000-char window cut
+# NetIncomeLoss (9th item) out of real output — the metric-guided fallback
+# could see revenue but not net income in the same statement. 3,000 covers 14
+# items with margin at modest audit-row cost.
+TOOL_RESULT_PREVIEW_CHARS = 3000
