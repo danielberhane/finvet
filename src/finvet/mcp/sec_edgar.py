@@ -126,6 +126,30 @@ SEC_COMPANY_CONCEPT_URL = (
     "https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{concept}.json"
 )
 
+SEC_FRAMES_URL = (
+    "https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/{uom}/{frame}.json"
+)
+
+# frames denominates each concept in one unit; per-share concepts are not USD.
+FRAME_UNIT_CANDIDATES = ("USD", "USD-per-shares")
+
+
+def frame_for(period_end: Optional[str], period: str) -> Optional[str]:
+    """SEC frame identifier for a resolved period, or None where frames has no
+    bucket (half-years, unparseable dates)."""
+    try:
+        d = date.fromisoformat(period_end)
+    except (TypeError, ValueError):
+        return None
+    quarter = (d.month - 1) // 3 + 1
+    if period == "annual":
+        return f"CY{d.year}"
+    if period == "quarterly":
+        return f"CY{d.year}Q{quarter}"
+    if period == "date":
+        return f"CY{d.year}Q{quarter}I"
+    return None
+
 
 # ---------------------------------------------------------------------------
 # Client
@@ -139,6 +163,7 @@ class SECEdgarClient:
         self.base_url = base_url or settings.sec_edgar_mcp_url
         self._mcp = MCPClient(self.base_url)
         self._concept_cache: Dict[tuple, Optional[Dict]] = {}
+        self._frame_cache: Dict[tuple, Dict[int, Dict]] = {}
 
     # -- company info --------------------------------------------------------
 
@@ -242,13 +267,32 @@ class SECEdgarClient:
                 continue
 
             payload = self._fetch_company_concept(cik, item.line_item)
-            if not payload:
-                continue
-
-            value = _select_fact_for_period(
-                payload, accession_number, period_end, period
+            value = (
+                _select_fact_for_period(payload, accession_number, period_end, period)
+                if payload else None
             )
             if value is None:
+                # companyconcept can be empty for a concept a company does file
+                # (Ford + EarningsPerShareDiluted returns "units": {}). frames,
+                # keyed by concept + calendar frame, is the same primary source
+                # through a third door and carries only undimensioned facts.
+                frames_hit = self._frames_fallback(
+                    cik, item.line_item, period_end, period
+                )
+                if frames_hit is not None:
+                    frames_value, frames_end = frames_hit
+                    logger.info(
+                        f"{item.line_item}: companyconcept unresolved for "
+                        f"{period_end} ({period}); frames fact {frames_value:,.2f} "
+                        f"(end {frames_end}) supersedes {item.value:,.0f}"
+                    )
+                    item.value = frames_value
+                    item.period_end = frames_end
+                    item.period = frames_end
+                    item.consolidated = True
+                    continue
+                if not payload:
+                    continue
                 # The requested period matched nothing — the fiscal/calendar
                 # misalignment case: period_resolver maps "fiscal 2024" to
                 # 2024-12-31 while e.g. Apple's year ends 2024-09-28. Fall
@@ -367,6 +411,61 @@ class SECEdgarClient:
 
         self._concept_cache[key] = payload
         return payload
+
+    def _frames_fallback(
+        self, cik: Any, concept: str, period_end: str, period: str
+    ) -> Optional[tuple]:
+        """(value, end date) from the frames endpoint, or None. Fails closed:
+        no frame for the period, no row for the company, no substitution."""
+        frame = frame_for(period_end, period)
+        if frame is None or cik is None:
+            return None
+        try:
+            cik_int = int(str(cik))
+        except (TypeError, ValueError):
+            return None
+        fact = self._fetch_frame_facts(concept, frame).get(cik_int)
+        if not fact or fact.get("val") is None:
+            return None
+        try:
+            return float(fact["val"]), fact.get("end") or period_end
+        except (TypeError, ValueError):
+            return None
+
+    def _fetch_frame_facts(self, concept: str, frame: str) -> Dict[int, Dict]:
+        """cik -> fact for one concept and frame, cached; {} on any failure.
+        The unit is part of the URL and differs by concept (EPS is not USD),
+        so candidates are tried until one resolves."""
+        key = (concept, frame)
+        if key in self._frame_cache:
+            return self._frame_cache[key]
+
+        facts: Dict[int, Dict] = {}
+        for uom in FRAME_UNIT_CANDIDATES:
+            url = SEC_FRAMES_URL.format(concept=concept, uom=uom, frame=frame)
+            try:
+                resp = httpx.get(
+                    url,
+                    headers={"User-Agent": settings.sec_edgar_user_agent},
+                    timeout=15.0,
+                )
+            except Exception as e:
+                logger.warning(f"frames {concept}/{frame} unavailable: {e}")
+                break
+            if resp.status_code == 404:
+                continue
+            if resp.status_code != 200:
+                logger.warning(f"frames {concept}/{frame}: HTTP {resp.status_code}")
+                break
+            facts = {
+                row["cik"]: row
+                for row in resp.json().get("data", [])
+                if isinstance(row, dict) and isinstance(row.get("cik"), int)
+            }
+            break
+
+        self._frame_cache[key] = facts
+        return facts
 
     @staticmethod
     def _parse_xbrl_result(result) -> List[FinancialItem]:
