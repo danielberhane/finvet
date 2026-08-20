@@ -229,3 +229,30 @@ class TestOverrideReadsOperator:
         )
         assert verdict == "NOT_ENOUGH_INFO"
         assert confidence <= 0.5
+
+
+class TestBuildContextCarriesTheContract:
+    """Stage 05, reader 4: the agent is told the resolved metric instead of
+    being left to infer it from prose; the dead currency line goes."""
+
+    def _context(self, **claim_kwargs):
+        from finvet.models.claim import ParsedClaim
+        agent = ConcreteAgent()
+        parsed = ParsedClaim(claim_type="sec", ticker="AAPL", **claim_kwargs)
+        return agent._build_context({"claim_raw": "test", "parsed_claim": parsed})
+
+    def test_metric_is_stated_to_the_agent(self):
+        context = self._context(metric="operating_cash_flow")
+        assert "operating_cash_flow" in context
+        assert "Metric" in context
+
+    def test_null_metric_stays_silent(self):
+        """The fall-through policy for absent and derived metrics: say
+        nothing, and the agent infers from claim text exactly as it did
+        before the field existed."""
+        context = self._context()
+        assert "Metric" not in context
+
+    def test_currency_no_longer_reaches_the_prompt(self):
+        context = self._context(currency="USD")
+        assert "Currency" not in context
