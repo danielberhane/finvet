@@ -1,15 +1,21 @@
 """LangGraph workflow for the FinVet verification pipeline.
 
-This module defines the 9-node verification workflow with HITL checkpointing:
-1. input_guardrails - Validate and sanitize input
-2. claim_parser - Parse claim into 6 fields
-3. period_resolver - Resolve time periods (for SEC claims)
-4. domain_agent - Run SEC/Market/News agent (routed by claim_type)
-5. consensus - Simple verdict propagation (single agent)
-6. output_guardrails - Check if HITL is needed
-7. hitl_checkpoint - INTERRUPT point for human review
-8. apply_hitl_decision - Apply human override if any
-9. response_generator - Format final response
+This module registers 12 nodes. At most 9 run for any single claim: the router
+selects one domain agent, and the two HITL nodes only execute when confidence
+falls below the threshold.
+
+1.  input_guardrails    - Validate and sanitize input
+2.  claim_parser        - Parse claim into structured fields
+3.  period_resolver     - Resolve time periods to dates (SEC claims only)
+4.  sec_agent           - ReAct verification against SEC EDGAR
+5.  market_agent        - ReAct verification against Finnhub
+6.  news_agent          - ReAct verification against Tavily
+7.  reject_handler      - Terminal path for unsafe / non-financial claims
+8.  consensus           - Confidence adjustment on the agent verdict
+9.  output_guardrails   - Confidence threshold + output safety -> HITL routing
+10. hitl_checkpoint     - INTERRUPT point for human review
+11. apply_hitl_decision - Apply the reviewer's decision
+12. response_generator  - Format final response
 
 LangGraph checkpointing enables HITL:
 - Graph pauses at hitl_checkpoint when hitl_required=True
@@ -17,7 +23,6 @@ LangGraph checkpointing enables HITL:
 - Human reviews via /review endpoint, graph resumes with decision
 """
 
-from datetime import datetime
 from typing import Dict
 
 from langgraph.graph import StateGraph, END
@@ -157,10 +162,13 @@ def _route_after_parsing(state: VerificationState) -> str:
 
 def _handle_rejection(state: VerificationState) -> Dict:
     """Handle rejected claims."""
+    parsed_claim = state.get("parsed_claim")
     return {
         "verdict": "REJECTED",
         "confidence": 1.0,
         "confidence_label": "HIGH",
+        "disposition": "rejected_parser",
+        "disposition_detail": getattr(parsed_claim, "reject_reason", None),
     }
 
 
@@ -181,11 +189,19 @@ def _simple_consensus(state: VerificationState) -> Dict:
 
     adjustments = []
     parsed_claim = state.get("parsed_claim")
-    comparison = getattr(parsed_claim, "comparison", None) or "eq" if parsed_claim else "eq"
+    # The contract's operator (comparison mirrors it during the migration).
+    operator = (
+        (getattr(parsed_claim, "operator", None)
+         or getattr(parsed_claim, "comparison", None) or "eq")
+        if parsed_claim else "eq"
+    )
     magnitude_diff = agent_evidence.get("magnitude_difference_percent")
-    # Only apply magnitude-based adjustments for equality comparisons.
-    # Directional claims (gt/gte/lt/lte) expect large differences.
-    if magnitude_diff is not None and comparison == "eq":
+    # Magnitude adjustments apply to strict equality only. Directional claims
+    # (gt/gte/lt/lte) expect large differences, and approx/range stated their
+    # own imprecision — no close-match bonus for a claim that never promised
+    # precision, no penalty for one the override already judged at the
+    # widened tolerance.
+    if magnitude_diff is not None and operator == "eq":
         if magnitude_diff > CONSENSUS_LARGE_DIFF_THRESHOLD:
             confidence += CONSENSUS_LARGE_DIFF_PENALTY
             adjustments.append({"reason": "large_magnitude_difference", "amount": CONSENSUS_LARGE_DIFF_PENALTY})
@@ -260,7 +276,10 @@ def _apply_hitl_decision(state: VerificationState) -> Dict:
     hitl_reviewer_notes = state.get("hitl_reviewer_notes")
 
     if hitl_decision is None:
-        # No HITL decision (running without checkpointer, or non-HITL claim)
+        # No HITL decision (running without checkpointer, or non-HITL claim).
+        # response_generator already returns a pending_review response for this
+        # case (hitl_required and hitl_decision is None), so a flagged verdict is
+        # never released — nothing to suppress here.
         return {}
 
     audit = get_audit_logger()
@@ -272,7 +291,11 @@ def _apply_hitl_decision(state: VerificationState) -> Dict:
             data={"notes": hitl_reviewer_notes}
         )
         logger.info(f"HITL approved automated verdict (request: {request_id})")
-        return {"hitl_applied": True}
+        return {
+            "hitl_applied": True,
+            "disposition": "approved_human",
+            "disposition_detail": hitl_reviewer_notes,
+        }
 
     elif hitl_decision == "override":
         audit.log_event(
@@ -292,6 +315,8 @@ def _apply_hitl_decision(state: VerificationState) -> Dict:
             "confidence": 0.95,
             "confidence_label": "HIGH",
             "hitl_applied": True,
+            "disposition": "overridden_human",
+            "disposition_detail": hitl_reviewer_notes,
         }
 
     elif hitl_decision == "reject":
@@ -306,6 +331,8 @@ def _apply_hitl_decision(state: VerificationState) -> Dict:
             "confidence": 1.0,
             "confidence_label": "HIGH",
             "hitl_applied": True,
+            "disposition": "rejected_human",
+            "disposition_detail": hitl_reviewer_notes,
         }
 
     return {}
