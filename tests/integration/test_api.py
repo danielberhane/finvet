@@ -24,7 +24,7 @@ def test_health():
 
 def test_verify_claim(claim: str):
     """Test claim verification."""
-    print(f"Testing claim verification...")
+    print("Testing claim verification...")
     print(f"Claim: {claim}")
     print()
 
@@ -51,13 +51,13 @@ def test_verify_claim(claim: str):
                 print(f"  {i}. {source.get('description', 'Unknown')} - {source.get('url', 'N/A')}")
 
         if result.get('disclosures'):
-            print(f"\nDISCLOSURES:")
+            print("\nDISCLOSURES:")
             for disclosure in result['disclosures']:
                 print(f"  - {disclosure}")
 
         if result.get('metadata'):
             meta = result['metadata']
-            print(f"\nMETADATA:")
+            print("\nMETADATA:")
             print(f"  Agents used: {', '.join(meta.get('agents_used', []))}")
             print(f"  Execution time: {meta.get('execution_time_ms', 0)}ms")
             print(f"  Tokens used: {meta.get('total_tokens_used', 0)}")

@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from ..mcp.sec_edgar import SECEdgarClient, CompanyInfo, Filing, FinancialItem
+from ..mcp.sec_edgar import SECEdgarClient
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)

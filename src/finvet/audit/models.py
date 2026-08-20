@@ -1,9 +1,8 @@
 """SQLAlchemy models for audit trail."""
 
 from sqlalchemy import Column, String, Integer, Float, Text, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
-import uuid
 from ..config.database import Base
 
 

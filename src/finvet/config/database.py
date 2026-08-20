@@ -2,7 +2,7 @@
 
 import logging
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 from contextlib import contextmanager
@@ -68,8 +68,6 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    from ..audit.models import AuditEvent, AuditExecution
-    from ..rag.models import FilingChunk
 
     Base.metadata.create_all(bind=engine)
 

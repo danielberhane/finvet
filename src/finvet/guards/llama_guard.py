@@ -10,7 +10,6 @@ when infrastructure fails.
 """
 
 import time
-from typing import Optional
 
 import httpx
 
