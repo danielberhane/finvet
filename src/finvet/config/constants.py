@@ -17,6 +17,11 @@ TOLERANCE_MARKET = 5.0          # Market data (stock prices, market cap)
 TOLERANCE_NEWS = 5.0            # News-reported values
 TOLERANCE_DEFAULT = 2.0         # Fallback
 TOLERANCE_LARGE_VALUE_THRESHOLD = 1_000_000_000  # $1B boundary
+# approx/range widen the base tolerance by this factor. Measured across the 36
+# approx rows with a filed value: spread median 0.014%, p95 1.25%, max 2.14%;
+# 2.0x the SEC-large tolerance captures 97% of them, and 3.0x would buy only a
+# single 2.14% outlier at real cost to REFUTES discrimination.
+TOLERANCE_APPROX_MULTIPLIER = 2.0
 
 # ---------------------------------------------------------------------------
 # Consensus adjustments (used in workflow.py _simple_consensus)
