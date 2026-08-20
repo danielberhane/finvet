@@ -103,7 +103,7 @@ GOLD_DIR = Path.home() / "Projects/Active/claim_parser_fine-tuned/data/clean"
 
 @pytest.mark.skipif(not GOLD_DIR.exists(), reason="parser gold not present")
 class TestPromptExamplesAreNotEvalRows:
-    """docs/EVAL_DATA_POLICY.md, enforced. The stage-06 rewrite lifted four
+    """The evaluation-data policy (internal), enforced in code. The stage-06 rewrite lifted four
     worked examples verbatim from eval sets — caught by audit, worth ~0.3%
     inflated val exact-match. Prompt examples come from train.jsonl or are
     invented; anything the prompt was shaped on cannot measure the prompt."""

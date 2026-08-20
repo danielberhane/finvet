@@ -1,5 +1,5 @@
 # Derived evaluation sidecars — regenerable, and derived from the parser
-# project's contamination-sensitive gold. Never commit (docs/EVAL_DATA_POLICY.md).
+# project's contamination-sensitive gold. Never commit.
 sec_gold_fill.jsonl
 macro_gold_fill.jsonl
 *_preds.jsonl
