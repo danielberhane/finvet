@@ -1,10 +1,10 @@
 """Period resolver node for converting ambiguous time periods to canonical date ranges."""
 
 import re
-from datetime import datetime, timedelta, date
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Dict, Tuple
 from ...models.state import VerificationState
-from ...models.claim import CanonicalPeriod, CompanyInfo
+from ...models.claim import CanonicalPeriod
 from ...models.audit import AuditEvent
 from ...utils.logging import get_logger
 

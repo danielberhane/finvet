@@ -4,7 +4,7 @@ Allows the SEC agent to ask the News agent to corroborate findings
 from SEC filing text, enabling cross-source verification.
 """
 
-from typing import List, Optional
+from typing import Optional
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
