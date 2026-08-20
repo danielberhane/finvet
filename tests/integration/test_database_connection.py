@@ -1,6 +1,11 @@
-"""Integration tests for database connection. Requires a running PostgreSQL."""
+"""Integration tests for database connection. Requires a running PostgreSQL.
+
+Opt in with:  pytest -m integration
+"""
 
 import pytest
+
+pytestmark = pytest.mark.integration
 from sqlalchemy import text
 from src.finvet.config.database import check_connection, get_db_session
 
