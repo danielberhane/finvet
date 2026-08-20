@@ -27,7 +27,7 @@
   <!-- Title -->
   <rect x="0" y="0" width="1200" height="56" fill="url(#headerGrad)" rx="12"/>
   <rect x="0" y="40" width="1200" height="16" fill="url(#headerGrad)"/>
-  <text x="600" y="36" text-anchor="middle" fill="white" font-size="20" font-weight="700" letter-spacing="0.5">LangGraph Pipeline — 9-Node DAG with HITL Checkpoint</text>
+  <text x="600" y="36" text-anchor="middle" fill="white" font-size="20" font-weight="700" letter-spacing="0.5">LangGraph Pipeline — 12-Node DAG with HITL Checkpoint</text>
 
   <!-- ============ ROW 1: Entry ============ -->
 
@@ -89,7 +89,7 @@
   <rect x="780" y="306" width="170" height="60" rx="10" fill="white" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow)"/>
   <rect x="780" y="306" width="4" height="60" rx="2" fill="#10B981"/>
   <text x="804" y="332" fill="#1E293B" font-size="12" font-weight="700">Market Agent</text>
-  <text x="804" y="350" fill="#64748B" font-size="9">ReAct · Finnhub · Yahoo</text>
+  <text x="804" y="350" fill="#64748B" font-size="9">ReAct · Finnhub</text>
   <text x="936" y="324" fill="#94A3B8" font-size="9" text-anchor="end">#5</text>
 
   <!-- Branch: News (lower) -->

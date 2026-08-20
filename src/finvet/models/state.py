@@ -29,8 +29,11 @@ Pipeline flow (which node writes which fields):
                                    guard_result_output, audit_events
     Node 7 (hitl_checkpoint)    → hitl_checkpoint_passed
     Node 8 (apply_hitl_decision)→ hitl_applied, verdict (override),
-                                   confidence (override)
+                                   confidence (override), disposition
     Node 9 (response_generator) → final_response, execution_end_time
+
+    reject_handler (terminal)   → verdict, confidence, confidence_label,
+                                   disposition, disposition_detail
 
     /review route (external)    → hitl_decision, hitl_override_verdict,
                                    hitl_reviewer_notes (injected via
@@ -378,6 +381,38 @@ class VerificationState(TypedDict, total=False):
     # CROSS-CUTTING FIELDS — Set by tools/agents during execution
     # These can be written by any node, not tied to a specific pipeline step.
     # ===================================================================
+
+    # Why this run ended the way it did. Written by whichever node terminates the
+    # run, read by response_generator to pick the response shape and surfaced in
+    # final_response["metadata"] (persisted to the audit full_trace JSONB column).
+    #
+    # Multiple nodes write verdict="REJECTED" — the parser reject path and a human
+    # reviewer's reject decision — so the verdict alone cannot tell an auditor why
+    # a claim was refused. This field carries that provenance.
+    #
+    #   "released"             — auto-released, confidence >= threshold, guards clean
+    #   "rejected_parser"      — claim_parser classified the claim as unverifiable
+    #   "rejected_human"       — human reviewer rejected at the HITL checkpoint
+    #   "rejected_input_guard" — reserved; input guard violations currently fail
+    #                            closed at the API boundary (HTTP 400) and never
+    #                            reach response_generator
+    #   "approved_human"       — human reviewer approved the automated verdict
+    #   "overridden_human"     — human reviewer replaced the verdict
+    #   "pending_review"       — paused at the HITL checkpoint, not yet terminal
+    disposition: Optional[Literal[
+        "released",
+        "rejected_parser",
+        "rejected_human",
+        "rejected_input_guard",
+        "approved_human",
+        "overridden_human",
+        "pending_review",
+    ]]
+
+    # The reason within the disposition: a ParsedClaim.reject_reason value
+    # ("non_financial" / "question" / "incomplete"), a guard violation_type, or
+    # the human reviewer's notes. None when the disposition needs no detail.
+    disposition_detail: Optional[str]
 
     # Filing text chunks retrieved via hybrid RAG search (pgvector cosine +
     # tsvector BM25 with RRF fusion). Set by run_sec_agent when the SEC agent

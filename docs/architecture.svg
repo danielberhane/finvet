@@ -167,7 +167,7 @@
   <rect x="480" y="483" width="280" height="52" rx="8" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.5" filter="url(#shadow)"/>
   <text x="518" y="505" fill="#065f46" font-size="10" font-weight="700">4b</text>
   <text x="620" y="505" fill="#065f46" font-size="12" font-weight="600" text-anchor="middle">Market Agent</text>
-  <text x="620" y="523" fill="#047857" font-size="10" text-anchor="middle">ReAct loop · Finnhub / Yahoo</text>
+  <text x="620" y="523" fill="#047857" font-size="10" text-anchor="middle">ReAct loop · Finnhub</text>
 
   <!-- Node 4c: News Agent -->
   <rect x="860" y="483" width="280" height="52" rx="8" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.5" filter="url(#shadow)"/>
@@ -318,7 +318,7 @@
   <rect x="500" y="992" width="380" height="38" rx="12" fill="#065f46"/>
   <rect x="500" y="1012" width="380" height="18" fill="#065f46"/>
   <text x="520" y="1016" fill="#fff" font-size="14" font-weight="700">Market Agent</text>
-  <text x="750" y="1016" fill="#a7f3d0" font-size="10">Finnhub · Yahoo</text>
+  <text x="750" y="1016" fill="#a7f3d0" font-size="10">Finnhub</text>
 
   <!-- Market tools -->
   <text x="520" y="1055" fill="#065f46" font-size="11" font-weight="600">Tools (4)</text>
@@ -338,7 +338,7 @@
 
   <!-- Market fallback note -->
   <rect x="520" y="1210" width="340" height="30" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="535" y="1230" fill="#1e40af" font-size="9">Finnhub 403 → auto-fallback to Yahoo Finance CSV</text>
+  <text x="535" y="1230" fill="#1e40af" font-size="9">Historical candles need a paid Finnhub tier (403 on free)</text>
 
   <!-- News Agent Card -->
   <rect x="900" y="992" width="380" height="310" rx="12" fill="#fff" stroke="#6ee7b7" stroke-width="1.5" filter="url(#shadow-lg)"/>
@@ -358,7 +358,6 @@
   <rect x="920" y="1155" width="340" height="55" rx="6" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
   <text x="935" y="1170" fill="#166534" font-size="9" font-weight="600">SOURCE TIERS</text>
   <text x="935" y="1185" fill="#15803d" font-size="9">T1 (0.95): Reuters, Bloomberg, WSJ, FT, AP</text>
-  <text x="935" y="1198" fill="#15803d" font-size="9">T2 (0.80): CNBC, MarketWatch, Yahoo Finance</text>
   <text x="935" y="1198" fill="#15803d" font-size="9">T2 (0.80): CNBC, MarketWatch, Yahoo Finance</text>
 
   <!-- News tolerance -->
@@ -393,21 +392,13 @@
   <text x="75" y="1550" fill="#0d9488" font-size="8">JSON-RPC 2.0</text>
   <text x="75" y="1562" fill="#0d9488" font-size="8">streamable-http</text>
 
-  <!-- Finnhub MCP -->
-  <rect x="225" y="1495" width="150" height="80" rx="8" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
-  <text x="240" y="1517" fill="#134e4a" font-size="11" font-weight="600">Finnhub</text>
-  <text x="240" y="1532" fill="#134e4a" font-size="11" font-weight="600">MCP Server</text>
-  <text x="345" y="1517" fill="#14b8a6" font-size="9" font-weight="500">:9872</text>
-  <text x="240" y="1550" fill="#0d9488" font-size="8">REST API +</text>
-  <text x="240" y="1562" fill="#0d9488" font-size="8">Yahoo fallback</text>
-
-  <!-- Ollama -->
-  <rect x="390" y="1495" width="150" height="80" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
-  <text x="405" y="1517" fill="#991b1b" font-size="11" font-weight="600">Ollama</text>
-  <text x="510" y="1517" fill="#ef4444" font-size="9" font-weight="500">:11434</text>
-  <text x="405" y="1535" fill="#b91c1c" font-size="10">Llama Guard 3</text>
-  <text x="405" y="1550" fill="#dc2626" font-size="8">8B model · semantic</text>
-  <text x="405" y="1562" fill="#dc2626" font-size="8">safety (S1-S13)</text>
+  <!-- Ollama (optional, profile: guards) -->
+  <rect x="225" y="1495" width="150" height="80" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
+  <text x="240" y="1517" fill="#991b1b" font-size="11" font-weight="600">Ollama</text>
+  <text x="345" y="1517" fill="#ef4444" font-size="9" font-weight="500">:11434</text>
+  <text x="240" y="1535" fill="#b91c1c" font-size="10">Llama Guard 3</text>
+  <text x="240" y="1550" fill="#dc2626" font-size="8">optional · fails open</text>
+  <text x="240" y="1562" fill="#dc2626" font-size="8">safety (S1-S13)</text>
 
   <!-- Local Processes -->
   <rect x="555" y="1400" width="170" height="80" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
@@ -455,14 +446,7 @@
   <text x="1035" y="1517" fill="#134e4a" font-size="12" font-weight="600">Finnhub API</text>
   <text x="1035" y="1535" fill="#0d9488" font-size="9">Stock quotes, prices</text>
   <text x="1035" y="1550" fill="#0d9488" font-size="9">Earnings, overview</text>
-  <text x="1035" y="1563" fill="#0d9488" font-size="9">Fallback: Yahoo Finance</text>
-
-  <!-- Yahoo Finance (external) -->
-  <rect x="1240" y="1495" width="200" height="80" rx="8" fill="#fefce8" stroke="#fde047" stroke-width="1"/>
-  <text x="1255" y="1517" fill="#854d0e" font-size="12" font-weight="600">Yahoo Finance</text>
-  <text x="1255" y="1535" fill="#a16207" font-size="9">CSV API fallback</text>
-  <text x="1255" y="1550" fill="#a16207" font-size="9">Historical prices</text>
-  <text x="1255" y="1563" fill="#a16207" font-size="9">When Finnhub → 403</text>
+  <text x="1035" y="1563" fill="#0d9488" font-size="9">Historical: paid tier only</text>
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- CROSS-CUTTING CONCERNS                         -->
@@ -672,6 +656,6 @@
   <text x="40" y="2310" fill="#64748b" font-size="10" font-weight="600">Entry Points</text>
   <text x="130" y="2310" fill="#94a3b8" font-size="10">API: src/finvet/main.py · UI: ui/app.py · Pipeline: src/finvet/graph/workflow.py · Start: ./start.sh</text>
 
-  <text x="40" y="2335" fill="#64748b" font-size="9">Pipeline: 9 nodes · 3 agents · 13 tools · 4 Docker services · 6 external APIs · Hybrid RAG · Claim memory · Immutable audit · HITL review</text>
+  <text x="40" y="2335" fill="#64748b" font-size="9">Pipeline: 12 nodes · 3 agents · 13 tools · 4 Docker services · 6 external APIs · Hybrid RAG · Claim memory · Immutable audit · HITL review</text>
 
 </svg>

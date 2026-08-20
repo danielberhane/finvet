@@ -1,6 +1,6 @@
 """Market data tools for the Market verification agent.
 
-These tools provide access to market data through the Finnhub MCP server.
+These tools provide access to market data through the Finnhub REST API.
 The agent uses these tools to verify claims about stock prices, market cap,
 P/E ratios, and other market-based metrics.
 
@@ -8,6 +8,7 @@ Tool Selection Guide for the LLM:
 ---------------------------------
 1. get_stock_quote: For current/recent price, today's trading data
 2. get_daily_prices: For historical prices on specific dates or date ranges
+   (requires a paid Finnhub tier; free-tier keys get an error, not a fallback)
 3. get_company_overview: For market cap, P/E ratio, dividend yield, EPS
 4. get_earnings: For quarterly EPS and earnings estimates (analyst consensus)
 

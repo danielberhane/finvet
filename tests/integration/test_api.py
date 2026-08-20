@@ -1,6 +1,12 @@
-"""Simple test script for FinVet API."""
+"""Integration checks against a running FinVet API on :8000.
 
+Opt in with:  pytest -m integration
+"""
+
+import pytest
 import httpx
+
+pytestmark = pytest.mark.integration
 import json
 
 # API base URL

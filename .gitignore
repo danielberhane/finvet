@@ -12,7 +12,13 @@ venv/
 
 # Secrets
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets/
+private/
 
 # IDE
 .idea/

@@ -64,7 +64,7 @@
   <rect x="420" y="106" width="200" height="50" rx="8" fill="white" stroke="#DDD6FE" stroke-width="1.5" filter="url(#shadow)"/>
   <rect x="420" y="106" width="4" height="50" rx="2" fill="#8B5CF6"/>
   <text x="444" y="128" fill="#1E293B" font-size="11" font-weight="700">LangGraph Pipeline</text>
-  <text x="444" y="144" fill="#64748B" font-size="9">9 nodes, conditional routing</text>
+  <text x="444" y="144" fill="#64748B" font-size="9">12 nodes, conditional routing</text>
 
   <line x1="620" y1="131" x2="658" y2="131" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
 
@@ -230,7 +230,7 @@
   <text x="304" y="620" fill="#1E293B" font-size="12" font-weight="700">Finnhub</text>
   <text x="304" y="640" fill="#64748B" font-size="10">REST API (60 req/min)</text>
   <text x="304" y="660" fill="#64748B" font-size="10">Quotes, candles, overview</text>
-  <text x="304" y="680" fill="#64748B" font-size="10">Yahoo Finance fallback</text>
+  <text x="304" y="680" fill="#64748B" font-size="10">Historical: paid tier only</text>
 
   <!-- Tavily -->
   <rect x="500" y="596" width="200" height="100" rx="10" fill="white" stroke="#FDE68A" stroke-width="1.5" filter="url(#shadow)"/>

@@ -3,14 +3,22 @@
 Each node is a function that takes VerificationState and returns a dict
 of updates to apply to the state. Nodes are connected by LangGraph.
 
-Node Order (9-node architecture):
-1. input_guardrails - Validate and sanitize input
-2. claim_parser - Parse claim into 6 fields
-3. period_resolver - Resolve time periods to dates
-4. domain_agents - Run SEC/Market/News agent based on claim_type
-5. consensus - Combine evidence and determine verdict
-6. output_guardrails - Check if HITL is needed
-7. response_generator - Format final response
+The graph registers 12 nodes. At most 9 execute for any one claim -- the router
+picks a single domain agent, and the two HITL nodes only run below the confidence
+threshold.
+
+1.  input_guardrails    - Validate and sanitize input
+2.  claim_parser        - Parse claim into structured fields
+3.  period_resolver     - Resolve time periods to dates (SEC claims only)
+4.  sec_agent           - ReAct verification against SEC EDGAR
+5.  market_agent        - ReAct verification against Finnhub
+6.  news_agent          - ReAct verification against Tavily
+7.  reject_handler      - Terminal path for unsafe / non-financial claims
+8.  consensus           - Confidence adjustment on the agent verdict
+9.  output_guardrails   - Confidence threshold + output safety -> HITL routing
+10. hitl_checkpoint     - INTERRUPT point for human review
+11. apply_hitl_decision - Apply the reviewer's decision
+12. response_generator  - Format final response
 """
 
 from .input_guardrails import input_guardrails

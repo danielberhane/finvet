@@ -7,6 +7,7 @@ P/E ratios, and other market-derived metrics using Finnhub data.
 from pathlib import Path
 
 from ..base import BaseVerificationAgent
+from ...config.constants import AGENT_MAX_ITERATIONS
 from ...tools.market_tools import MARKET_TOOLS
 from ...tools.memory_tools import search_past_verifications
 
@@ -22,7 +23,7 @@ class MarketAgent(BaseVerificationAgent):
     market cap, valuations, and other market-derived metrics.
     """
 
-    def __init__(self, max_iterations: int = 5):
+    def __init__(self, max_iterations: int = AGENT_MAX_ITERATIONS):
         """Initialize the Market Agent with market tools."""
         super().__init__(
             agent_type="market",
