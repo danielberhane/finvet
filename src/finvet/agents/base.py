@@ -525,48 +525,37 @@ class BaseVerificationAgent(ABC):
         tool_calls_detail: List[Dict[str, Any]],
         parsed_claim: Any,
     ) -> Optional[float]:
-        """Extract the most relevant numeric value from financial tool results.
+        """Fallback when the verdict LLM leaves retrieved_value empty.
 
-        Called when the verdict LLM fails to populate retrieved_value.
-        Scans tool results for financial items and picks the best match.
+        Metric-guided since stage 07c. The previous version picked the tool-
+        result number CLOSEST to the claimed value — selecting whichever
+        figure best agreed with the claim being checked, a confirmation bias
+        sitting directly under the deterministic override. Now the claim's
+        metric selects by XBRL concept; with no metric to guide it, this
+        declines, and NOT_ENOUGH_INFO is the honest downstream answer.
         """
         import re
 
-        financial_tools = {
-            "get_income_statement", "get_balance_sheet", "get_cash_flow",
-            "get_stock_quote", "get_company_overview",
-        }
-        claimed_val = parsed_claim.value if parsed_claim else None
+        from ..config.metrics import METRIC_TO_CONCEPTS
 
-        all_values: List[float] = []
-        for tc in tool_calls_detail:
-            if tc.get("tool") not in financial_tools or not tc.get("success"):
-                continue
-            result_str = tc.get("result", "")
-            # Parse 'value': <number> from the tool result string
-            for m in re.finditer(r"'value':\s*([\d.eE+\-]+)", result_str):
-                try:
-                    v = float(m.group(1))
-                    if v != 0:
-                        all_values.append(v)
-                except ValueError:
-                    continue
-
-        if not all_values:
+        metric = getattr(parsed_claim, "metric", None) if parsed_claim else None
+        concepts = METRIC_TO_CONCEPTS.get(metric) if metric else None
+        if not concepts:
             return None
 
-        # If we know the claimed value, pick the value closest in order of
-        # magnitude (likely the matching concept, not an unrelated line item).
-        if claimed_val is not None and claimed_val != 0:
-            # Sort by how close each is to claimed value (ratio-based)
-            all_values.sort(
-                key=lambda v: abs(v - claimed_val) / max(abs(claimed_val), abs(v))
-            )
-            return all_values[0]
-
-        # No claimed value to anchor on — return the largest (most likely
-        # consolidated/total figure).
-        return max(all_values)
+        pattern = re.compile(
+            r"'line_item':\s*'(\w+)'[^{}]*?'value':\s*([\d.eE+\-]+)"
+        )
+        for tc in tool_calls_detail:
+            if not tc.get("success"):
+                continue
+            for concept, raw in pattern.findall(tc.get("result", "")):
+                if concept in concepts:
+                    try:
+                        return float(raw)
+                    except ValueError:
+                        continue
+        return None
 
     @abstractmethod
     def _get_source_description(self) -> str:

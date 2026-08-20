@@ -131,3 +131,21 @@ class TestVendoredCopyMatchesSource:
 
     def test_hard_drops_match(self, source):
         assert METRIC_HARD_DROPS == source["METRIC_HARD_DROPS"]
+
+
+class TestMetricToConcepts:
+    """The fallback's concept map must never reference a concept FinVet does
+    not request — a stale entry would silently never match."""
+
+    def test_every_concept_is_requested_from_sec(self):
+        from finvet.config.metrics import METRIC_TO_CONCEPTS
+        from finvet.mcp.sec_edgar import CONCEPTS_BY_TYPE
+        requested = {c for lst in CONCEPTS_BY_TYPE.values() for c in lst}
+        stale = {m: [c for c in cs if c not in requested]
+                 for m, cs in METRIC_TO_CONCEPTS.items()}
+        stale = {m: cs for m, cs in stale.items() if cs}
+        assert not stale, f"concepts never requested: {stale}"
+
+    def test_only_servable_direct_metrics_are_mapped(self):
+        from finvet.config.metrics import METRIC_TO_CONCEPTS, SERVABLE_METRICS
+        assert set(METRIC_TO_CONCEPTS) <= SERVABLE_METRICS["sec"]
