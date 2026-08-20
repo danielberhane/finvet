@@ -15,7 +15,6 @@ yields null. Decision codes surface to the audit trail so a rising residual
 rate is visible in production.
 """
 
-import pytest
 
 from finvet.graph.nodes.claim_parser import (
     normalize_parser_output,
