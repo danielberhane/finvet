@@ -77,8 +77,7 @@ class TestConsistentInputIsUntouched:
         data = reconcile_reject_fields(raw)
         assert data["claim_type"] == "reject"
         assert data["reject_reason"] == "question"
-        for field in ("ticker", "metric", "operator", "comparison",
-                      "value", "period", "currency"):
+        for field in ("ticker", "metric", "operator", "value", "period"):
             assert data[field] is None
 
     def test_a_well_formed_claim_passes_through(self):

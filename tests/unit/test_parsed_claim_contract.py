@@ -44,36 +44,30 @@ class TestMetricField:
                         metric="revenue")
 
 
-class TestOperatorMirrorsComparison:
-    """During EXPAND both names are live: the gold writes `operator`, every
-    existing reader and test writes `comparison`. They must be one value."""
+class TestContractPhaseFieldsAreGone:
+    """CONTRACT (2026-08-20): comparison and currency are deleted, and the
+    model forbids unknown fields — a stray operator= kwarg must raise, not
+    be silently ignored while operator lands as None. Legacy keys from a
+    regressing LLM are the BOUNDARY's job to strip, not the model's to
+    tolerate."""
 
-    def test_operator_fills_comparison(self):
-        claim = ParsedClaim(claim_type="sec", value=1.0, operator="gt")
-        assert claim.comparison == "gt"
+    def test_comparison_is_no_longer_a_field(self):
+        with pytest.raises(ValidationError):
+            ParsedClaim(claim_type="sec", value=1.0, comparison="eq")
 
-    def test_comparison_fills_operator(self):
-        claim = ParsedClaim(claim_type="sec", value=1.0, comparison="lte")
-        assert claim.operator == "lte"
+    def test_currency_is_no_longer_a_field(self):
+        with pytest.raises(ValidationError):
+            ParsedClaim(claim_type="sec", currency="USD")
 
-    def test_agreeing_duplicates_are_fine(self):
-        claim = ParsedClaim(claim_type="sec", value=1.0,
-                            operator="eq", comparison="eq")
-        assert claim.operator == claim.comparison == "eq"
+    def test_unknown_fields_are_forbidden(self):
+        with pytest.raises(ValidationError):
+            ParsedClaim(claim_type="sec", frobnicate=1)
 
-    def test_diverging_values_are_an_error(self):
-        with pytest.raises(ValidationError, match="operator"):
-            ParsedClaim(claim_type="sec", value=1.0,
-                        operator="gt", comparison="lt")
-
-    def test_both_none_stays_none(self):
-        claim = ParsedClaim(claim_type="news")
-        assert claim.operator is None and claim.comparison is None
-
-    @pytest.mark.parametrize("op", ["approx", "range"])
-    def test_new_operators_are_accepted_on_both_names(self, op):
+    @pytest.mark.parametrize("op", ["eq", "gt", "gte", "lt", "lte",
+                                    "approx", "range"])
+    def test_all_seven_operators_stand_alone(self, op):
         claim = ParsedClaim(claim_type="sec", value=1.0, operator=op)
-        assert claim.comparison == op
+        assert claim.operator == op
 
 
 class TestOpenRejectReason:
@@ -95,10 +89,7 @@ class TestOpenRejectReason:
             ParsedClaim(claim_type="sec", reject_reason="incomplete")
 
 
-class TestExpandPhaseKeepsTheOldSurface:
-
-    def test_currency_still_accepted(self):
-        assert ParsedClaim(claim_type="sec", currency="USD").currency == "USD"
+class TestGoldConstructsExactly:
 
     def test_a_full_gold_row_constructs_without_field_loss(self):
         gold = {"claim_type": "sec", "ticker": "JPM", "metric": "revenue",

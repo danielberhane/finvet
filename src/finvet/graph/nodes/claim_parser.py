@@ -180,8 +180,7 @@ def reconcile_reject_fields(parsed_data: Dict) -> Dict:
     # often leaves the fields it extracted before deciding to reject; nulling
     # them here is what makes the strict model invariant safe to enforce.
     if data.get("claim_type") == "reject":
-        for field in ("ticker", "metric", "operator", "comparison",
-                      "value", "period", "currency"):
+        for field in ("ticker", "metric", "operator", "value", "period"):
             data[field] = None
 
     return data
@@ -260,7 +259,17 @@ def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
     Returns (data, decisions) where decisions carries one code per concern
     for the claim_parsed audit event.
     """
-    data = reconcile_reject_fields(raw)
+    # Legacy keys (pre-CONTRACT schema, or a regressing model): comparison is
+    # honoured as operator when operator itself is absent, currency dropped.
+    # This runs BEFORE reconciliation so the §8 nulling of a reject's
+    # companions is final — honouring afterwards would resurrect an operator
+    # on a nulled reject.
+    data = dict(raw)
+    if data.get("operator") is None and data.get("comparison") is not None:
+        data["operator"] = data["comparison"]
+    data.pop("comparison", None)
+    data.pop("currency", None)
+    data = reconcile_reject_fields(data)
     if data.get("claim_type") != raw.get("claim_type"):
         reject_decision = "coerced_reject"
     elif data.get("reject_reason") != raw.get("reject_reason"):
@@ -275,13 +284,13 @@ def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
     # than crashed on; an operator with no value anchors nothing and is
     # dropped.
     operator_decision = "none"
-    op = data.get("operator") or data.get("comparison")
+    op = data.get("operator")
     if data.get("claim_type") != "reject":
         if data.get("value") is not None and op is None:
-            data["operator"] = data["comparison"] = "eq"
+            data["operator"] = "eq"
             operator_decision = "defaulted_eq"
         elif data.get("value") is None and op is not None:
-            data["operator"] = data["comparison"] = None
+            data["operator"] = None
             operator_decision = "dropped_operator_without_value"
 
     return data, {"reject": reject_decision, "metric": metric_decision,

@@ -189,10 +189,8 @@ def _simple_consensus(state: VerificationState) -> Dict:
 
     adjustments = []
     parsed_claim = state.get("parsed_claim")
-    # The contract's operator (comparison mirrors it during the migration).
     operator = (
-        (getattr(parsed_claim, "operator", None)
-         or getattr(parsed_claim, "comparison", None) or "eq")
+        (getattr(parsed_claim, "operator", None) or "eq")
         if parsed_claim else "eq"
     )
     magnitude_diff = agent_evidence.get("magnitude_difference_percent")

@@ -90,9 +90,10 @@ class TestNormalizeParserOutput:
                "period": "today", "currency": "USD",
                "reject_reason": "ambiguous_entity"}
         data, _ = normalize_parser_output(raw, "x")
-        for field in ("ticker", "metric", "operator", "comparison",
-                      "value", "period", "currency"):
+        for field in ("ticker", "metric", "operator", "value", "period"):
             assert data[field] is None, field
+        # legacy keys are stripped outright — the model forbids them
+        assert "comparison" not in data and "currency" not in data
         assert data["reject_reason"] == "ambiguous_entity"
 
     def test_value_without_operator_defaults_to_eq(self):
@@ -104,9 +105,11 @@ class TestNormalizeParserOutput:
         assert decisions["operator"] == "defaulted_eq"
 
     def test_operator_without_value_is_dropped(self):
+        """Legacy key form: a regressing model saying comparison is honoured
+        as operator, then the pairing rule applies."""
         raw = {"claim_type": "news", "comparison": "gt", "value": None}
         data, decisions = normalize_parser_output(raw, "x")
-        assert data.get("operator") is None and data.get("comparison") is None
+        assert data.get("operator") is None and "comparison" not in data
         assert decisions["operator"] == "dropped_operator_without_value"
 
     def test_clean_input_passes_through_with_no_decisions(self):
