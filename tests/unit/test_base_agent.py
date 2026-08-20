@@ -261,3 +261,47 @@ class TestBuildContextCarriesTheContract:
         with pytest.raises(ValidationError):
             ParsedClaim(claim_type="sec", ticker="AAPL", currency="USD")
         assert "Currency" not in self._context()
+
+
+class TestRetrievedValueFallbackIsMetricGuided:
+    """Stage 07c. The fallback used to pick the tool-result number CLOSEST to
+    the claim — selecting whichever figure best agreed with what it was
+    checking, a confirmation bias directly under the deterministic override.
+    Now: the claim's metric selects by XBRL concept, and with no metric to
+    guide it the fallback returns None — NOT_ENOUGH_INFO is the honest
+    answer, not the friendliest number in the pile."""
+
+    RESULT = ("success=True statement_type='income' items=[{'line_item': "
+              "'RevenueFromContractWithCustomerExcludingAssessedTax', "
+              "'value': 391035000000.0, 'period': '2024-09-28'}, "
+              "{'line_item': 'CostOfGoodsAndServicesSold', "
+              "'value': 210352000000.0, 'period': '2024-09-28'}, "
+              "{'line_item': 'NetIncomeLoss', 'value': 93736000000.0, "
+              "'period': '2024-09-28'}]")
+
+    def _extract(self, metric, claimed):
+        from finvet.agents.base import BaseVerificationAgent
+        from finvet.models.claim import ParsedClaim
+        parsed = ParsedClaim(claim_type="sec", ticker="AAPL", metric=metric,
+                             value=claimed, operator="eq")
+        detail = [{"tool": "get_income_statement", "success": True,
+                   "result": self.RESULT}]
+        return BaseVerificationAgent._extract_retrieved_value(detail, parsed)
+
+    def test_metric_selects_by_concept_not_by_agreement(self):
+        """Claimed $210B — the old code would return CostOfGoodsSold
+        (agrees perfectly); the metric says revenue, so revenue it is."""
+        got = self._extract("revenue", 210_352_000_000.0)
+        assert got == 391_035_000_000.0
+
+    def test_net_income_metric_finds_its_concept(self):
+        assert self._extract("net_income", 90e9) == 93_736_000_000.0
+
+    def test_no_metric_means_no_guess(self):
+        """The bias retired: without guidance the fallback declines, and the
+        pipeline says NOT_ENOUGH_INFO instead of confirming the claim with
+        whichever number sat nearest to it."""
+        assert self._extract(None, 210_352_000_000.0) is None
+
+    def test_metric_whose_concept_is_absent_declines(self):
+        assert self._extract("capex", 15e9) is None

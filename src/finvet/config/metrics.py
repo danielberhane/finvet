@@ -134,3 +134,31 @@ SERVABLE_METRICS: dict[str, frozenset[str]] = {
     "news": frozenset(),
     "reject": frozenset(),
 }
+
+
+# sec metric -> the XBRL concepts that carry it, mirroring CONCEPTS_BY_TYPE in
+# mcp/sec_edgar.py (kept in step by tests). Used by the retrieved-value
+# fallback so a concept lookup replaces the old pick-the-number-nearest-the-
+# claim search — a confirmation bias that sat directly under the verdict
+# override. Derived metrics are deliberately absent: they have no single
+# concept, and the fallback declines rather than guesses.
+METRIC_TO_CONCEPTS: dict[str, tuple[str, ...]] = {
+    "revenue": ("RevenueFromContractWithCustomerExcludingAssessedTax",
+                "Revenues", "SalesRevenueNet", "SalesRevenueGoodsNet"),
+    "cost_of_revenue": ("CostOfRevenue", "CostOfGoodsAndServicesSold"),
+    "gross_profit": ("GrossProfit",),
+    "operating_income": ("OperatingIncomeLoss",),
+    "net_income": ("NetIncomeLoss", "ProfitLoss"),
+    "eps": ("EarningsPerShareBasic",),
+    "diluted_eps": ("EarningsPerShareDiluted",),
+    "research_and_development": ("ResearchAndDevelopmentExpense",),
+    "interest_expense": ("InterestExpense",),
+    "total_assets": ("Assets",),
+    "total_liabilities": ("Liabilities",),
+    "shareholders_equity": (
+        "StockholdersEquity",
+        "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"),
+    "total_debt": ("LongTermDebt", "LongTermDebtNoncurrent"),
+    "operating_cash_flow": ("NetCashProvidedByUsedInOperatingActivities",),
+    "capex": ("PaymentsToAcquirePropertyPlantAndEquipment",),
+}
