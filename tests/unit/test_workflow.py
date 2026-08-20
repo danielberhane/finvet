@@ -1,5 +1,7 @@
 """Tests for workflow routing, consensus, and HITL logic."""
 
+import pytest
+
 from finvet.graph.workflow import (
     _route_after_parsing,
     _simple_consensus,
@@ -8,8 +10,6 @@ from finvet.graph.workflow import (
     _apply_hitl_decision,
 )
 from finvet.config.constants import (
-    CONSENSUS_CLOSE_MATCH_THRESHOLD,
-    CONSENSUS_LARGE_DIFF_THRESHOLD,
     CONSENSUS_MAX_CONFIDENCE,
 )
 from finvet.models.claim import ParsedClaim
@@ -248,3 +248,38 @@ class TestDisposition:
 
     def test_no_decision_leaves_state_untouched(self):
         assert _apply_hitl_decision({"request_id": "test", "verdict": "SUPPORTS"}) == {}
+
+
+class TestConsensusReadsOperator:
+    """Stage 05, reader 2: the magnitude gate reads the contract name, so the
+    CONTRACT-phase removal of `comparison` cannot silently disable it."""
+
+    def _evidence(self, diff):
+        return {"verdict": "SUPPORTS", "confidence": 0.80,
+                "magnitude_difference_percent": diff,
+                "tools_called": [], "reasoning": "r"}
+
+    def test_gate_works_on_an_object_without_a_comparison_attribute(self):
+        """Post-CONTRACT shape: operator exists, comparison does not."""
+        from types import SimpleNamespace
+        state = {"agent_evidence": self._evidence(0.5),
+                 "parsed_claim": SimpleNamespace(operator="eq")}
+        result = _simple_consensus(state)
+        assert result["confidence"] == pytest.approx(0.85)   # close-match bonus
+
+    def test_directional_operator_still_skips_magnitude_adjustment(self):
+        from types import SimpleNamespace
+        state = {"agent_evidence": self._evidence(50.0),
+                 "parsed_claim": SimpleNamespace(operator="gt")}
+        result = _simple_consensus(state)
+        assert result["confidence"] == pytest.approx(0.80)   # no penalty
+
+    def test_approx_gets_no_magnitude_adjustment(self):
+        """Stated imprecision: neither a close-match bonus (the claim never
+        promised precision) nor a large-diff penalty (the override already
+        judged it at the widened tolerance). Pinned as deliberate."""
+        from types import SimpleNamespace
+        state = {"agent_evidence": self._evidence(0.5),
+                 "parsed_claim": SimpleNamespace(operator="approx")}
+        result = _simple_consensus(state)
+        assert result["confidence"] == pytest.approx(0.80)
