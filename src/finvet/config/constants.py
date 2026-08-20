@@ -65,3 +65,9 @@ MEMORY_SIMILAR_THRESHOLD = 0.60 # broad similarity for "People Also Verified"
 # Audit callback truncation (used in audit/callbacks.py)
 # ---------------------------------------------------------------------------
 MAX_CALLBACK_DATA_CHARS = 1000  # max chars for tool output/error in audit events
+# Stored tool-result preview in tool_calls_detail. Must cover a full income
+# statement: 14 line-item dicts run ~2,000 chars, and a 1,000-char window cut
+# NetIncomeLoss (9th item) out of real output — the metric-guided fallback
+# could see revenue but not net income in the same statement. 3,000 covers 14
+# items with margin at modest audit-row cost.
+TOOL_RESULT_PREVIEW_CHARS = 3000
