@@ -16,7 +16,9 @@ from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
 
 from ..config.constants import (
+    AGENT_MAX_ITERATIONS,
     AGENT_MAX_RESULT_CHARS,
+    TOLERANCE_APPROX_MULTIPLIER,
     TOLERANCE_DEFAULT,
     TOLERANCE_LARGE_VALUE_THRESHOLD,
     TOLERANCE_MARKET,
@@ -61,7 +63,7 @@ class BaseVerificationAgent(ABC):
         agent_type: str,
         tools: List[BaseTool],
         system_prompt: str,
-        max_iterations: int = 5,
+        max_iterations: int = AGENT_MAX_ITERATIONS,
     ):
         """
         Initialize the verification agent.
@@ -340,8 +342,16 @@ class BaseVerificationAgent(ABC):
 
         # Override verdict based on deterministic comparison
         if magnitude_diff is not None:
-            comparison = getattr(parsed_claim, "comparison", None) or "eq"
+            # The contract name; comparison mirrors it during the migration.
+            comparison = (getattr(parsed_claim, "operator", None)
+                          or getattr(parsed_claim, "comparison", None) or "eq")
             tolerance = self._get_tolerance(claimed_val)
+            # approx/range are equality with stated imprecision: gold carries
+            # the midpoint for range and no band, so both widen the tolerance
+            # by the measured multiplier rather than inventing a band.
+            if comparison in ("approx", "range"):
+                tolerance *= TOLERANCE_APPROX_MULTIPLIER
+                comparison = "eq"
 
             if comparison == "eq":
                 if magnitude_diff <= tolerance:
@@ -386,6 +396,18 @@ class BaseVerificationAgent(ABC):
                     )
                 verdict = new_verdict
                 confidence = max(confidence, 0.90)
+            else:
+                # Fail closed. An operator we cannot interpret means we hold
+                # both numbers but no way to compare them — the deterministic
+                # layer declines to verify rather than letting the LLM verdict
+                # pass unchecked, which is what silently falling through every
+                # branch used to do. Reachable only through schema drift.
+                logger.error(
+                    f"{self.agent_type} unknown operator {comparison!r}; "
+                    f"failing closed to NOT_ENOUGH_INFO"
+                )
+                verdict = "NOT_ENOUGH_INFO"
+                confidence = min(confidence, 0.5)
 
         logger.info(f"{self.agent_type} final verdict: {verdict} (confidence: {confidence:.2f})")
         return verdict, confidence, magnitude_diff
