@@ -82,9 +82,9 @@ __METRIC_WHITELIST__
 
 ## Examples
 
-Input: "JPMorgan reported revenue of $158.1 billion for fiscal 2024."
+Input: "AAPL rev 412.6B FY24."
 Output:
-{"claim_type": "sec", "ticker": "JPM", "metric": "revenue", "operator": "eq", "value": 158100000000, "period": "fiscal 2024", "reject_reason": null}
+{"claim_type": "sec", "ticker": "AAPL", "metric": "revenue", "operator": "eq", "value": 412600000000, "period": "FY24", "reject_reason": null}
 
 Input: "Tesla's market cap exceeds $800 billion"
 Output:
@@ -94,13 +94,13 @@ Input: "Goldman Sachs reported a price-to-book ratio of 1.34"
 Output:
 {"claim_type": "market", "ticker": "GS", "metric": "price_to_book", "operator": "eq", "value": 1.34, "period": null, "reject_reason": null}
 
-Input: "Bank of America generated roughly $98 billion in revenue during fiscal 2024"
+Input: "Netflix generated roughly $36.8 billion in total revenue during 2024."
 Output:
-{"claim_type": "sec", "ticker": "BAC", "metric": "revenue", "operator": "approx", "value": 98000000000, "period": "fiscal 2024", "reject_reason": null}
+{"claim_type": "sec", "ticker": "NFLX", "metric": "revenue", "operator": "approx", "value": 36800000000, "period": "2024", "reject_reason": null}
 
-Input: "Comcast reported quarterly revenue between $29 billion and $31 billion in Q4 2024"
+Input: "UnitedHealth said 2024 revenue was between $398 billion and $402 billion."
 Output:
-{"claim_type": "sec", "ticker": "CMCSA", "metric": "revenue", "operator": "range", "value": 30000000000, "period": "Q4 2024", "reject_reason": null}
+{"claim_type": "sec", "ticker": "UNH", "metric": "revenue", "operator": "range", "value": 400000000000, "period": "2024", "reject_reason": null}
 
 Input: "Apple's iPhone revenue reached $200 billion in fiscal 2024"
 Output:
@@ -110,9 +110,9 @@ Input: "Amazon's advertising revenue was $56 billion in 2024"
 Output:
 {"claim_type": "sec", "ticker": "AMZN", "metric": null, "operator": "eq", "value": 56000000000, "period": "2024", "reject_reason": null}
 
-Input: "Analysts forecast AMD fiscal 2025 revenue at $32.4 billion"
+Input: "BofA forecasts Chipotle revenue of roughly $11.8B for calendar year 2025."
 Output:
-{"claim_type": "news", "ticker": "AMD", "metric": "estimated_revenue", "operator": "eq", "value": 32400000000, "period": "fiscal 2025", "reject_reason": null}
+{"claim_type": "news", "ticker": "CMG", "metric": "estimated_revenue", "operator": "approx", "value": 11800000000, "period": "CY2025", "reject_reason": null}
 
 Input: "The regulator fined UBS $387 million over compliance failures"
 Output:
