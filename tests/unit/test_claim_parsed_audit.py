@@ -73,3 +73,25 @@ class TestClaimParsedEvent:
     def test_parse_still_returns_the_claim(self):
         result, _ = _run()
         assert result["parsed_claim"].ticker == "JPM"
+
+
+class TestMemoryStoresMetric:
+    """Stage 05, reader 6: without metric, recall cannot tell 'Apple revenue
+    FY2024' from 'Apple net income FY2024' beyond text similarity."""
+
+    def test_claim_memory_item_accepts_metric(self):
+        from finvet.memory.store_service import ClaimMemoryItem
+        item = ClaimMemoryItem(claim_text="c", verdict="SUPPORTS",
+                               confidence=0.9, metric="revenue")
+        assert item.metric == "revenue"
+
+    def test_store_claim_passes_metric_through(self):
+        from unittest.mock import MagicMock
+        from finvet.memory.store_service import ClaimMemoryService
+        store = MagicMock()
+        ClaimMemoryService(store).store_claim(
+            request_id="r1", claim_text="c", verdict="SUPPORTS",
+            confidence=0.9, metric="revenue",
+        )
+        stored = store.put.call_args.kwargs["value"]
+        assert stored["metric"] == "revenue"
