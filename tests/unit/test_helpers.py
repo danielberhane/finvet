@@ -124,3 +124,20 @@ class TestBuildPreliminaryAnalysis:
         result = build_preliminary_analysis(state, evidence)
         assert result["confidence"] == 0.72
         assert result["confidence_label"] == "MODERATE"
+
+
+class TestPreliminaryAnalysisCarriesMetric:
+    """Stage 05, reader 5: a HITL reviewer previously saw claimed_value as a
+    bare number with no label — 94000000000 of what? The metric names it."""
+
+    def test_metric_reaches_the_reviewer(self):
+        from finvet.models.claim import ParsedClaim
+        parsed = ParsedClaim(claim_type="sec", ticker="AAPL",
+                             metric="revenue", value=94e9, operator="eq")
+        result = build_preliminary_analysis({"parsed_claim": parsed}, {})
+        assert result["metric"] == "revenue"
+        assert result["claimed_value"] == 94e9
+
+    def test_absent_metric_is_an_explicit_null(self):
+        result = build_preliminary_analysis({}, {})
+        assert "metric" in result and result["metric"] is None
