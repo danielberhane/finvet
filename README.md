@@ -112,8 +112,25 @@ streamlit run ui/app.py --server.port 8501          # UI   → :8501
 ```
 
 **This is not a one-command demo.** It talks to real financial data sources, so it needs
-Postgres with pgvector, an SEC EDGAR MCP server, and API keys for DeepSeek, OpenAI, Finnhub,
-and Tavily. That's the honest cost of not mocking the hard part.
+Postgres with pgvector, an SEC EDGAR MCP server, and API keys. That's the honest cost of
+not mocking the hard part.
+
+### What runs with which keys
+
+The system degrades by feature, not all at once. Each key gates exactly what
+you'd expect, and nothing pretends to work without its key:
+
+| Key | Powers | Without it |
+|---|---|---|
+| `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | nothing runs — this one is required |
+| `TAVILY_API_KEY` | news-claim search | news claims return NOT_ENOUGH_INFO |
+| `FINNHUB_API_KEY` | market quotes, ticker validation | market claims return NOT_ENOUGH_INFO |
+| `OPENAI_API_KEY` | embeddings → **hybrid RAG** and **claim memory** | both are disabled: filing-text search returns an explicit error to the agent, memory lookups return empty, and startup logs say so. SEC claims still verify via XBRL |
+| *(none)* | FRED macro data, SEC XBRL retrieval | free public endpoints — no key needed |
+
+An `OPENAI_API_KEY` that exists but has no credits behaves like a missing key
+for RAG and memory — check your billing if filing-text search comes back
+empty.
 
 ### Services
 
