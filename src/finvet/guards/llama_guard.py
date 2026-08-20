@@ -127,7 +127,7 @@ class LlamaGuardProvider:
 
 def _parse_response(raw: str) -> tuple[bool, list[str]]:
     """Parse Llama Guard response: first line 'safe'/'unsafe', second line categories."""
-    lines = [l.strip() for l in raw.strip().splitlines() if l.strip()]
+    lines = [line.strip() for line in raw.strip().splitlines() if line.strip()]
     if not lines:
         return True, []
     first = lines[0].lower()

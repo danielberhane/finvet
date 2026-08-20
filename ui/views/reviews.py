@@ -42,7 +42,7 @@ def render_reviews():
         try:
             dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
             time_str = dt.strftime("%b %d, %Y %I:%M %p")
-        except:
+        except Exception:
             time_str = timestamp
 
         # Verdict badge class
