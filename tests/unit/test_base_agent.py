@@ -305,3 +305,36 @@ class TestRetrievedValueFallbackIsMetricGuided:
 
     def test_metric_whose_concept_is_absent_declines(self):
         assert self._extract("capex", 15e9) is None
+
+
+class TestToolResultPreviewCoversTheStatement:
+    """Real-data finding from stage-07 verification: the 1000-char result
+    preview cut a 14-item income statement before NetIncomeLoss (9th item),
+    so the metric-guided fallback could see revenue but not net income in the
+    SAME persisted output. Fail-closed made that a None, never a wrong
+    number — but the window must cover a full statement."""
+
+    def _detail_for(self, n_items=14):
+        from langchain_core.messages import AIMessage, ToolMessage
+        agent = ConcreteAgent()
+        items = ", ".join(
+            "{'line_item': 'Filler%dConcept', 'value': %d.0, "
+            "'period': '2024-09-28'}" % (i, 10**9 + i) for i in range(n_items - 1))
+        content = ("success=True statement_type='income' items=[" + items +
+                   ", {'line_item': 'NetIncomeLoss', 'value': 93736000000.0, "
+                   "'period': '2024-09-28'}]")
+        assert len(content) > 1000   # the old window must genuinely cut it
+        msgs = [AIMessage(content="", tool_calls=[
+                    {"name": "get_income_statement", "args": {}, "id": "t1"}]),
+                ToolMessage(content=content, tool_call_id="t1")]
+        _, detail, _ = agent._extract_tool_info(msgs)
+        return detail
+
+    def test_late_listed_concept_survives_the_preview(self):
+        from finvet.agents.base import BaseVerificationAgent
+        from finvet.models.claim import ParsedClaim
+        parsed = ParsedClaim(claim_type="sec", ticker="AXP",
+                             metric="net_income", value=9e10, operator="eq")
+        got = BaseVerificationAgent._extract_retrieved_value(
+            self._detail_for(), parsed)
+        assert got == 93_736_000_000.0

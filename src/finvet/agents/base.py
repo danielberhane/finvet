@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from ..config.constants import (
     AGENT_MAX_ITERATIONS,
     AGENT_MAX_RESULT_CHARS,
+    TOOL_RESULT_PREVIEW_CHARS,
     TOLERANCE_APPROX_MULTIPLIER,
     TOLERANCE_DEFAULT,
     TOLERANCE_LARGE_VALUE_THRESHOLD,
@@ -203,7 +204,7 @@ class BaseVerificationAgent(ABC):
                 tool_calls_detail.append({
                     "tool": tool_name,
                     "args": call_info.get("args", {}),
-                    "result": content[:1000],
+                    "result": content[:TOOL_RESULT_PREVIEW_CHARS],
                     "success": True,
                 })
 
