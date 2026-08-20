@@ -37,3 +37,7 @@ data/*.sqlite
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal planning and evaluation-policy documents — kept locally, not published
+plans/
+docs/EVAL_DATA_POLICY.md

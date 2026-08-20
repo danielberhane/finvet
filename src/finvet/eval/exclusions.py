@@ -7,7 +7,7 @@ and one heldout row's claim text sat in a committed test fixture. Burned rows
 never count in a parser benchmark again; deterministic uses are unaffected
 (retrieval gold compares code output to SEC values — nothing learns from it).
 
-docs/EVAL_DATA_POLICY.md carries the incident log.
+The internal evaluation-data policy carries the incident log.
 """
 
 BURNED_ROWS: dict[str, dict[int, str]] = {
