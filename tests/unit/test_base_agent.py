@@ -131,10 +131,10 @@ class TestEqToleranceCoversRealRoundingSpread:
 
     def _override(self, claimed, retrieved):
         from finvet.agents.base import VerdictOutput
+        from finvet.models.claim import ParsedClaim
         agent = ConcreteAgent(agent_type="sec")
-        parsed = MagicMock()
-        parsed.value = claimed
-        parsed.comparison = "eq"
+        parsed = ParsedClaim(claim_type="sec", ticker="T",
+                             value=claimed, operator="eq")
         verdict_output = VerdictOutput(
             verdict="NOT_ENOUGH_INFO", confidence=0.5,
             reasoning="test", retrieved_value=retrieved,
@@ -164,3 +164,68 @@ class TestEqToleranceCoversRealRoundingSpread:
         """Sub-$1B claims keep the 2.0% threshold; only SEC-large moved."""
         agent = ConcreteAgent(agent_type="sec")
         assert agent._get_tolerance(500_000_000) == 2.0
+
+
+class TestOverrideReadsOperator:
+    """Stage 05: the override reads the contract name. The mirror guarantees
+    operator == comparison during EXPAND, so this is behaviourally identical
+    for the five original comparators — pinned here so the CONTRACT-phase
+    removal of `comparison` cannot silently disable the safety net."""
+
+    def _override(self, claimed, retrieved, **claim_kwargs):
+        from finvet.agents.base import VerdictOutput
+        from finvet.models.claim import ParsedClaim
+        agent = ConcreteAgent(agent_type="sec")
+        parsed = ParsedClaim(claim_type="sec", ticker="T", value=claimed,
+                             **claim_kwargs)
+        verdict_output = VerdictOutput(
+            verdict="NOT_ENOUGH_INFO", confidence=0.5,
+            reasoning="test", retrieved_value=retrieved,
+        )
+        return agent._apply_override(verdict_output, {"parsed_claim": parsed}, [])
+
+    def test_operator_only_construction_still_drives_the_override(self):
+        verdict, _, _ = self._override(100e9, 120e9, operator="gt")
+        assert verdict == "SUPPORTS"          # 120 > 100
+
+    def test_approx_widens_the_tolerance(self):
+        """Measured across 36 approx rows: p95 spread 1.25%, max 2.14%.
+        2.0x the SEC-large tolerance (1.5% -> 3.0%) covers 97% of them.
+        2.5% off: inside approx tolerance, outside plain eq."""
+        verdict, _, diff = self._override(100e9, 97.5e9, operator="approx")
+        assert 1.5 < diff < 3.0
+        assert verdict == "SUPPORTS"
+
+    def test_approx_still_refutes_beyond_the_widened_band(self):
+        verdict, _, _ = self._override(100e9, 90e9, operator="approx")
+        assert verdict == "REFUTES"
+
+    def test_range_behaves_as_approx_on_the_midpoint(self):
+        """Gold stores the band midpoint in value; the band itself is not in
+        the schema. Unvalidated assumption (zero range rows carry a filed
+        value) — implemented as approx and excluded from accuracy gates."""
+        verdict, _, _ = self._override(30e9, 30.6e9, operator="range")
+        assert verdict == "SUPPORTS"
+
+    def test_unknown_operator_fails_closed(self):
+        """An operator the override does not recognise must not silently skip
+        the safety net (today's behaviour): with both numbers in hand but no
+        way to compare them, the deterministic layer declines to verify
+        rather than letting the LLM verdict pass unchecked. Reachable only
+        through schema drift, which is exactly when it matters."""
+        from unittest.mock import MagicMock
+        from finvet.agents.base import VerdictOutput
+        agent = ConcreteAgent(agent_type="sec")
+        parsed = MagicMock()
+        parsed.value = 100e9
+        parsed.operator = "between"           # drift: not one of the seven
+        parsed.comparison = "between"
+        verdict_output = VerdictOutput(
+            verdict="SUPPORTS", confidence=0.9,
+            reasoning="test", retrieved_value=100e9,
+        )
+        verdict, confidence, _ = agent._apply_override(
+            verdict_output, {"parsed_claim": parsed}, []
+        )
+        assert verdict == "NOT_ENOUGH_INFO"
+        assert confidence <= 0.5
