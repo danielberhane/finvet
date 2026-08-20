@@ -302,6 +302,39 @@ def _normalize_ticker(ticker: str, claim_text: str) -> str:
         return ticker
 
 
+def reconcile_reject_fields(parsed_data: Dict) -> Dict:
+    """Make claim_type and reject_reason agree before ParsedClaim validates them.
+
+    The model breaks the pairing on a small fraction of claims: it recognises a
+    claim is unverifiable, sets reject_reason, and leaves claim_type as "sec".
+    ParsedClaim forbids that combination, so the request died with an HTTP 500
+    carrying a Pydantic stack trace — on a claim the model had judged correctly.
+
+    reject_reason is only ever populated when rejecting, so the intent is
+    unambiguous and worth honouring rather than crashing on. The mirror case, a
+    reject with no reason given, is filled with "unspecified": defaulting to
+    "incomplete" would tell the user the claim was missing a ticker or value,
+    which may simply be untrue.
+
+    Returns a new dict; the caller keeps the model's raw output intact.
+    """
+    data = dict(parsed_data)
+    claim_type = data.get("claim_type")
+    reject_reason = data.get("reject_reason")
+
+    if reject_reason is not None and claim_type != "reject":
+        logger.info(
+            f"Parser set reject_reason='{reject_reason}' on claim_type="
+            f"'{claim_type}'; treating as a reject"
+        )
+        data["claim_type"] = "reject"
+    elif claim_type == "reject" and reject_reason is None:
+        logger.info("Parser returned a reject with no reason; recording 'unspecified'")
+        data["reject_reason"] = "unspecified"
+
+    return data
+
+
 def claim_parser(state: VerificationState) -> Dict:
     """
     Parse natural language claim into simplified 6-field structure.
@@ -359,8 +392,9 @@ def claim_parser(state: VerificationState) -> Dict:
         # Parse JSON
         parsed_data = json.loads(response_text)
 
-        # Create ParsedClaim model (validates fields)
-        parsed_claim = ParsedClaim(**parsed_data)
+        # Reconcile the reject fields before validating: the model sometimes
+        # signals a reject in reject_reason while leaving claim_type unchanged.
+        parsed_claim = ParsedClaim(**reconcile_reject_fields(parsed_data))
 
         # Validate ticker for market claims — catches stale/delisted tickers
         # (e.g. BRCM→AVGO, CVH→CVS, INTU→ISRG) that the fine-tuned parser
