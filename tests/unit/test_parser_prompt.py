@@ -9,6 +9,8 @@ resolver rejects, surfacing as a mysterious residual rate.
 
 import re
 
+import pytest
+
 from finvet.config.metrics import METRIC_WHITELIST
 from finvet.graph.nodes.claim_parser import PARSER_SYSTEM_PROMPT, _PROMPT_PATH
 
@@ -92,3 +94,29 @@ class TestVerdictPromptKnowsApprox:
         from finvet.agents.base import BaseVerificationAgent
         src = inspect.getsource(BaseVerificationAgent._extract_verdict)
         assert "approx" in src
+
+
+import json
+from pathlib import Path
+
+GOLD_DIR = Path.home() / "Projects/Active/claim_parser_fine-tuned/data/clean"
+
+
+@pytest.mark.skipif(not GOLD_DIR.exists(), reason="parser gold not present")
+class TestPromptExamplesAreNotEvalRows:
+    """docs/EVAL_DATA_POLICY.md, enforced. The stage-06 rewrite lifted four
+    worked examples verbatim from eval sets — caught by audit, worth ~0.3%
+    inflated val exact-match. Prompt examples come from train.jsonl or are
+    invented; anything the prompt was shaped on cannot measure the prompt."""
+
+    def test_no_worked_example_appears_in_any_eval_split(self):
+        def norm(t):
+            return re.sub(r"[^a-z0-9]", "", t.lower())
+        examples = re.findall(r'Input: "(.*?)"', PARSER_SYSTEM_PROMPT)
+        assert len(examples) >= 8
+        for split in ("val.jsonl", "test.jsonl",
+                      "heldout_real_sourced.jsonl", "heldout_real.jsonl"):
+            rows = {norm(json.loads(l)["input"])
+                    for l in open(GOLD_DIR / split)}
+            leaked = [e for e in examples if norm(e) in rows]
+            assert not leaked, f"prompt examples found in {split}: {leaked}"
