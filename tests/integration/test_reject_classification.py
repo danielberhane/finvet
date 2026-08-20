@@ -2,7 +2,7 @@
 
 Runs input_guardrails and claim_parser for real, so it needs DeepSeek and — while
 ENABLE_LLAMA_GUARD is set — a reachable Ollama. Ground truth is read by path from
-the sibling claim-parser project; that set is contamination-sensitive and is
+the external evaluation dataset; that set is contamination-sensitive and is
 never copied here, so the tests skip when it is absent.
 
 Opt in with:  pytest tests/integration/test_reject_classification.py -m integration
@@ -34,10 +34,9 @@ SAMPLE_SIZE = 12
 # Ratchet — raise as the reject path improves, never lower.
 #
 #   0.33  2026-08-20  baseline on this 12-row slice (4/12). The full 120-row
-#                     real-sourced set scores 41.2% (49/119); this slice runs
-#                     colder. Comparable figures for the fine-tuned adapter are
-#                     49.2% on the same set and 99.2% on synthetic — FinVet's
-#                     DeepSeek parser scores 41.2% and 87.9% respectively.
+#                     real-sourced set scored 41.2% at that point; after the
+#                     contract prompt landed it measures 64.2% at 100%
+#                     precision. This slice runs colder than the full set.
 #                     Both mechanisms count: guard-blocked and parser-rejected.
 MIN_REJECT_RECALL = 0.33
 

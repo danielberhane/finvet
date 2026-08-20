@@ -104,7 +104,7 @@ GOLD_DIR = eval_data_dir() or Path("/nonexistent")
 
 @pytest.mark.skipif(not GOLD_DIR.exists(), reason="eval dataset not present")
 class TestPromptExamplesAreNotEvalRows:
-    """The evaluation-data policy (internal), enforced in code. The stage-06 rewrite lifted four
+    """The evaluation-data policy (internal), enforced in code. A 2026-08-20 prompt revision lifted four
     worked examples verbatim from eval sets — caught by audit, worth ~0.3%
     inflated val exact-match. Prompt examples come from train.jsonl or are
     invented; anything the prompt was shaped on cannot measure the prompt."""
