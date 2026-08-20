@@ -137,7 +137,6 @@ def parse_filing_html(filepath: str | Path) -> list[Section]:
 
         # Collect all text from this heading to the next heading
         texts = []
-        current = tag
 
         # Find the next heading's tag (or end of document)
         next_tag = unique_headings[i + 1][0] if i + 1 < len(unique_headings) else None

@@ -6,8 +6,9 @@ Opt in with:  pytest -m integration
 import pytest
 import httpx
 
-pytestmark = pytest.mark.integration
 import json
+
+pytestmark = pytest.mark.integration
 
 # API base URL
 BASE_URL = "http://localhost:8000"

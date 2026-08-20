@@ -156,15 +156,15 @@ def _parse_reasoning_sections(text):
         # Regular paragraph - collect consecutive non-empty, non-special lines
         para_lines = []
         while i < len(lines):
-            l = lines[i].strip()
-            if not l:
+            line = lines[i].strip()
+            if not line:
                 i += 1
                 break
-            if re.match(r'^#{1,3}\s+', l) or re.match(r'^\*\*[^*]+\*\*:?\s*$', l):
+            if re.match(r'^#{1,3}\s+', line) or re.match(r'^\*\*[^*]+\*\*:?\s*$', line):
                 break
-            if re.match(r'^[-*]\s+', l) or re.match(r'^\d+[\.\)]\s+', l):
+            if re.match(r'^[-*]\s+', line) or re.match(r'^\d+[\.\)]\s+', line):
                 break
-            para_lines.append(l)
+            para_lines.append(line)
             i += 1
         if para_lines:
             sections.append({"type": "paragraph", "text": " ".join(para_lines)})

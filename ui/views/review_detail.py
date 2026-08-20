@@ -57,7 +57,6 @@ def render_review_detail():
             verdict_class = "verdict-nei"
 
         agent_display = {"sec": "SEC", "market": "Market", "news": "News"}.get(prelim_agent, prelim_agent.upper())
-        conf_color = "#10B981" if prelim_confidence >= 0.7 else "#F59E0B" if prelim_confidence >= 0.5 else "#EF4444"
 
         # Why triggered + Preliminary verdict in one banner
         trigger_text = ""

@@ -5,14 +5,15 @@ Opt in with:  pytest -m integration
 
 import pytest
 
-pytestmark = pytest.mark.integration
 from sqlalchemy import text
 from src.finvet.config.database import check_connection, get_db_session
+
+pytestmark = pytest.mark.integration
 
 
 def test_postgres_connection():
     """Test PostgreSQL connection is healthy."""
-    assert check_connection() == True
+    assert check_connection() is True
 
 
 def test_postgres_connection_pool():

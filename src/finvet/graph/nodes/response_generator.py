@@ -254,7 +254,6 @@ def _build_explanation(
     retrieved_value = agent_evidence.get("retrieved_value")
     magnitude_diff = agent_evidence.get("magnitude_difference_percent")
     source_desc = agent_evidence.get("source_description", "")
-    parsed_claim = state.get("parsed_claim")
     parts = []
 
     if reasoning:
