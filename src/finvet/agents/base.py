@@ -450,12 +450,16 @@ class BaseVerificationAgent(ABC):
             context_parts.append("# Parsed Information")
             if parsed_claim.ticker:
                 context_parts.append(f"- Ticker: {parsed_claim.ticker}")
+            # The canonical metric, when the parser resolved one. Null stays
+            # silent — the fall-through policy for absent and derived metrics
+            # is that the agent infers from claim text, exactly the
+            # pre-migration behaviour.
+            if getattr(parsed_claim, "metric", None):
+                context_parts.append(f"- Metric: {parsed_claim.metric}")
             if parsed_claim.value is not None:
                 context_parts.append(f"- Claimed Value: {parsed_claim.value:,.0f}")
             if parsed_claim.period:
                 context_parts.append(f"- Period: {parsed_claim.period}")
-            if parsed_claim.currency:
-                context_parts.append(f"- Currency: {parsed_claim.currency}")
             context_parts.append("")
 
         if canonical_period:
