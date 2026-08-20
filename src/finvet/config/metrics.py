@@ -115,8 +115,9 @@ METRIC_HARD_DROPS: frozenset[str] = frozenset({
 # in mcp/sec_edgar.py CONCEPTS_BY_TYPE (total_debt is partial — LongTermDebt
 # only). Derived metrics (margins, free_cash_flow) and non-GAAP (ebitda) are
 # deliberately absent pending the stage-05 derivation decision. market: the
-# fields Finnhub's quote and company-overview endpoints return. news: FinVet
-# has no structured news or macro source, so nothing is servable.
+# fields Finnhub's quote and company-overview endpoints return. news: the
+# eight macro metrics with dataset-validated FRED series (mcp/fred.py);
+# company-event and analyst metrics still live in prose and stay unservable.
 SERVABLE_METRICS: dict[str, frozenset[str]] = {
     "sec": frozenset({
         "capex", "cost_of_revenue", "diluted_eps", "eps", "gross_profit",
@@ -131,7 +132,11 @@ SERVABLE_METRICS: dict[str, frozenset[str]] = {
         "pe_ratio", "price_change_absolute", "price_change_percent",
         "volume",
     }),
-    "news": frozenset(),
+    "news": frozenset({
+        "unemployment_rate", "federal_funds_rate", "consumer_confidence",
+        "gdp_growth", "cpi_inflation", "core_pce",
+        "retail_sales_growth", "wage_growth",
+    }),
     "reject": frozenset(),
 }
 

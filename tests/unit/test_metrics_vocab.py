@@ -88,12 +88,16 @@ class TestServable:
         for claim_type, servable in SERVABLE_METRICS.items():
             assert servable <= METRIC_WHITELIST[claim_type]
 
-    def test_news_has_no_data_source(self):
-        """FinVet has no FRED or structured news feed — 0 of 31 servable.
-        Carrying them in the whitelist while empty here is what turns an
-        unservable metric into a disclosed limitation instead of a silent
-        NOT_ENOUGH_INFO."""
-        assert SERVABLE_METRICS["news"] == frozenset()
+    def test_news_serves_exactly_the_fred_validated_macro_metrics(self):
+        """Eight macro metrics read FRED (mcp/fred.py), each series validated
+        against the gold dataset's own recorded values. Company-event and
+        analyst metrics still live in prose and stay unservable — carrying
+        them whitelisted-but-unservable is the disclosed-limitation design."""
+        assert SERVABLE_METRICS["news"] == frozenset({
+            "unemployment_rate", "federal_funds_rate", "consumer_confidence",
+            "gdp_growth", "cpi_inflation", "core_pce",
+            "retail_sales_growth", "wage_growth"})
+        assert len(SERVABLE_METRICS["news"]) == 8
 
     def test_stage_00_concepts_are_servable(self):
         """R&D and interest expense became retrievable in stage 00."""

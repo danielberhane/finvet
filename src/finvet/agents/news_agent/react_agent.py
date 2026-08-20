@@ -7,6 +7,8 @@ reported information using news search via Tavily.
 from pathlib import Path
 
 from ..base import BaseVerificationAgent
+from ...config.constants import AGENT_MAX_ITERATIONS
+from ...tools.macro_tools import get_macro_indicator
 from ...tools.news_tools import NEWS_TOOLS
 from ...tools.memory_tools import search_past_verifications
 
@@ -22,11 +24,11 @@ class NewsAgent(BaseVerificationAgent):
     announcements, events, and publicly reported information.
     """
 
-    def __init__(self, max_iterations: int = 5):
+    def __init__(self, max_iterations: int = AGENT_MAX_ITERATIONS):
         """Initialize the News Agent with news tools."""
         super().__init__(
             agent_type="news",
-            tools=NEWS_TOOLS + [search_past_verifications],
+            tools=NEWS_TOOLS + [get_macro_indicator, search_past_verifications],
             system_prompt=NEWS_SYSTEM_PROMPT,
             max_iterations=max_iterations,
         )
