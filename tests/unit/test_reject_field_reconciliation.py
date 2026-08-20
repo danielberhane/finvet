@@ -71,8 +71,15 @@ class TestRejectTypeWithoutReason:
 class TestConsistentInputIsUntouched:
 
     def test_a_well_formed_reject_passes_through(self):
+        """claim_type and reason are untouched; since stage 04 the §8 contract
+        also guarantees every companion field is explicitly null."""
         raw = {"claim_type": "reject", "reject_reason": "question"}
-        assert reconcile_reject_fields(raw) == raw
+        data = reconcile_reject_fields(raw)
+        assert data["claim_type"] == "reject"
+        assert data["reject_reason"] == "question"
+        for field in ("ticker", "metric", "operator", "comparison",
+                      "value", "period", "currency"):
+            assert data[field] is None
 
     def test_a_well_formed_claim_passes_through(self):
         raw = {"claim_type": "sec", "ticker": "AAPL", "value": 1.0, "reject_reason": None}

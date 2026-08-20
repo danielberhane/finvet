@@ -67,8 +67,11 @@ class TestBuildPreliminaryAnalysis:
         assert result["magnitude_difference_percent"] == 0.21
 
     def test_equality_claim_no_comparison_field(self):
-        """Claim with comparison=None should still show comparison (defaults to eq)."""
-        parsed = self._make_parsed_claim(value=100.0, comparison=None)
+        """A value now always arrives with a comparator: the boundary defaults
+        a bare value to eq before construction (see
+        test_normalize_parser_output), and the contract forbids the pair
+        diverging. The display path sees eq, same as before."""
+        parsed = self._make_parsed_claim(value=100.0, comparison="eq")
         state = {"parsed_claim": parsed}
         evidence = {
             "verdict": "SUPPORTS",
@@ -114,7 +117,7 @@ class TestBuildPreliminaryAnalysis:
 
     def test_confidence_from_evidence_fallback(self):
         """When state has no confidence, use evidence confidence."""
-        parsed = self._make_parsed_claim(value=50.0)
+        parsed = self._make_parsed_claim(value=50.0, comparison="eq")
         state = {"parsed_claim": parsed}
         evidence = {"confidence": 0.72, "agent": "sec"}
 

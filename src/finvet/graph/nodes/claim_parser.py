@@ -16,9 +16,11 @@ import json
 import re
 from typing import Dict
 from langchain_core.messages import SystemMessage, HumanMessage
+from ...config.metrics import METRIC_HARD_DROPS, METRIC_REMAPS, METRIC_WHITELIST
 from ...models.state import VerificationState
 from ...models.claim import ParsedClaim
 from ...llm import create_llm
+from ...audit import get_audit_logger
 from ...utils.exceptions import ParsingError
 from ...utils.logging import get_logger
 
@@ -332,7 +334,116 @@ def reconcile_reject_fields(parsed_data: Dict) -> Dict:
         logger.info("Parser returned a reject with no reason; recording 'unspecified'")
         data["reject_reason"] = "unspecified"
 
+    # §8 reject contract: a reject carries nothing but its reason. The model
+    # often leaves the fields it extracted before deciding to reject; nulling
+    # them here is what makes the strict model invariant safe to enforce.
+    if data.get("claim_type") == "reject":
+        for field in ("ticker", "metric", "operator", "comparison",
+                      "value", "period", "currency"):
+            data[field] = None
+
     return data
+
+
+# Metric resolution decision codes, surfaced to the audit trail. A rising
+# "residual" rate in production means the prompt and the vocabulary have
+# drifted apart.
+_METRIC_DECISIONS = (
+    "absent", "whitelist", "remap", "normalized", "hard_drop",
+    "residual", "reject_null",
+)
+
+
+def resolve_metric_field(data: Dict, claim_text: str) -> tuple:
+    """Resolve the raw metric against the vendored vocabulary. Fail closed.
+
+    First hit wins: exact whitelist -> alias remap -> normalise and retry
+    both -> hard-drop -> null. Whitelist MUST precede the drop list: the
+    source vocabulary lists operating_margin in both, and only this ordering
+    keeps it alive (pinned in test_metrics_vocab).
+
+    A wrong metric selects the wrong XBRL concept and produces a confidently
+    wrong verdict; a null metric reverts to the agent inferring from claim
+    text, which is exactly the pre-migration behaviour. So every doubtful
+    path yields null — the layer may only ever add information.
+
+    Returns (new data dict, decision code).
+    """
+    data = dict(data)
+    claim_type = data.get("claim_type")
+    metric = data.get("metric")
+
+    if claim_type == "reject":
+        data["metric"] = None
+        return data, "reject_null"
+    if metric is None:
+        return data, "absent"
+
+    allowed = METRIC_WHITELIST.get(claim_type, frozenset())
+    remaps = METRIC_REMAPS.get(claim_type, {})
+
+    if metric in allowed:
+        return data, "whitelist"
+    if metric in remaps:
+        data["metric"] = remaps[metric]
+        return data, "remap"
+
+    normalised = re.sub(r"[\s\-]+", "_", str(metric).strip().lower())
+    normalised = re.sub(r"_(ratio|expense)$", "", normalised)
+    if normalised in allowed:
+        data["metric"] = normalised
+        return data, "normalized"
+    if normalised in remaps:
+        data["metric"] = remaps[normalised]
+        return data, "remap"
+
+    if metric in METRIC_HARD_DROPS or normalised in METRIC_HARD_DROPS:
+        logger.info(f"Metric '{metric}' is a known trap (segment/KPI/event); nulled")
+        data["metric"] = None
+        return data, "hard_drop"
+
+    logger.info(f"Metric '{metric}' unresolvable for claim_type '{claim_type}'; nulled")
+    data["metric"] = None
+    return data, "residual"
+
+
+def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
+    """Turn raw model JSON into contract-valid data, in load-bearing order.
+
+    Reconciliation runs FIRST because it can change claim_type to "reject",
+    and claim_type scopes the metric whitelist — resolving the metric before
+    reconciling would validate against the wrong class. Operator/value
+    pairing runs last, on the settled fields.
+
+    Returns (data, decisions) where decisions carries one code per concern
+    for the claim_parsed audit event.
+    """
+    data = reconcile_reject_fields(raw)
+    if data.get("claim_type") != raw.get("claim_type"):
+        reject_decision = "coerced_reject"
+    elif data.get("reject_reason") != raw.get("reject_reason"):
+        reject_decision = "filled_unspecified"
+    else:
+        reject_decision = "none"
+
+    data, metric_decision = resolve_metric_field(data, claim_text)
+
+    # operator non-null iff value non-null (§8). The prompt documents eq as
+    # the default comparator, so a value with no operator is completed rather
+    # than crashed on; an operator with no value anchors nothing and is
+    # dropped.
+    operator_decision = "none"
+    op = data.get("operator") or data.get("comparison")
+    if data.get("claim_type") != "reject":
+        if data.get("value") is not None and op is None:
+            data["operator"] = data["comparison"] = "eq"
+            operator_decision = "defaulted_eq"
+        elif data.get("value") is None and op is not None:
+            data["operator"] = data["comparison"] = None
+            operator_decision = "dropped_operator_without_value"
+
+    return data, {"reject": reject_decision, "metric": metric_decision,
+                  "operator": operator_decision}
 
 
 def claim_parser(state: VerificationState) -> Dict:
@@ -392,9 +503,31 @@ def claim_parser(state: VerificationState) -> Dict:
         # Parse JSON
         parsed_data = json.loads(response_text)
 
-        # Reconcile the reject fields before validating: the model sometimes
-        # signals a reject in reject_reason while leaving claim_type unchanged.
-        parsed_claim = ParsedClaim(**reconcile_reject_fields(parsed_data))
+        # One boundary between untrusted model output and the trusted claim:
+        # reconcile the reject fields, resolve the metric against the
+        # vocabulary (fail closed), and settle the operator/value pairing.
+        normalized, decisions = normalize_parser_output(parsed_data, claim_text)
+        parsed_claim = ParsedClaim(**normalized)
+
+        # The parse is the pipeline's most consequential single decision and
+        # previously left no audit record at all. This goes through
+        # log_event() — the path that persists — NOT state["audit_events"],
+        # which is write-only (nothing reads it; its event types have zero
+        # rows in the database).
+        get_audit_logger().log_event(
+            event_type="claim_parsed",
+            request_id=request_id,
+            data={
+                "fields": {
+                    f: getattr(parsed_claim, f)
+                    for f in ("claim_type", "ticker", "metric", "operator",
+                              "value", "period", "reject_reason")
+                },
+                "raw": parsed_data,
+                "decisions": decisions,
+                "parser": "deepseek",
+            },
+        )
 
         # Validate ticker for market claims — catches stale/delisted tickers
         # (e.g. BRCM→AVGO, CVH→CVS, INTU→ISRG) that the fine-tuned parser

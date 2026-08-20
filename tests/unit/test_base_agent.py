@@ -75,6 +75,7 @@ class TestBuildContext:
             claim_type="sec",
             ticker="AAPL",
             value=94_000_000_000,
+            comparison="eq",
             period="FY2024",
         )
         state = {"claim_raw": "test", "parsed_claim": parsed}

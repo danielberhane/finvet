@@ -16,9 +16,15 @@ from finvet.models.claim import ParsedClaim
 
 
 def _make_parsed(claim_type="sec", **kwargs):
-    """Helper to create a ParsedClaim for routing tests."""
+    """Helper to create a ParsedClaim for routing tests.
+
+    The contract pairs operator and value (non-null iff non-null), so a test
+    that asks for a comparator gets a value alongside it unless it brought
+    its own."""
     if claim_type == "reject":
         return ParsedClaim(claim_type="reject", reject_reason="non_financial", **kwargs)
+    if kwargs.get("comparison") is not None and "value" not in kwargs:
+        kwargs["value"] = 1_000_000_000.0
     return ParsedClaim(claim_type=claim_type, ticker="AAPL", **kwargs)
 
 
@@ -187,3 +193,58 @@ class TestApplyHITLDecision:
     def test_no_decision(self):
         result = _apply_hitl_decision({"request_id": "test"})
         assert result == {}
+
+
+class TestDisposition:
+    """Every terminal path must record why the run ended.
+
+    verdict="REJECTED" has two producers — the parser reject path and a human
+    reviewer's reject — so the verdict alone cannot tell an auditor which one
+    refused the claim.
+    """
+
+    def test_parser_reject_records_disposition(self):
+        state = {"parsed_claim": _make_parsed("reject")}
+        result = _handle_rejection(state)
+        assert result["verdict"] == "REJECTED"
+        assert result["disposition"] == "rejected_parser"
+        assert result["disposition_detail"] == "non_financial"
+
+    def test_human_reject_records_disposition(self):
+        state = {
+            "request_id": "test",
+            "hitl_decision": "reject",
+            "hitl_reviewer_notes": "Agent misread the restatement",
+            "verdict": "SUPPORTS",
+        }
+        result = _apply_hitl_decision(state)
+        assert result["verdict"] == "REJECTED"
+        assert result["disposition"] == "rejected_human"
+        assert result["disposition_detail"] == "Agent misread the restatement"
+
+    def test_reject_dispositions_are_distinguishable(self):
+        parser = _handle_rejection({"parsed_claim": _make_parsed("reject")})
+        human = _apply_hitl_decision({
+            "request_id": "test", "hitl_decision": "reject", "verdict": "SUPPORTS",
+        })
+        assert parser["verdict"] == human["verdict"] == "REJECTED"
+        assert parser["disposition"] != human["disposition"]
+
+    def test_approve_records_disposition(self):
+        result = _apply_hitl_decision({
+            "request_id": "test", "hitl_decision": "approve", "verdict": "SUPPORTS",
+        })
+        assert result["disposition"] == "approved_human"
+
+    def test_override_records_disposition(self):
+        result = _apply_hitl_decision({
+            "request_id": "test",
+            "hitl_decision": "override",
+            "hitl_override_verdict": "REFUTES",
+            "verdict": "SUPPORTS",
+        })
+        assert result["disposition"] == "overridden_human"
+        assert result["verdict"] == "REFUTES"
+
+    def test_no_decision_leaves_state_untouched(self):
+        assert _apply_hitl_decision({"request_id": "test", "verdict": "SUPPORTS"}) == {}
