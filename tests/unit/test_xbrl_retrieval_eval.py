@@ -207,3 +207,40 @@ class TestSummarize:
 
     def test_empty_input_does_not_divide_by_zero(self):
         assert summarize([])["pass_rate"] == 0.0
+
+
+class TestLoadCasesMergesTheFill:
+    """71 SEC rows had a concept and period but no recorded value; filling them
+    from SEC's frames endpoint takes the harness from 128 cases to 199."""
+
+    def _gold(self, tmp_path):
+        rows = [
+            {"id": 1, "input": "has a value", "gold": {"claim_type": "sec"},
+             "provenance": {"cik": "1", "accession": "a",
+                            "xbrl_fact": "us-gaap:GrossProfit",
+                            "period_end": "2024-12-31", "source_value_exact": 5.0}},
+            {"id": 2, "input": "needs filling", "gold": {"claim_type": "sec"},
+             "provenance": {"cik": "1", "accession": "a",
+                            "xbrl_fact": "us-gaap:NetIncomeLoss",
+                            "period_end": "2024-12-31", "source_value_exact": None}},
+        ]
+        p = tmp_path / "gold.jsonl"
+        p.write_text("\n".join(json.dumps(r) for r in rows))
+        return p
+
+    def test_unfilled_rows_are_skipped_without_a_sidecar(self, tmp_path):
+        assert [c.row_id for c in load_cases(self._gold(tmp_path))] == [1]
+
+    def test_sidecar_makes_the_extra_rows_scoreable(self, tmp_path):
+        fill = tmp_path / "fill.jsonl"
+        fill.write_text(json.dumps({"row_id": 2, "source_value_exact": 99.0}))
+        cases = load_cases(self._gold(tmp_path), fill_path=fill)
+        assert [c.row_id for c in cases] == [1, 2]
+        assert next(c for c in cases if c.row_id == 2).expected_value == 99.0
+
+    def test_the_sidecar_never_overrides_a_recorded_value(self, tmp_path):
+        """A value the dataset authors sourced themselves always wins."""
+        fill = tmp_path / "fill.jsonl"
+        fill.write_text(json.dumps({"row_id": 1, "source_value_exact": 12345.0}))
+        cases = load_cases(self._gold(tmp_path), fill_path=fill)
+        assert next(c for c in cases if c.row_id == 1).expected_value == 5.0
