@@ -45,7 +45,8 @@ class ParsedClaim(BaseModel):
     reject_reason: Optional[Literal[
         "non_financial",  # Valid text, not a financial claim
         "question",       # Asking a question, not making a claim
-        "incomplete"      # Missing ticker or value, unverifiable
+        "incomplete",     # Missing ticker or value, unverifiable
+        "unspecified",    # Parser signalled a reject without naming a reason
     ]] = Field(
         None,
         description="Reason for rejection (only when claim_type == 'reject')"
