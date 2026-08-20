@@ -112,7 +112,7 @@ class TestBuildCase:
             "source_value_exact": 184992000000.0,
         }
         base.update(prov)
-        return {"id": 12, "input": "Ford reported revenue of $185 billion for fiscal 2024.",
+        return {"id": 12, "input": "Ford booked $185 billion of revenue across fiscal 2024.",
                 "gold": {"claim_type": "sec", "ticker": "F", "metric": "revenue"},
                 "provenance": base}
 

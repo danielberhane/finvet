@@ -26,8 +26,8 @@ def _run(raw=RAW):
     with patch("finvet.graph.nodes.claim_parser.create_llm", return_value=llm), \
          patch("finvet.graph.nodes.claim_parser.get_audit_logger",
                return_value=audit):
-        result = claim_parser({"claim_raw": "JPMorgan reported revenue of "
-                               "$158.1 billion for fiscal 2024.",
+        result = claim_parser({"claim_raw": "JPMorgan's fiscal 2024 revenue came to "
+                               "$158.1 billion.",
                                "request_id": "req_test04b"})
     return result, audit
 
