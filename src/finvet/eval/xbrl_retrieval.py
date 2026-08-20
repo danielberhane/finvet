@@ -8,8 +8,8 @@ No LLM calls and no agent — this isolates the retrieval layer, so a failure is
 unambiguous. It is the regression suite for the consolidated/period fact
 selection in `mcp/sec_edgar.py`.
 
-Ground truth comes from the fine-tuned claim-parser project's real-sourced
-held-out set, whose `provenance` block carries `xbrl_fact`, `accession`,
+Ground truth comes from the external evaluation dataset's real-sourced
+held-out set (FINVET_EVAL_DATA_DIR), whose `provenance` block carries `xbrl_fact`, `accession`,
 `period_end` and `source_value_exact`. That set is contamination-sensitive and
 is NOT redistributed with FinVet — it is read by path from the sibling repo.
 
@@ -31,14 +31,12 @@ from ..mcp.sec_edgar import (
     CONSOLIDATION_SENSITIVE_CONCEPTS,
     SECEdgarClient,
 )
+from .dataset import eval_data_file
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-DEFAULT_GOLD = (
-    Path.home()
-    / "Projects/Active/claim_parser_fine-tuned/data/clean/heldout_real_sourced.jsonl"
-)
+DEFAULT_GOLD = eval_data_file("heldout_real_sourced.jsonl")
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -299,7 +297,7 @@ def main() -> int:
                     help="Seconds between cases, for SEC fair access (default: 0.2)")
     args = ap.parse_args()
 
-    if not args.gold.exists():
+    if args.gold is None or not args.gold.exists():
         print(f"Gold set not found: {args.gold}\n"
               f"This harness needs the claim-parser project's real-sourced held-out set.")
         return 2

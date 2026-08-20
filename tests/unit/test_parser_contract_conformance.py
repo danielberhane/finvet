@@ -16,12 +16,14 @@ import pytest
 
 from finvet.models.claim import ParsedClaim
 
-GOLD_DIR = Path.home() / "Projects/Active/claim_parser_fine-tuned/data/clean"
+from finvet.eval.dataset import eval_data_dir
+
+GOLD_DIR = eval_data_dir() or Path("/nonexistent")
 CONTRACT_FIELDS = ("claim_type", "ticker", "metric", "operator",
                    "value", "period", "reject_reason")
 
 pytestmark = pytest.mark.skipif(
-    not GOLD_DIR.exists(), reason="claim-parser gold not present"
+    not GOLD_DIR.exists(), reason="eval dataset not present"
 )
 
 

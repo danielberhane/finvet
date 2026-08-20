@@ -1,6 +1,6 @@
 """Metric vocabulary — vendored from the fine-tuned claim parser.
 
-Source: ~/Projects/Active/claim_parser_fine-tuned/scripts/vocab.py
+Source: the companion claim-parser project's vocabulary module
 Vendored: 2026-08-20 (separate repos — copied, not imported).
 tests/unit/test_metrics_vocab.py compares this copy against the source when the
 sibling repo is present, so drift is caught rather than accumulated.

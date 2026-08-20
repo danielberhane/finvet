@@ -38,13 +38,14 @@ from typing import Any, Dict, List, Optional
 
 from ..graph.nodes import claim_parser, input_guardrails
 from ..utils.exceptions import GuardrailViolation
+from .dataset import eval_data_dir
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-_GOLD_DIR = Path.home() / "Projects/Active/claim_parser_fine-tuned/data/clean"
-DEFAULT_GOLD = _GOLD_DIR / "heldout_real_sourced.jsonl"
-SYNTHETIC_GOLD = _GOLD_DIR / "test.jsonl"
+_GOLD_DIR = eval_data_dir()
+DEFAULT_GOLD = _GOLD_DIR / "heldout_real_sourced.jsonl" if _GOLD_DIR else None
+SYNTHETIC_GOLD = _GOLD_DIR / "test.jsonl" if _GOLD_DIR else None
 
 OUTCOME_BLOCKED_BY_GUARD = "blocked_by_guard"
 OUTCOME_REJECTED_BY_PARSER = "rejected_by_parser"

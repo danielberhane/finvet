@@ -22,8 +22,8 @@ from finvet.eval.xbrl_retrieval import (
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
-        not DEFAULT_GOLD.exists(),
-        reason=f"real-sourced gold set not present at {DEFAULT_GOLD}",
+        DEFAULT_GOLD is None or not DEFAULT_GOLD.exists(),
+        reason="eval dataset not present (set FINVET_EVAL_DATA_DIR)",
     ),
 ]
 

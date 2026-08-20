@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from finvet.eval.dataset import eval_data_dir
 from finvet.config.metrics import (
     METRIC_HARD_DROPS,
     METRIC_REMAPS,
@@ -112,10 +113,11 @@ class TestServable:
             assert metric not in SERVABLE_METRICS["sec"]
 
 
-VOCAB_SOURCE = Path.home() / "Projects/Active/claim_parser_fine-tuned/scripts/vocab.py"
+_d = eval_data_dir()
+VOCAB_SOURCE = _d.parent.parent / "scripts/vocab.py" if _d else Path("/nonexistent")
 
 
-@pytest.mark.skipif(not VOCAB_SOURCE.exists(), reason="claim-parser repo not present")
+@pytest.mark.skipif(not VOCAB_SOURCE.exists(), reason="eval dataset repo not present")
 class TestVendoredCopyMatchesSource:
     """Drift detection: only runs where the sibling repo exists."""
 

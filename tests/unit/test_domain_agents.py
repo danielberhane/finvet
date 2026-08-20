@@ -2,7 +2,6 @@
 
 from unittest.mock import patch, MagicMock
 from finvet.graph.nodes.domain_agents import (
-    _run_agent,
     _error_evidence,
     run_market_agent,
     run_news_agent,
