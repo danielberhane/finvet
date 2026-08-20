@@ -7,7 +7,9 @@ drift — a copied list would eventually tell the model about metrics the
 resolver rejects, surfacing as a mysterious residual rate.
 """
 
+import json
 import re
+from pathlib import Path
 
 import pytest
 
@@ -96,9 +98,6 @@ class TestVerdictPromptKnowsApprox:
         assert "approx" in src
 
 
-import json
-from pathlib import Path
-
 GOLD_DIR = Path.home() / "Projects/Active/claim_parser_fine-tuned/data/clean"
 
 
@@ -116,7 +115,7 @@ class TestPromptExamplesAreNotEvalRows:
         assert len(examples) >= 8
         for split in ("val.jsonl", "test.jsonl",
                       "heldout_real_sourced.jsonl", "heldout_real.jsonl"):
-            rows = {norm(json.loads(l)["input"])
-                    for l in open(GOLD_DIR / split)}
+            rows = {norm(json.loads(line)["input"])
+                    for line in open(GOLD_DIR / split)}
             leaked = [e for e in examples if norm(e) in rows]
             assert not leaked, f"prompt examples found in {split}: {leaked}"
