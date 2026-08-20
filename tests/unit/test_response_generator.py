@@ -11,12 +11,12 @@ from finvet.graph.nodes.response_generator import (
 from finvet.models.claim import ParsedClaim
 
 
-def _make_parsed(claim_type="sec", value=None, comparison=None):
+def _make_parsed(claim_type="sec", value=None, operator=None):
     if claim_type == "reject":
         return ParsedClaim(claim_type="reject", reject_reason="non_financial")
     return ParsedClaim(
         claim_type=claim_type, ticker="AAPL", value=value,
-        comparison=comparison, period="FY2024",
+        operator=operator, period="FY2024",
     )
 
 
@@ -46,7 +46,7 @@ class TestBuildExplanation:
         assert "Revenue matched" in result
 
     def test_with_comparison_details(self):
-        parsed = _make_parsed(value=94e9, comparison="eq")
+        parsed = _make_parsed(value=94e9, operator="eq")
         state = {"parsed_claim": parsed}
         evidence = {
             "reasoning": "test",
@@ -59,7 +59,7 @@ class TestBuildExplanation:
         assert "SEC EDGAR" in result
 
     def test_directional_shows_comparison(self):
-        parsed = _make_parsed(value=100.0, comparison="gt")
+        parsed = _make_parsed(value=100.0, operator="gt")
         state = {"parsed_claim": parsed}
         evidence = {
             "reasoning": "test",
@@ -115,7 +115,7 @@ class TestFormatMetadata:
             "tools_called": ["get_income_statement", "get_company_info"],
             "agent": "sec",
         }
-        state = {"parsed_claim": _make_parsed(value=94e9, comparison="eq")}
+        state = {"parsed_claim": _make_parsed(value=94e9, operator="eq")}
         metadata = _format_metadata(state, evidence)
         assert "xbrl" in metadata["data_sources"]
 
@@ -171,7 +171,7 @@ class TestResponseGenerator:
         state = {
             "request_id": "test_ok",
             "claim_raw": "Apple revenue was $94B",
-            "parsed_claim": _make_parsed(value=94e9, comparison="eq"),
+            "parsed_claim": _make_parsed(value=94e9, operator="eq"),
             "agent_evidence": {
                 "agent": "sec",
                 "verdict": "SUPPORTS",
@@ -208,7 +208,7 @@ class TestRejectDisposition:
         return {
             "request_id": "test_hr",
             "claim_raw": "Apple Q4 2024 revenue was $94B",
-            "parsed_claim": _make_parsed("sec", value=94e9, comparison="eq"),
+            "parsed_claim": _make_parsed("sec", value=94e9, operator="eq"),
             "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS", "reasoning": "..."},
             "verdict": "REJECTED",
             "confidence": 1.0,
@@ -257,7 +257,7 @@ class TestRejectDisposition:
         final = response_generator({
             "request_id": "test_ok",
             "claim_raw": "Apple revenue was $94B",
-            "parsed_claim": _make_parsed("sec", value=94e9, comparison="eq"),
+            "parsed_claim": _make_parsed("sec", value=94e9, operator="eq"),
             "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS", "reasoning": "ok"},
             "verdict": "SUPPORTS",
             "confidence": 0.9,
@@ -269,7 +269,7 @@ class TestRejectDisposition:
         final = response_generator({
             "request_id": "test_pend",
             "claim_raw": "Apple revenue was $94B",
-            "parsed_claim": _make_parsed("sec", value=94e9, comparison="eq"),
+            "parsed_claim": _make_parsed("sec", value=94e9, operator="eq"),
             "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS", "reasoning": "?"},
             "verdict": "SUPPORTS",
             "confidence": 0.4,
@@ -281,12 +281,10 @@ class TestRejectDisposition:
 
 
 class TestMetadataEmitsTheContract:
-    """Stage 05, reader 3: the public payload carries operator and metric.
-
-    comparison is emitted ALONGSIDE operator, not replaced: 115 persisted
-    audit_executions rows key on "comparison" inside full_trace, the trail is
-    append-only with a tamper hash, and backfill is impossible. Both keys stay
-    through EXPAND and MIGRATE; comparison drops only at CONTRACT."""
+    """CONTRACT (2026-08-20): the payload carries operator and metric only.
+    The comparison key is gone — the dual-key window served the 115 historical
+    audit rows through the migration; rows from today onward key on operator,
+    and the cutover date lives in the commit that removed it."""
 
     def _metadata(self, **claim_kwargs):
         from finvet.models.claim import ParsedClaim
@@ -302,10 +300,10 @@ class TestMetadataEmitsTheContract:
         }
         return response_generator(state)["final_response"]["metadata"]
 
-    def test_operator_and_comparison_both_present_and_equal(self):
+    def test_operator_present_and_comparison_gone(self):
         meta = self._metadata(value=1e9, operator="approx")
         assert meta["operator"] == "approx"
-        assert meta["comparison"] == "approx"
+        assert "comparison" not in meta
 
     def test_metric_is_in_the_payload(self):
         meta = self._metadata(metric="revenue")

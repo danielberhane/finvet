@@ -344,9 +344,7 @@ class BaseVerificationAgent(ABC):
 
         # Override verdict based on deterministic comparison
         if magnitude_diff is not None:
-            # The contract name; comparison mirrors it during the migration.
-            comparison = (getattr(parsed_claim, "operator", None)
-                          or getattr(parsed_claim, "comparison", None) or "eq")
+            comparison = getattr(parsed_claim, "operator", None) or "eq"
             tolerance = self._get_tolerance(claimed_val)
             # approx/range are equality with stated imprecision: gold carries
             # the midpoint for range and no band, so both widen the tolerance

@@ -75,7 +75,7 @@ class TestBuildContext:
             claim_type="sec",
             ticker="AAPL",
             value=94_000_000_000,
-            comparison="eq",
+            operator="eq",
             period="FY2024",
         )
         state = {"claim_raw": "test", "parsed_claim": parsed}
@@ -213,13 +213,12 @@ class TestOverrideReadsOperator:
         way to compare them, the deterministic layer declines to verify
         rather than letting the LLM verdict pass unchecked. Reachable only
         through schema drift, which is exactly when it matters."""
-        from unittest.mock import MagicMock
         from finvet.agents.base import VerdictOutput
         agent = ConcreteAgent(agent_type="sec")
         parsed = MagicMock()
         parsed.value = 100e9
         parsed.operator = "between"           # drift: not one of the seven
-        parsed.comparison = "between"
+        parsed.operator = "between"
         verdict_output = VerdictOutput(
             verdict="SUPPORTS", confidence=0.9,
             reasoning="test", retrieved_value=100e9,
@@ -254,5 +253,11 @@ class TestBuildContextCarriesTheContract:
         assert "Metric" not in context
 
     def test_currency_no_longer_reaches_the_prompt(self):
-        context = self._context(currency="USD")
-        assert "Currency" not in context
+        """Post-CONTRACT the guarantee is structural: the field is gone, so
+        the model refuses it and no context line can exist."""
+        import pytest
+        from pydantic import ValidationError
+        from finvet.models.claim import ParsedClaim
+        with pytest.raises(ValidationError):
+            ParsedClaim(claim_type="sec", ticker="AAPL", currency="USD")
+        assert "Currency" not in self._context()
