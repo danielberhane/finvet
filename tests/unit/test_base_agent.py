@@ -1,6 +1,6 @@
 """Tests for BaseVerificationAgent verdict override and tolerance logic."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from finvet.agents.base import BaseVerificationAgent
 from finvet.config.constants import (
     TOLERANCE_DEFAULT,
@@ -115,3 +115,51 @@ class TestBuildContext:
         assert "quarterly" in context
         assert "2024-07-01" in context
         assert "Q4" in context
+
+
+class TestEqToleranceCoversRealRoundingSpread:
+    """The SEC-large equality tolerance must cover how people actually round.
+
+    Measured across 255 real-sourced eq rows (claimed vs SEC-filed value):
+    median 0.004%, p95 1.034%, max 3.067%. The original 1.0% threshold sat
+    *below* p95 — true claims like "$185 billion" against a filed
+    $182.8B-per-rounding were being REFUTED on rounding alone. 1.5% covers the
+    observed p95 with margin while staying far under the 3.067% outlier, so
+    genuinely wrong claims still fail.
+    """
+
+    def _override(self, claimed, retrieved):
+        from finvet.agents.base import VerdictOutput
+        agent = ConcreteAgent(agent_type="sec")
+        parsed = MagicMock()
+        parsed.value = claimed
+        parsed.comparison = "eq"
+        verdict_output = VerdictOutput(
+            verdict="NOT_ENOUGH_INFO", confidence=0.5,
+            reasoning="test", retrieved_value=retrieved,
+        )
+        verdict, confidence, diff = agent._apply_override(
+            verdict_output, {"parsed_claim": parsed}, []
+        )
+        return verdict, diff
+
+    def test_p95_rounding_spread_is_supported(self):
+        """1.2% difference on a >$1B claim — inside the measured p95 band."""
+        verdict, diff = self._override(185_000_000_000.0, 182_780_000_000.0)
+        assert 1.0 < diff < 1.5  # the band the old tolerance wrongly refuted
+        assert verdict == "SUPPORTS"
+
+    def test_exact_p95_case_is_supported(self):
+        """The measured p95 itself: 1.034% must pass."""
+        verdict, diff = self._override(100_000_000_000.0, 98_966_000_000.0)
+        assert verdict == "SUPPORTS"
+
+    def test_genuinely_wrong_claim_still_refuted(self):
+        """3% off is the outlier region, not rounding — must stay REFUTES."""
+        verdict, diff = self._override(100_000_000_000.0, 97_000_000_000.0)
+        assert verdict == "REFUTES"
+
+    def test_small_value_tolerance_unchanged(self):
+        """Sub-$1B claims keep the 2.0% threshold; only SEC-large moved."""
+        agent = ConcreteAgent(agent_type="sec")
+        assert agent._get_tolerance(500_000_000) == 2.0

@@ -7,7 +7,11 @@ embedding config, and consensus adjustments.
 # ---------------------------------------------------------------------------
 # Verdict tolerance thresholds (used in base.py Python verdict override)
 # ---------------------------------------------------------------------------
-TOLERANCE_SEC_LARGE = 1.0       # SEC/financial values > $1B
+# Measured across 255 real-sourced eq rows (claimed vs SEC-filed value):
+# median 0.004%, p95 1.034%, max 3.067%. 1.0% sat below p95, so true claims
+# were refuted on rounding alone; 1.5% covers p95 with margin while staying
+# far under the 3.067% outlier.
+TOLERANCE_SEC_LARGE = 1.5       # SEC/financial values > $1B
 TOLERANCE_SEC_SMALL = 2.0       # SEC/financial values <= $1B
 TOLERANCE_MARKET = 5.0          # Market data (stock prices, market cap)
 TOLERANCE_NEWS = 5.0            # News-reported values
@@ -28,7 +32,7 @@ CONSENSUS_MAX_CONFIDENCE = 0.95         # confidence cap
 # ---------------------------------------------------------------------------
 # Agent limits (used in base.py)
 # ---------------------------------------------------------------------------
-AGENT_MAX_ITERATIONS = 10
+AGENT_MAX_ITERATIONS = 5
 AGENT_MAX_RESULT_CHARS = 50000  # ~12K tokens, safe for 131K context
 
 # ---------------------------------------------------------------------------
