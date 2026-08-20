@@ -61,3 +61,7 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "integration: requires live external services (Postgres, API, MCP). Opt in with -m integration",
+]
+addopts = "-m 'not integration'"

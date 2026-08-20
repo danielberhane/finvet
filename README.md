@@ -11,6 +11,13 @@ Give it a claim — *"Apple's Q4 2024 revenue was $94 billion"* — and it retur
 (`SUPPORTS` / `REFUTES` / `NOT_ENOUGH_INFO`), a confidence score, the evidence chain, and a
 complete audit trail of every step that produced the answer.
 
+> [!IMPORTANT]
+> **FinVet is a research and demonstration system for financial-claim verification.
+> It is not investment, legal, accounting, or financial advice.** Outputs may be
+> incomplete or incorrect and must be independently verified before any use. FinVet is
+> not affiliated with, endorsed by, or certified by the SEC, Finnhub, Tavily, DeepSeek,
+> OpenAI, or any other organisation named in this repository.
+
 ---
 
 ## The interesting part: the model doesn't get the last word
@@ -120,14 +127,22 @@ and Tavily. That's the honest cost of not mocking the hard part.
 
 ### Guardrail modes
 
-Input and output both pass through a composite guard chain that short-circuits on the first
-failure and forwards scrubbed text to the next provider.
+Input and output each pass through their own composite guard chain, which short-circuits on
+the first failure and forwards scrubbed text to the next provider. The two chains hold
+**different** providers:
 
-- **Default — regex only.** Prompt-injection patterns plus SSN / credit-card / email / phone
-  detection and redaction. No external dependency, sub-millisecond.
-- **Optional — regex + Llama Guard 3.** Adds semantic classification with the S6 "specialized
-  advice" category customised for finance, so *"verify Apple's revenue"* passes while *"should
-  I buy AAPL"* is flagged. Enable with:
+| | Default chain | With `ENABLE_LLAMA_GUARD=true` | On violation |
+|---|---|---|---|
+| **Input** | `RegexGuard` | `RegexGuard` → `LlamaGuard` | raises `GuardrailViolation` — the claim is rejected |
+| **Output** | `FinancialGuard` | `LlamaGuard` → `FinancialGuard` | routes to human review; never silently blocked |
+
+- **Regex guard (input only).** Prompt-injection patterns plus SSN / credit-card / email /
+  phone detection and redaction. No external dependency, sub-millisecond.
+- **Financial guard (output only).** Flags responses that read as investment advice rather
+  than claim verification.
+- **Llama Guard 3 (optional, both chains).** Adds semantic classification with the S6
+  "specialized advice" category customised for finance, so *"verify Apple's revenue"* passes
+  while *"should I buy AAPL"* is flagged. Enable with:
 
   ```bash
   docker compose --profile guards up -d
@@ -165,6 +180,10 @@ pytest tests/integration     # needs Postgres and the MCP server running
 - **The consensus step is heuristic**, not learned — confidence adjustments are hand-tuned
   constants in [`src/finvet/config/constants.py`](src/finvet/config/constants.py), fitted on a
   small claim suite rather than a benchmark.
+- **Historical prices need a paid Finnhub tier.** `get_daily_prices` is gated behind
+  Finnhub's paid plan; on a free key it returns 403 and the market agent reports
+  NOT_ENOUGH_INFO. FinVet does not scrape any provider to work around this — current
+  quotes, market cap and earnings are unaffected.
 - **Latency is 15–40s per claim.** Three ReAct agents making real tool calls; this is not a
   low-latency path.
 - **Not a compliance product.** It applies model-risk-management *principles* to an LLM system.
@@ -184,6 +203,17 @@ The system was first described in:
 paper reports F1 0.85 on the FinFact dataset for the earlier architecture; that benchmark is
 not reproduced here. What carried over is the design thesis — evidence-backed verdicts with
 source attribution, confidence scores, and explicit uncertainty rather than a bare label.
+
+## Third-party dependencies
+
+FinVet's own source is Apache-2.0. It relies on external components it does not include or
+distribute — most notably the SEC EDGAR MCP server, which is **AGPL-3.0** and is run as a
+separate process you clone and start yourself. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Users are responsible for complying with the terms of every external service they configure,
+including the [SEC's automated-access / Fair Access policy](https://www.sec.gov/os/webmaster-faq#developers),
+which requires a real name and contact address in `SEC_EDGAR_USER_AGENT`.
 
 ## License
 

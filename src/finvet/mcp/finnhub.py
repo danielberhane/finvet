@@ -3,15 +3,16 @@
 This client calls Finnhub's REST API directly (no MCP overhead).
 Provides typed methods for market data:
 - get_quote: Current stock quote
-- get_daily_prices: Historical OHLCV data (with Yahoo Finance fallback)
+- get_daily_prices: Historical OHLCV data (requires a paid Finnhub tier)
 - get_company_overview: Market cap, P/E, EPS, 52-week range
 - get_earnings: Quarterly EPS actual vs estimates
 
 Rate limit: 60 requests/minute (free tier)
 API Docs: https://finnhub.io/docs/api
 
-Note: Historical price data (get_daily_prices) falls back to Yahoo Finance
-when Finnhub returns 403 (paid tier feature).
+Note: Historical price data (get_daily_prices) requires a paid Finnhub tier.
+On the free tier the endpoint returns 403; that failure is raised rather than
+substituted from another source.
 """
 
 import time
@@ -214,8 +215,10 @@ class FinnhubClient:
         """
         Get historical daily OHLCV data.
 
-        Primary: Finnhub endpoint GET /stock/candle
-        Fallback: Yahoo Finance (when Finnhub returns 403 - paid tier feature)
+        Finnhub endpoint GET /stock/candle.
+
+        Requires a paid Finnhub tier. The free tier returns HTTP 403, which is
+        raised as FinnhubAPIError; there is no alternative historical source.
         """
         symbol = symbol.upper()
 
@@ -250,7 +253,7 @@ class FinnhubClient:
             days_back = 100 if outputsize == "compact" else 730
             from_dt = to_dt - timedelta(days=days_back)
 
-        # Try Finnhub first
+        # Finnhub is the only historical price source.
         try:
             data = self._request("stock/candle", {
                 "symbol": symbol,
@@ -264,13 +267,16 @@ class FinnhubClient:
 
         except FinnhubAPIError as e:
             if "403" in str(e):
-                logger.info(f"Finnhub candle API returned 403, falling back to Yahoo Finance for {symbol}")
-                return self._get_prices_from_yahoo(symbol, from_dt, to_dt)
+                raise FinnhubAPIError(
+                    f"Historical candles for {symbol} require a paid Finnhub tier "
+                    f"(HTTP 403). No alternative historical price source is configured."
+                ) from e
             raise
 
-        # If Finnhub returned no data, try Yahoo
-        logger.info(f"Finnhub returned no candle data, falling back to Yahoo Finance for {symbol}")
-        return self._get_prices_from_yahoo(symbol, from_dt, to_dt)
+        raise FinnhubAPIError(
+            f"Finnhub returned no historical candle data for {symbol}. "
+            f"No alternative historical price source is configured."
+        )
 
     def _parse_finnhub_candles(self, symbol: str, data: Dict[str, Any]) -> DailyPrices:
         """Parse Finnhub candle response into DailyPrices."""
@@ -299,80 +305,6 @@ class FinnhubClient:
             last_refreshed=datetime.now().strftime("%Y-%m-%d"),
             prices=prices,
         )
-
-    def _get_prices_from_yahoo(self, symbol: str, from_dt: datetime, to_dt: datetime) -> DailyPrices:
-        """
-        Fallback to Yahoo Finance for historical price data via direct HTTP.
-
-        Used when Finnhub returns 403 (paid tier feature).
-        Uses Yahoo Finance chart API directly (no yfinance library needed).
-        """
-        try:
-            # Convert dates to Unix timestamps
-            period1 = int(from_dt.timestamp())
-            period2 = int((to_dt + timedelta(days=1)).timestamp())
-
-            # Yahoo Finance chart API
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-            params = {
-                "period1": period1,
-                "period2": period2,
-                "interval": "1d",
-                "events": "history",
-            }
-
-            response = self._client.get(url, params=params, headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            })
-
-            if response.status_code != 200:
-                raise FinnhubAPIError(f"Yahoo Finance API error: {response.status_code}")
-
-            data = response.json()
-            result = data.get("chart", {}).get("result", [])
-
-            if not result:
-                raise FinnhubAPIError(f"No historical data from Yahoo Finance for {symbol}")
-
-            chart_data = result[0]
-            timestamps = chart_data.get("timestamp", [])
-            indicators = chart_data.get("indicators", {})
-            quote = indicators.get("quote", [{}])[0]
-
-            opens = quote.get("open", [])
-            highs = quote.get("high", [])
-            lows = quote.get("low", [])
-            closes = quote.get("close", [])
-            volumes = quote.get("volume", [])
-
-            prices = []
-            for i, ts in enumerate(timestamps):
-                if closes[i] is None:  # Skip days with no data
-                    continue
-                prices.append(DailyPrice(
-                    date=datetime.fromtimestamp(ts).strftime("%Y-%m-%d"),
-                    open=round(opens[i], 2) if opens[i] else 0,
-                    high=round(highs[i], 2) if highs[i] else 0,
-                    low=round(lows[i], 2) if lows[i] else 0,
-                    close=round(closes[i], 2) if closes[i] else 0,
-                    volume=int(volumes[i]) if volumes[i] else 0,
-                ))
-
-            prices.sort(key=lambda p: p.date, reverse=True)
-
-            logger.info(f"Yahoo Finance returned {len(prices)} days of data for {symbol}")
-
-            return DailyPrices(
-                symbol=symbol,
-                last_refreshed=datetime.now().strftime("%Y-%m-%d"),
-                prices=prices,
-            )
-
-        except FinnhubAPIError:
-            raise
-        except Exception as e:
-            logger.exception(f"Yahoo Finance fallback failed for {symbol}")
-            raise FinnhubAPIError(f"Yahoo Finance fallback failed for {symbol}: {str(e)}")
 
     def get_company_overview(self, symbol: str) -> CompanyOverview:
         """

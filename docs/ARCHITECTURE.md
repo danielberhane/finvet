@@ -12,14 +12,14 @@ Streamlit UI (:8501)
        |  HTTP
 FastAPI API (:8000)
        |
-LangGraph Pipeline (9-node DAG + HITL checkpoint)
+LangGraph Pipeline (12-node DAG + HITL checkpoint)
        |
   SEC Agent -----> SEC EDGAR MCP (:9870) ----> XBRL/Filing Data
   |   |                                            |
   |   +---> RAG (pgvector + tsvector + RRF) <------+
   |   +---> A2A (spawns News Agent)                |
   |                                                |
-  Market Agent --> Finnhub REST / Yahoo Finance     |
+  Market Agent --> Finnhub REST                     |
   |                                                |
   News Agent ----> Tavily News Search              |
                                                    |
@@ -73,9 +73,12 @@ LangGraph Pipeline (9-node DAG + HITL checkpoint)
 
 ---
 
-### 2.2 LangGraph Pipeline (9-Node DAG)
+### 2.2 LangGraph Pipeline (12-Node DAG)
 
 **File**: `src/finvet/graph/workflow.py`
+
+Twelve nodes are registered; at most nine execute for a given claim, since the router
+selects one domain agent and the two HITL nodes run only below the confidence threshold.
 
 Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_checkpoint"]`.
 
@@ -200,7 +203,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 | Agent | File | Tools | Data Sources | Provenance |
 |-------|------|-------|-------------|------------|
 | **SECAgent** | `agents/sec_agent/react_agent.py` | `get_company_info`, `get_recent_filings`, `get_income_statement`, `get_balance_sheet`, `get_cash_flow`, `search_filing_text`, `corroborate_with_news` | SEC EDGAR (XBRL), RAG, A2A | `{"search_filing_text", "corroborate_with_news"}` |
-| **MarketAgent** | `agents/market_agent/react_agent.py` | `get_stock_quote`, `get_daily_prices`, `get_company_overview`, `get_earnings` | Finnhub, Yahoo Finance | (none) |
+| **MarketAgent** | `agents/market_agent/react_agent.py` | `get_stock_quote`, `get_daily_prices`, `get_company_overview`, `get_earnings` | Finnhub | (none) |
 | **NewsAgent** | `agents/news_agent/react_agent.py` | `search_financial_news`, `verify_news_source` | Tavily | (none) |
 
 System prompts: git-tracked text files in `src/finvet/agents/prompts/`.
@@ -223,9 +226,9 @@ System prompts: git-tracked text files in `src/finvet/agents/prompts/`.
 | Balance | Assets, Liabilities, StockholdersEquity, Cash, LongTermDebt, PPE |
 | Cash Flow | NetCashFromOperations, CapEx, Dividends, NetCashFromInvesting/Financing |
 
-#### Market Tools --> Finnhub + Yahoo Finance
+#### Market Tools --> Finnhub
 
-Direct REST API via `src/finvet/mcp/finnhub.py`. Rate limit: 60 req/min. Yahoo Finance fallback when Finnhub returns 403 on historical candle data. Mock mode available (`FINNHUB_MOCK_MODE=true`).
+Direct REST API via `src/finvet/mcp/finnhub.py`. Rate limit: 60 req/min. Historical candles (`get_daily_prices`) require a paid Finnhub tier; the free tier returns 403, which surfaces as an error rather than falling back to another provider. Mock mode available (`FINNHUB_MOCK_MODE=true`).
 
 #### News Tools --> Tavily
 
@@ -591,6 +594,6 @@ The Streamlit UI at port 8501 renders:
 
 Architecture diagrams are in `docs/diagrams/`:
 - `system-overview.svg` -- Full system architecture
-- `pipeline-flow.svg` -- LangGraph 9-node pipeline
+- `pipeline-flow.svg` -- LangGraph 12-node pipeline
 - `react-loop.svg` -- ReAct agent execution
 - `data-flow.svg` -- Data flow and PostgreSQL schema

@@ -9,6 +9,7 @@ other financial metrics.
 from pathlib import Path
 
 from ..base import BaseVerificationAgent
+from ...config.constants import AGENT_MAX_ITERATIONS
 from ...tools.sec_tools import SEC_TOOLS
 from ...tools.filing_search import search_filing_text
 from ...tools.corroborate import corroborate_with_news
@@ -30,7 +31,7 @@ class SECAgent(BaseVerificationAgent):
     # Track full results from RAG and A2A tools for provenance auditing
     _provenance_tool_names = {"search_filing_text", "corroborate_with_news"}
 
-    def __init__(self, max_iterations: int = 5):
+    def __init__(self, max_iterations: int = AGENT_MAX_ITERATIONS):
         """Initialize the SEC Agent with SEC + RAG + A2A tools."""
         super().__init__(
             agent_type="sec",
