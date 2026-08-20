@@ -155,6 +155,7 @@ def verify_claim(request: VerifyClaimRequest):
                     request_id=request_id,
                     claim_text=request.claim,
                     ticker=parsed_claim.ticker if parsed_claim else None,
+                    metric=getattr(parsed_claim, "metric", None) if parsed_claim else None,
                     agent_type=agent_evidence.get("agent"),
                     verdict=final_response.get("verdict", ""),
                     confidence=final_response.get("confidence", 0),
@@ -335,6 +336,7 @@ def verify_claim_stream(request: VerifyClaimRequest):
                             verdict=final_response.get("verdict", ""),
                             confidence=final_response.get("confidence", 0),
                             ticker=parsed_claim.ticker if parsed_claim else None,
+                            metric=getattr(parsed_claim, "metric", None) if parsed_claim else None,
                             agent_type=agent_evidence.get("agent"),
                         )
                     except Exception:
