@@ -3,13 +3,23 @@
 from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
+from ..config.metrics import METRIC_WHITELIST
+
+# The seven comparison operators of the claim-parser contract. approx and
+# range both resolve to equality at a widened tolerance downstream (range
+# carries the band's midpoint in `value`; the band itself is not in the schema).
+Operator = Literal["eq", "gt", "gte", "lt", "lte", "approx", "range"]
+
 
 class ParsedClaim(BaseModel):
-    """
-    Simplified parsed claim with 6 fields.
+    """A parsed claim, conforming to the fine-tuned claim parser's contract:
 
-    This is the output from the fine-tuned Qwen parser.
-    The agent will infer the specific metric from the claim text.
+        claim_type | ticker | metric | operator | value | period | reject_reason
+
+    EXPAND phase of the migration (plans/2026-08-20_1603.md): `comparison`
+    remains as a mirror of `operator` and `currency` is still accepted, so
+    every existing reader keeps working while new writers use the contract
+    names. Both are removed at CONTRACT.
     """
 
     claim_type: Literal["sec", "market", "news", "reject"] = Field(
@@ -22,14 +32,29 @@ class ParsedClaim(BaseModel):
         description="Stock ticker symbol (e.g., 'AAPL', 'TSLA')"
     )
 
-    value: Optional[float] = Field(
+    metric: Optional[str] = Field(
         None,
-        description="Numeric value being claimed (e.g., 94000000000 for $94B)"
+        description="Canonical snake_case metric from METRIC_WHITELIST[claim_type]; "
+                    "null when no whitelisted metric fits (the agent then infers "
+                    "from claim text, as before the field existed)"
     )
 
-    comparison: Optional[Literal["eq", "gt", "gte", "lt", "lte"]] = Field(
+    operator: Optional[Operator] = Field(
         None,
-        description="Comparison operator: eq (equals/was/is), gt (exceeds/above/more than), gte (at least), lt (below/under/less than), lte (at most)"
+        description="How the claimed value relates to the actual value; "
+                    "null when the claim carries no numeric value"
+    )
+
+    value: Optional[float] = Field(
+        None,
+        description="Numeric value being claimed (e.g., 94000000000 for $94B); "
+                    "for range claims, the band's midpoint"
+    )
+
+    comparison: Optional[Operator] = Field(
+        None,
+        description="DEPRECATED mirror of `operator`, kept through the EXPAND "
+                    "and MIGRATE phases so pre-migration readers keep working"
     )
 
     period: Optional[str] = Field(
@@ -39,26 +64,55 @@ class ParsedClaim(BaseModel):
 
     currency: Optional[str] = Field(
         None,
-        description="Currency code (e.g., 'USD', 'EUR', 'JPY', 'KRW')"
+        description="DEPRECATED — not part of the parser contract; removed at CONTRACT"
     )
 
-    reject_reason: Optional[Literal[
-        "non_financial",  # Valid text, not a financial claim
-        "question",       # Asking a question, not making a claim
-        "incomplete",     # Missing ticker or value, unverifiable
-        "unspecified",    # Parser signalled a reject without naming a reason
-    ]] = Field(
+    reject_reason: Optional[str] = Field(
         None,
-        description="Reason for rejection (only when claim_type == 'reject')"
+        description="snake_case reason, only when claim_type == 'reject'. Open "
+                    "vocabulary: the gold uses 21+ distinct values and the tail "
+                    "is genuinely open, so a Literal would be brittle"
     )
 
     @model_validator(mode='after')
-    def validate_reject_reason(self):
-        """Ensure reject_reason is set when claim_type is reject."""
+    def validate_contract(self):
+        """The contract's cross-field rules, in one validator so their order
+        is explicit.
+
+        Enforced here: operator/comparison mirroring, the reject/reason
+        pairing, and metric scoping. Two further §8 invariants — a reject
+        nulls every other field, and operator is non-null iff value is — are
+        deliberately NOT enforced until the stage-04 boundary normalisation
+        lands: reconcile_reject_fields currently coerces claim_type without
+        nulling the other fields, and the model can emit a comparison without
+        a value, so enforcing them now would 500 the live path (the exact bug
+        05d8300 fixed).
+        """
+        # operator <-> comparison must be one value while both names exist
+        if self.operator is None and self.comparison is not None:
+            object.__setattr__(self, "operator", self.comparison)
+        elif self.comparison is None and self.operator is not None:
+            object.__setattr__(self, "comparison", self.operator)
+        elif self.operator != self.comparison:
+            raise ValueError(
+                f"operator ({self.operator!r}) and comparison "
+                f"({self.comparison!r}) diverge; they are one field during the "
+                f"migration and must agree"
+            )
+
         if self.claim_type == "reject" and self.reject_reason is None:
             raise ValueError("reject_reason must be set when claim_type is 'reject'")
         if self.claim_type != "reject" and self.reject_reason is not None:
             raise ValueError("reject_reason should only be set when claim_type is 'reject'")
+
+        if self.metric is not None:
+            allowed = METRIC_WHITELIST.get(self.claim_type, frozenset())
+            if self.metric not in allowed:
+                raise ValueError(
+                    f"metric {self.metric!r} is not whitelisted for "
+                    f"claim_type {self.claim_type!r}"
+                )
+
         return self
 
 
