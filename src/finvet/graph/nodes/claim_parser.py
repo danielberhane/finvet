@@ -1,211 +1,55 @@
-"""Claim parser node for extracting structured information from natural language claims.
+"""Claim parser node — emits the fine-tuned claim parser's 7-field contract:
 
-This parser outputs a simplified 7-field ParsedClaim:
-- claim_type: "sec", "market", "news", or "reject"
-- ticker: Stock ticker symbol
-- value: Numeric value claimed
-- comparison: Directional operator (eq, gt, gte, lt, lte)
-- period: Time period as mentioned
-- currency: Currency code
-- reject_reason: Why claim was rejected (if claim_type is "reject")
+    claim_type | ticker | metric | operator | value | period | reject_reason
 
-The agent will infer the specific metric from the claim text.
+metric is resolved against the vendored whitelist (fail closed to null, in
+which case the agent infers from claim text as before). operator carries the
+seven comparators including approx and range. Raw model output crosses
+normalize_parser_output — the one boundary where it becomes a trusted object.
 """
 
 import json
 import re
+from pathlib import Path
 from typing import Dict
 from langchain_core.messages import SystemMessage, HumanMessage
+from ...config.metrics import METRIC_HARD_DROPS, METRIC_REMAPS, METRIC_WHITELIST
 from ...models.state import VerificationState
 from ...models.claim import ParsedClaim
 from ...llm import create_llm
+from ...audit import get_audit_logger
 from ...utils.exceptions import ParsingError
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-PARSER_SYSTEM_PROMPT = """You are a financial claim parser. Extract structured information from financial claims.
+# The prompt lives with the other system prompts and is rendered at load
+# time: the metric whitelist is injected from config/metrics.py, never
+# hand-copied, so the prompt and the validator cannot drift apart. A copied
+# list would eventually tell the model about metrics the resolver rejects,
+# surfacing as a mysterious residual rate in the claim_parsed audit events.
+_PROMPT_PATH = (
+    Path(__file__).resolve().parents[2] / "agents" / "prompts" / "parser_system.txt"
+)
 
-Safety checks (prompt injection, PII, gibberish) have already been handled upstream.
-Your job is ONLY extraction and classification — never reject for safety reasons.
 
-Return ONLY a valid JSON object with exactly these 7 fields:
+def _render_metric_blocks() -> str:
+    """The three whitelist blocks, grouped by claim_type as the scoping rule."""
+    lines = []
+    for claim_type in ("sec", "market", "news"):
+        metrics = sorted(METRIC_WHITELIST[claim_type])
+        lines.append(f'   ### claim_type == "{claim_type}"  ({len(metrics)})')
+        for i in range(0, len(metrics), 4):
+            lines.append("   " + "  ".join(metrics[i:i + 4]))
+        lines.append("")
+    lines.append('   ### claim_type == "reject": metric must be null.')
+    return "\n".join(lines)
 
-{
-  "claim_type": "sec" | "market" | "news" | "reject",
-  "ticker": "AAPL" | null,
-  "value": 94000000000 | null,
-  "comparison": "eq" | "gt" | "gte" | "lt" | "lte",
-  "period": "Q4 FY2024" | null,
-  "currency": "USD" | null,
-  "reject_reason": null | "non_financial" | "question" | "incomplete"
-}
 
-## Field Definitions:
-
-1. **claim_type** (required):
-   - "sec": Financial statement claims (revenue, earnings, assets, cash flow)
-   - "market": Market data claims (stock price, market cap, P/E ratio)
-   - "news": Event/announcement claims (earnings call, M&A, executive changes)
-   - "reject": Invalid or unverifiable claims (classification only, not safety)
-
-2. **ticker** (optional): Stock ticker symbol
-   - "AAPL" for Apple, "TSLA" for Tesla, "MSFT" for Microsoft, etc.
-   - Set to null if company is not mentioned or unidentifiable
-
-3. **value** (optional): The numeric value being claimed
-   - Convert text to actual numbers: "$94 billion" → 94000000000
-   - Convert percentages: "5%" → 0.05 for ratios, 5 for P/E ratios
-   - Set to null if no value is claimed
-   - IMPORTANT: Relative/ratio terms like "half", "double", "twice", "triple",
-     "ten times", "a third", "a quarter" are NOT dollar values. These are
-     comparative claims with no specific numeric target. Set value to null.
-
-4. **comparison** (required when value is set): How the claimed value relates to the actual value
-   - "eq": equals, was, is, reported, posted (default when no directional language)
-   - "gt": exceeds, above, more than, greater than, over, surpasses, topped
-   - "gte": at least, no less than, minimum of
-   - "lt": below, under, less than, fell below, dropped below
-   - "lte": at most, no more than, maximum of
-   - Default to "eq" when no directional language is present
-
-5. **period** (optional): Time period as mentioned
-   - Keep original format: "Q4 2024", "fiscal 2023", "last quarter"
-   - Set to null for current market data (price, market cap) with no date
-
-6. **currency** (optional): Currency code
-   - "USD", "EUR", "JPY", "GBP", "KRW", etc.
-   - Default to null if not specified (will assume USD for US companies)
-
-7. **reject_reason** (required if claim_type is "reject"):
-   - "non_financial": Valid text but not a financial claim
-   - "question": Asking a question, not making a claim
-   - "incomplete": Missing ticker or value, cannot verify
-
-## Examples:
-
-Input: "Apple's Q4 2024 revenue was $94 billion"
-Output:
-{
-  "claim_type": "sec",
-  "ticker": "AAPL",
-  "value": 94000000000,
-  "comparison": "eq",
-  "period": "Q4 2024",
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Tesla's market cap exceeds $800 billion"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "TSLA",
-  "value": 800000000000,
-  "comparison": "gt",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Apple's stock is above $200"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "AAPL",
-  "value": 200,
-  "comparison": "gt",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Revenue was at least $50 billion"
-Output:
-{
-  "claim_type": "sec",
-  "ticker": null,
-  "value": 50000000000,
-  "comparison": "gte",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "P/E ratio is below 30"
-Output:
-{
-  "claim_type": "market",
-  "ticker": null,
-  "value": 30,
-  "comparison": "lt",
-  "period": null,
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "Apple stock in 2010 was half that of this year"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "AAPL",
-  "value": null,
-  "comparison": null,
-  "period": "2010",
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "Amazon's stock has doubled since 2020"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "AMZN",
-  "value": null,
-  "comparison": null,
-  "period": "2020",
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "Tesla's stock is at $250"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "TSLA",
-  "value": 250,
-  "comparison": "eq",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Microsoft announced layoffs"
-Output:
-{
-  "claim_type": "news",
-  "ticker": "MSFT",
-  "value": null,
-  "comparison": null,
-  "period": null,
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "What is Apple's revenue?"
-Output:
-{
-  "claim_type": "reject",
-  "ticker": "AAPL",
-  "value": null,
-  "comparison": null,
-  "period": null,
-  "currency": null,
-  "reject_reason": "question"
-}
-
-Return ONLY the JSON object. No explanations or markdown."""
+PARSER_SYSTEM_PROMPT = _PROMPT_PATH.read_text().replace(
+    "__METRIC_WHITELIST__", _render_metric_blocks()
+)
 
 # Words that cannot be the start of a company name even when capitalised.
 _NAME_SKIP = {
@@ -302,6 +146,157 @@ def _normalize_ticker(ticker: str, claim_text: str) -> str:
         return ticker
 
 
+def reconcile_reject_fields(parsed_data: Dict) -> Dict:
+    """Make claim_type and reject_reason agree before ParsedClaim validates them.
+
+    The model breaks the pairing on a small fraction of claims: it recognises a
+    claim is unverifiable, sets reject_reason, and leaves claim_type as "sec".
+    ParsedClaim forbids that combination, so the request died with an HTTP 500
+    carrying a Pydantic stack trace — on a claim the model had judged correctly.
+
+    reject_reason is only ever populated when rejecting, so the intent is
+    unambiguous and worth honouring rather than crashing on. The mirror case, a
+    reject with no reason given, is filled with "unspecified": defaulting to
+    "incomplete" would tell the user the claim was missing a ticker or value,
+    which may simply be untrue.
+
+    Returns a new dict; the caller keeps the model's raw output intact.
+    """
+    data = dict(parsed_data)
+    claim_type = data.get("claim_type")
+    reject_reason = data.get("reject_reason")
+
+    if reject_reason is not None and claim_type != "reject":
+        logger.info(
+            f"Parser set reject_reason='{reject_reason}' on claim_type="
+            f"'{claim_type}'; treating as a reject"
+        )
+        data["claim_type"] = "reject"
+    elif claim_type == "reject" and reject_reason is None:
+        logger.info("Parser returned a reject with no reason; recording 'unspecified'")
+        data["reject_reason"] = "unspecified"
+
+    # §8 reject contract: a reject carries nothing but its reason. The model
+    # often leaves the fields it extracted before deciding to reject; nulling
+    # them here is what makes the strict model invariant safe to enforce.
+    if data.get("claim_type") == "reject":
+        for field in ("ticker", "metric", "operator", "value", "period"):
+            data[field] = None
+
+    return data
+
+
+# Metric resolution decision codes, surfaced to the audit trail. A rising
+# "residual" rate in production means the prompt and the vocabulary have
+# drifted apart.
+_METRIC_DECISIONS = (
+    "absent", "whitelist", "remap", "normalized", "hard_drop",
+    "residual", "reject_null",
+)
+
+
+def resolve_metric_field(data: Dict, claim_text: str) -> tuple:
+    """Resolve the raw metric against the vendored vocabulary. Fail closed.
+
+    First hit wins: exact whitelist -> alias remap -> normalise and retry
+    both -> hard-drop -> null. Whitelist MUST precede the drop list: the
+    source vocabulary lists operating_margin in both, and only this ordering
+    keeps it alive (pinned in test_metrics_vocab).
+
+    A wrong metric selects the wrong XBRL concept and produces a confidently
+    wrong verdict; a null metric reverts to the agent inferring from claim
+    text, which is exactly the pre-migration behaviour. So every doubtful
+    path yields null — the layer may only ever add information.
+
+    Returns (new data dict, decision code).
+    """
+    data = dict(data)
+    claim_type = data.get("claim_type")
+    metric = data.get("metric")
+
+    if claim_type == "reject":
+        data["metric"] = None
+        return data, "reject_null"
+    if metric is None:
+        return data, "absent"
+
+    allowed = METRIC_WHITELIST.get(claim_type, frozenset())
+    remaps = METRIC_REMAPS.get(claim_type, {})
+
+    if metric in allowed:
+        return data, "whitelist"
+    if metric in remaps:
+        data["metric"] = remaps[metric]
+        return data, "remap"
+
+    normalised = re.sub(r"[\s\-]+", "_", str(metric).strip().lower())
+    normalised = re.sub(r"_(ratio|expense)$", "", normalised)
+    if normalised in allowed:
+        data["metric"] = normalised
+        return data, "normalized"
+    if normalised in remaps:
+        data["metric"] = remaps[normalised]
+        return data, "remap"
+
+    if metric in METRIC_HARD_DROPS or normalised in METRIC_HARD_DROPS:
+        logger.info(f"Metric '{metric}' is a known trap (segment/KPI/event); nulled")
+        data["metric"] = None
+        return data, "hard_drop"
+
+    logger.info(f"Metric '{metric}' unresolvable for claim_type '{claim_type}'; nulled")
+    data["metric"] = None
+    return data, "residual"
+
+
+def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
+    """Turn raw model JSON into contract-valid data, in load-bearing order.
+
+    Reconciliation runs FIRST because it can change claim_type to "reject",
+    and claim_type scopes the metric whitelist — resolving the metric before
+    reconciling would validate against the wrong class. Operator/value
+    pairing runs last, on the settled fields.
+
+    Returns (data, decisions) where decisions carries one code per concern
+    for the claim_parsed audit event.
+    """
+    # Legacy keys (pre-CONTRACT schema, or a regressing model): comparison is
+    # honoured as operator when operator itself is absent, currency dropped.
+    # This runs BEFORE reconciliation so the §8 nulling of a reject's
+    # companions is final — honouring afterwards would resurrect an operator
+    # on a nulled reject.
+    data = dict(raw)
+    if data.get("operator") is None and data.get("comparison") is not None:
+        data["operator"] = data["comparison"]
+    data.pop("comparison", None)
+    data.pop("currency", None)
+    data = reconcile_reject_fields(data)
+    if data.get("claim_type") != raw.get("claim_type"):
+        reject_decision = "coerced_reject"
+    elif data.get("reject_reason") != raw.get("reject_reason"):
+        reject_decision = "filled_unspecified"
+    else:
+        reject_decision = "none"
+
+    data, metric_decision = resolve_metric_field(data, claim_text)
+
+    # operator non-null iff value non-null (§8). The prompt documents eq as
+    # the default comparator, so a value with no operator is completed rather
+    # than crashed on; an operator with no value anchors nothing and is
+    # dropped.
+    operator_decision = "none"
+    op = data.get("operator")
+    if data.get("claim_type") != "reject":
+        if data.get("value") is not None and op is None:
+            data["operator"] = "eq"
+            operator_decision = "defaulted_eq"
+        elif data.get("value") is None and op is not None:
+            data["operator"] = None
+            operator_decision = "dropped_operator_without_value"
+
+    return data, {"reject": reject_decision, "metric": metric_decision,
+                  "operator": operator_decision}
+
+
 def claim_parser(state: VerificationState) -> Dict:
     """
     Parse natural language claim into simplified 6-field structure.
@@ -359,8 +354,31 @@ def claim_parser(state: VerificationState) -> Dict:
         # Parse JSON
         parsed_data = json.loads(response_text)
 
-        # Create ParsedClaim model (validates fields)
-        parsed_claim = ParsedClaim(**parsed_data)
+        # One boundary between untrusted model output and the trusted claim:
+        # reconcile the reject fields, resolve the metric against the
+        # vocabulary (fail closed), and settle the operator/value pairing.
+        normalized, decisions = normalize_parser_output(parsed_data, claim_text)
+        parsed_claim = ParsedClaim(**normalized)
+
+        # The parse is the pipeline's most consequential single decision and
+        # previously left no audit record at all. This goes through
+        # log_event() — the path that persists — NOT state["audit_events"],
+        # which is write-only (nothing reads it; its event types have zero
+        # rows in the database).
+        get_audit_logger().log_event(
+            event_type="claim_parsed",
+            request_id=request_id,
+            data={
+                "fields": {
+                    f: getattr(parsed_claim, f)
+                    for f in ("claim_type", "ticker", "metric", "operator",
+                              "value", "period", "reject_reason")
+                },
+                "raw": parsed_data,
+                "decisions": decisions,
+                "parser": "deepseek",
+            },
+        )
 
         # Validate ticker for market claims — catches stale/delisted tickers
         # (e.g. BRCM→AVGO, CVH→CVS, INTU→ISRG) that the fine-tuned parser
@@ -379,7 +397,7 @@ def claim_parser(state: VerificationState) -> Dict:
         logger.info(
             f"Claim parsed: type={parsed_claim.claim_type}, "
             f"ticker={parsed_claim.ticker}, value={parsed_claim.value}, "
-            f"comparison={parsed_claim.comparison} "
+            f"operator={parsed_claim.operator} metric={parsed_claim.metric} "
             f"(request: {request_id})"
         )
 

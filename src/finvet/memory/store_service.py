@@ -19,6 +19,9 @@ class ClaimMemoryItem(BaseModel):
 
     claim_text: str
     ticker: Optional[str] = None
+    # Without this, recall cannot tell "Apple revenue FY2024" from "Apple net
+    # income FY2024" beyond raw text similarity.
+    metric: Optional[str] = None
     agent_type: Optional[str] = None
     verdict: str
     confidence: float = Field(ge=0.0, le=1.0)
@@ -38,6 +41,7 @@ class ClaimMemoryMatch(BaseModel):
     similarity: float = Field(ge=0.0, le=1.0)
     agent: Optional[str] = None
     ticker: Optional[str] = None
+    metric: Optional[str] = None
     retrieved_value: Optional[float] = None
     summary: Optional[str] = None
     tools_called: List[str] = Field(default_factory=list)
@@ -57,6 +61,7 @@ class ClaimMemoryService:
         request_id: str,
         claim_text: str,
         ticker: Optional[str] = None,
+        metric: Optional[str] = None,
         agent_type: Optional[str] = None,
         verdict: str = "",
         confidence: float = 0.0,
@@ -72,6 +77,7 @@ class ClaimMemoryService:
             item = ClaimMemoryItem(
                 claim_text=claim_text,
                 ticker=ticker.upper() if ticker else None,
+                metric=metric,
                 agent_type=agent_type,
                 verdict=verdict,
                 confidence=confidence,
@@ -112,6 +118,7 @@ class ClaimMemoryService:
                         similarity=round(item.score, 3),
                         agent=val.get("agent_type"),
                         ticker=val.get("ticker"),
+                        metric=val.get("metric"),
                         retrieved_value=val.get("retrieved_value"),
                         summary=val.get("summary"),
                         tools_called=val.get("tools_called", []),

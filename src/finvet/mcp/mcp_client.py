@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 import httpx
 
 from .. import __version__
+from ..config.settings import settings
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -24,9 +25,9 @@ class MCPClient:
     All calls are synchronous (httpx.Client).
     """
 
-    def __init__(self, base_url: str, timeout: int = 15):
+    def __init__(self, base_url: str, timeout: Optional[float] = None):
         self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
+        self.timeout = settings.sec_mcp_timeout_s if timeout is None else timeout
         self.session_id: Optional[str] = None
         self._client = httpx.Client(timeout=httpx.Timeout(timeout))
 

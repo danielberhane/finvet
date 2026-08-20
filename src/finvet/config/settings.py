@@ -37,12 +37,24 @@ class Settings(BaseSettings):
     # MCP Server URLs (HTTP transport)
     sec_edgar_mcp_url: str = "http://localhost:9870"
 
+    # The SEC EDGAR MCP server walks a filing's XBRL once per requested concept
+    # with no caching, so a call costs roughly 1.25s per concept. The widest
+    # request (income, 12 concepts) measures 15-17s, so a 15s budget failed it
+    # systematically. 60s clears the widest request with room for a slow filing.
+    sec_mcp_timeout_s: float = 60.0
+
     # Finnhub Configuration (Market Data)
     finnhub_api_key: Optional[str] = None
     finnhub_mock_mode: bool = False  # Use mock data instead of real API
 
-    # SEC EDGAR user agent (required by SEC EDGAR API fair access policy)
+    # SEC EDGAR user agent. SEC Fair Access requires a real name + contact address
+    # on every automated request: https://www.sec.gov/os/webmaster-faq#developers
     sec_edgar_user_agent: str = "FinVet (your@email.com)"
+
+    @property
+    def sec_user_agent_is_placeholder(self) -> bool:
+        """True while SEC_EDGAR_USER_AGENT still carries the shipped example contact."""
+        return "your@email.com" in self.sec_edgar_user_agent
 
     # OpenAI Configuration (for embeddings)
     openai_api_key: Optional[str] = None
