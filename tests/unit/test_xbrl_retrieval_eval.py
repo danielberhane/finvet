@@ -46,10 +46,16 @@ class TestStatementTypeFor:
         assert statement_type_for("NetCashProvidedByUsedInOperatingActivities") == "cashflow"
 
     def test_concept_finvet_never_requests_returns_none(self):
-        """ResearchAndDevelopmentExpense is in the parser's metric whitelist but
-        not in CONCEPTS_BY_TYPE — such claims are unverifiable today, and the
-        harness must report that rather than scoring them as failures."""
-        assert statement_type_for("ResearchAndDevelopmentExpense") is None
+        """A concept absent from CONCEPTS_BY_TYPE means the claim is
+        unverifiable — the harness must report that, not score it as failed."""
+        assert statement_type_for("DepreciationDepletionAndAmortization") is None
+
+    def test_rd_and_interest_expense_are_requested(self):
+        """Both are in the parser's sec whitelist, so the schema promises them.
+        They were the 20-of-200-row coverage gap: FinVet never asked SEC for
+        them, and R&D claims fell through to human review as PENDING."""
+        assert statement_type_for("ResearchAndDevelopmentExpense") == "income"
+        assert statement_type_for("InterestExpense") == "income"
 
 
 class TestPeriodKindForFrame:
@@ -129,7 +135,7 @@ class TestBuildCase:
         assert build_case(self._row()).consolidation_sensitive is True
 
     def test_unsupported_concept_is_marked_not_failed(self):
-        case = build_case(self._row(xbrl_fact="us-gaap:ResearchAndDevelopmentExpense"))
+        case = build_case(self._row(xbrl_fact="us-gaap:DepreciationDepletionAndAmortization"))
         assert case.statement_type is None
         assert case.status == STATUS_UNSUPPORTED_CONCEPT
 

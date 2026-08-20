@@ -76,6 +76,11 @@ CONCEPTS_BY_TYPE = {
         "ProfitLoss",
         "EarningsPerShareBasic",
         "EarningsPerShareDiluted",
+        # Both in the claim parser's sec metric whitelist; their absence made
+        # R&D and interest-expense claims structurally unverifiable (20 of 200
+        # real-sourced sec rows fell through to human review as PENDING).
+        "ResearchAndDevelopmentExpense",
+        "InterestExpense",
     ],
     "balance": [
         "Assets",
