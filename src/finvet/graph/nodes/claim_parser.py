@@ -1,19 +1,16 @@
-"""Claim parser node for extracting structured information from natural language claims.
+"""Claim parser node — emits the fine-tuned claim parser's 7-field contract:
 
-This parser outputs a simplified 7-field ParsedClaim:
-- claim_type: "sec", "market", "news", or "reject"
-- ticker: Stock ticker symbol
-- value: Numeric value claimed
-- comparison: Directional operator (eq, gt, gte, lt, lte)
-- period: Time period as mentioned
-- currency: Currency code
-- reject_reason: Why claim was rejected (if claim_type is "reject")
+    claim_type | ticker | metric | operator | value | period | reject_reason
 
-The agent will infer the specific metric from the claim text.
+metric is resolved against the vendored whitelist (fail closed to null, in
+which case the agent infers from claim text as before). operator carries the
+seven comparators including approx and range. Raw model output crosses
+normalize_parser_output — the one boundary where it becomes a trusted object.
 """
 
 import json
 import re
+from pathlib import Path
 from typing import Dict
 from langchain_core.messages import SystemMessage, HumanMessage
 from ...config.metrics import METRIC_HARD_DROPS, METRIC_REMAPS, METRIC_WHITELIST
@@ -27,187 +24,32 @@ from ...utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-PARSER_SYSTEM_PROMPT = """You are a financial claim parser. Extract structured information from financial claims.
+# The prompt lives with the other system prompts and is rendered at load
+# time: the metric whitelist is injected from config/metrics.py, never
+# hand-copied, so the prompt and the validator cannot drift apart. A copied
+# list would eventually tell the model about metrics the resolver rejects,
+# surfacing as a mysterious residual rate in the claim_parsed audit events.
+_PROMPT_PATH = (
+    Path(__file__).resolve().parents[2] / "agents" / "prompts" / "parser_system.txt"
+)
 
-Safety checks (prompt injection, PII, gibberish) have already been handled upstream.
-Your job is ONLY extraction and classification — never reject for safety reasons.
 
-Return ONLY a valid JSON object with exactly these 7 fields:
+def _render_metric_blocks() -> str:
+    """The three whitelist blocks, grouped by claim_type as the scoping rule."""
+    lines = []
+    for claim_type in ("sec", "market", "news"):
+        metrics = sorted(METRIC_WHITELIST[claim_type])
+        lines.append(f'   ### claim_type == "{claim_type}"  ({len(metrics)})')
+        for i in range(0, len(metrics), 4):
+            lines.append("   " + "  ".join(metrics[i:i + 4]))
+        lines.append("")
+    lines.append('   ### claim_type == "reject": metric must be null.')
+    return "\n".join(lines)
 
-{
-  "claim_type": "sec" | "market" | "news" | "reject",
-  "ticker": "AAPL" | null,
-  "value": 94000000000 | null,
-  "comparison": "eq" | "gt" | "gte" | "lt" | "lte",
-  "period": "Q4 FY2024" | null,
-  "currency": "USD" | null,
-  "reject_reason": null | "non_financial" | "question" | "incomplete"
-}
 
-## Field Definitions:
-
-1. **claim_type** (required):
-   - "sec": Financial statement claims (revenue, earnings, assets, cash flow)
-   - "market": Market data claims (stock price, market cap, P/E ratio)
-   - "news": Event/announcement claims (earnings call, M&A, executive changes)
-   - "reject": Invalid or unverifiable claims (classification only, not safety)
-
-2. **ticker** (optional): Stock ticker symbol
-   - "AAPL" for Apple, "TSLA" for Tesla, "MSFT" for Microsoft, etc.
-   - Set to null if company is not mentioned or unidentifiable
-
-3. **value** (optional): The numeric value being claimed
-   - Convert text to actual numbers: "$94 billion" → 94000000000
-   - Convert percentages: "5%" → 0.05 for ratios, 5 for P/E ratios
-   - Set to null if no value is claimed
-   - IMPORTANT: Relative/ratio terms like "half", "double", "twice", "triple",
-     "ten times", "a third", "a quarter" are NOT dollar values. These are
-     comparative claims with no specific numeric target. Set value to null.
-
-4. **comparison** (required when value is set): How the claimed value relates to the actual value
-   - "eq": equals, was, is, reported, posted (default when no directional language)
-   - "gt": exceeds, above, more than, greater than, over, surpasses, topped
-   - "gte": at least, no less than, minimum of
-   - "lt": below, under, less than, fell below, dropped below
-   - "lte": at most, no more than, maximum of
-   - Default to "eq" when no directional language is present
-
-5. **period** (optional): Time period as mentioned
-   - Keep original format: "Q4 2024", "fiscal 2023", "last quarter"
-   - Set to null for current market data (price, market cap) with no date
-
-6. **currency** (optional): Currency code
-   - "USD", "EUR", "JPY", "GBP", "KRW", etc.
-   - Default to null if not specified (will assume USD for US companies)
-
-7. **reject_reason** (required if claim_type is "reject"):
-   - "non_financial": Valid text but not a financial claim
-   - "question": Asking a question, not making a claim
-   - "incomplete": Missing ticker or value, cannot verify
-
-## Examples:
-
-Input: "Apple's Q4 2024 revenue was $94 billion"
-Output:
-{
-  "claim_type": "sec",
-  "ticker": "AAPL",
-  "value": 94000000000,
-  "comparison": "eq",
-  "period": "Q4 2024",
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Tesla's market cap exceeds $800 billion"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "TSLA",
-  "value": 800000000000,
-  "comparison": "gt",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Apple's stock is above $200"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "AAPL",
-  "value": 200,
-  "comparison": "gt",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Revenue was at least $50 billion"
-Output:
-{
-  "claim_type": "sec",
-  "ticker": null,
-  "value": 50000000000,
-  "comparison": "gte",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "P/E ratio is below 30"
-Output:
-{
-  "claim_type": "market",
-  "ticker": null,
-  "value": 30,
-  "comparison": "lt",
-  "period": null,
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "Apple stock in 2010 was half that of this year"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "AAPL",
-  "value": null,
-  "comparison": null,
-  "period": "2010",
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "Amazon's stock has doubled since 2020"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "AMZN",
-  "value": null,
-  "comparison": null,
-  "period": "2020",
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "Tesla's stock is at $250"
-Output:
-{
-  "claim_type": "market",
-  "ticker": "TSLA",
-  "value": 250,
-  "comparison": "eq",
-  "period": null,
-  "currency": "USD",
-  "reject_reason": null
-}
-
-Input: "Microsoft announced layoffs"
-Output:
-{
-  "claim_type": "news",
-  "ticker": "MSFT",
-  "value": null,
-  "comparison": null,
-  "period": null,
-  "currency": null,
-  "reject_reason": null
-}
-
-Input: "What is Apple's revenue?"
-Output:
-{
-  "claim_type": "reject",
-  "ticker": "AAPL",
-  "value": null,
-  "comparison": null,
-  "period": null,
-  "currency": null,
-  "reject_reason": "question"
-}
-
-Return ONLY the JSON object. No explanations or markdown."""
+PARSER_SYSTEM_PROMPT = _PROMPT_PATH.read_text().replace(
+    "__METRIC_WHITELIST__", _render_metric_blocks()
+)
 
 # Words that cannot be the start of a company name even when capitalised.
 _NAME_SKIP = {
@@ -546,7 +388,7 @@ def claim_parser(state: VerificationState) -> Dict:
         logger.info(
             f"Claim parsed: type={parsed_claim.claim_type}, "
             f"ticker={parsed_claim.ticker}, value={parsed_claim.value}, "
-            f"comparison={parsed_claim.comparison} "
+            f"operator={parsed_claim.operator} metric={parsed_claim.metric} "
             f"(request: {request_id})"
         )
 
