@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _rows(name):
-    return [json.loads(l) for l in open(GOLD_DIR / name) if l.strip()]
+    return [json.loads(line) for line in open(GOLD_DIR / name) if line.strip()]
 
 
 @pytest.mark.parametrize("split,expected_total", [
