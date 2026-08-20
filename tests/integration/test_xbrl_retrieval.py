@@ -1,7 +1,7 @@
 """XBRL retrieval accuracy against SEC primary-source values.
 
 Requires the SEC EDGAR MCP server and network access, and reads ground truth by
-path from the sibling claim-parser project. That gold set is contamination-
+path from the external evaluation dataset. That gold set is contamination-
 sensitive and is never copied into this repo — the tests skip when it is absent.
 
 Opt in with:  pytest tests/integration/test_xbrl_retrieval.py -m integration
