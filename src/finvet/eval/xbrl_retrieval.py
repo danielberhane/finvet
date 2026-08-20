@@ -142,11 +142,20 @@ def load_cases(
     gold_path: Path,
     limit: Optional[int] = None,
     concept: Optional[str] = None,
+    fill_path: Optional[Path] = None,
 ) -> List[RetrievalCase]:
     """Select scoreable rows: those carrying both an XBRL fact and a source value.
 
+    `fill_path` is an optional sidecar of values recovered from SEC's frames
+    endpoint for rows the dataset left blank (see finvet.eval.fill_sec_gold). It
+    only ever supplies a value that is missing — a figure the dataset authors
+    sourced themselves is never overridden.
+
     File order is preserved so a subset run is reproducible.
     """
+    from .fill_sec_gold import load_sidecar
+
+    filled = load_sidecar(fill_path)
     cases: List[RetrievalCase] = []
     with open(gold_path) as fh:
         for line in fh:
@@ -155,8 +164,12 @@ def load_cases(
                 continue
             row = json.loads(line)
             prov = row.get("provenance") or {}
-            if not prov.get("xbrl_fact") or prov.get("source_value_exact") is None:
+            if not prov.get("xbrl_fact"):
                 continue
+            if prov.get("source_value_exact") is None:
+                if row.get("id") not in filled:
+                    continue
+                prov["source_value_exact"] = filled[row["id"]]
             case = build_case(row)
             if concept and case.concept != concept:
                 continue
@@ -279,6 +292,8 @@ def main() -> int:
                     help="Real-sourced gold JSONL (default: sibling claim_parser repo)")
     ap.add_argument("--limit", type=int, help="Score only the first N cases")
     ap.add_argument("--concept", help="Only score this XBRL concept (bare name)")
+    ap.add_argument("--fill", type=Path,
+                    help="Sidecar of values recovered by finvet.eval.fill_sec_gold")
     ap.add_argument("--report", type=Path, help="Write the full JSON report here")
     ap.add_argument("--delay", type=float, default=0.2,
                     help="Seconds between cases, for SEC fair access (default: 0.2)")
@@ -289,7 +304,8 @@ def main() -> int:
               f"This harness needs the claim-parser project's real-sourced held-out set.")
         return 2
 
-    cases = load_cases(args.gold, limit=args.limit, concept=args.concept)
+    cases = load_cases(args.gold, limit=args.limit, concept=args.concept,
+                       fill_path=args.fill)
     if not cases:
         print("No scoreable cases matched.")
         return 2
