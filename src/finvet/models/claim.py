@@ -1,7 +1,7 @@
 """Data models for claims and parsed claim information."""
 
 from typing import Literal, Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..config.metrics import METRIC_WHITELIST
 
@@ -16,11 +16,14 @@ class ParsedClaim(BaseModel):
 
         claim_type | ticker | metric | operator | value | period | reject_reason
 
-    EXPAND phase of the migration (plans/2026-08-20_1603.md): `comparison`
-    remains as a mirror of `operator` and `currency` is still accepted, so
-    every existing reader keeps working while new writers use the contract
-    names. Both are removed at CONTRACT.
+    CONTRACT phase completed 2026-08-20: `comparison` and `currency` are gone
+    and unknown fields are forbidden — a stray legacy kwarg raises instead of
+    being silently ignored. The boundary (normalize_parser_output) strips
+    legacy keys from raw model output before construction; the model itself
+    stays strict.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     claim_type: Literal["sec", "market", "news", "reject"] = Field(
         ...,
@@ -51,20 +54,9 @@ class ParsedClaim(BaseModel):
                     "for range claims, the band's midpoint"
     )
 
-    comparison: Optional[Operator] = Field(
-        None,
-        description="DEPRECATED mirror of `operator`, kept through the EXPAND "
-                    "and MIGRATE phases so pre-migration readers keep working"
-    )
-
     period: Optional[str] = Field(
         None,
         description="Time period as mentioned (e.g., 'Q4 FY2024', 'fiscal 2023')"
-    )
-
-    currency: Optional[str] = Field(
-        None,
-        description="DEPRECATED — not part of the parser contract; removed at CONTRACT"
     )
 
     reject_reason: Optional[str] = Field(
@@ -79,25 +71,10 @@ class ParsedClaim(BaseModel):
         """The contract's cross-field rules, in one validator so their order
         is explicit.
 
-        Enforced here: operator/comparison mirroring, the reject/reason
-        pairing, metric scoping, the §8 reject contract (a reject carries
-        nothing but its reason), and operator-iff-value pairing. The last two
-        became safe to enforce when the stage-04 boundary started nulling a
-        coerced reject's companions and defaulting a bare value to eq — before
-        that, they were the 500-crash class 05d8300 fixed.
+        Enforced here: the reject/reason pairing, metric scoping, the §8
+        reject contract (a reject carries nothing but its reason), and
+        operator-iff-value pairing.
         """
-        # operator <-> comparison must be one value while both names exist
-        if self.operator is None and self.comparison is not None:
-            object.__setattr__(self, "operator", self.comparison)
-        elif self.comparison is None and self.operator is not None:
-            object.__setattr__(self, "comparison", self.operator)
-        elif self.operator != self.comparison:
-            raise ValueError(
-                f"operator ({self.operator!r}) and comparison "
-                f"({self.comparison!r}) diverge; they are one field during the "
-                f"migration and must agree"
-            )
-
         if self.claim_type == "reject" and self.reject_reason is None:
             raise ValueError("reject_reason must be set when claim_type is 'reject'")
         if self.claim_type != "reject" and self.reject_reason is not None:
@@ -112,8 +89,8 @@ class ParsedClaim(BaseModel):
                 )
 
         if self.claim_type == "reject":
-            stray = [f for f in ("ticker", "metric", "operator", "comparison",
-                                 "value", "period", "currency")
+            stray = [f for f in ("ticker", "metric", "operator",
+                                 "value", "period")
                      if getattr(self, f) is not None]
             if stray:
                 raise ValueError(

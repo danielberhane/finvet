@@ -23,7 +23,7 @@ def _make_parsed(claim_type="sec", **kwargs):
     its own."""
     if claim_type == "reject":
         return ParsedClaim(claim_type="reject", reject_reason="non_financial", **kwargs)
-    if kwargs.get("comparison") is not None and "value" not in kwargs:
+    if kwargs.get("operator") is not None and "value" not in kwargs:
         kwargs["value"] = 1_000_000_000.0
     return ParsedClaim(claim_type=claim_type, ticker="AAPL", **kwargs)
 
@@ -65,7 +65,7 @@ class TestSimpleConsensus:
                 "confidence": 0.85,
                 "tools_called": ["get_income_statement"],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["verdict"] == "SUPPORTS"
@@ -79,7 +79,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 1.0,
                 "tools_called": [],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["confidence"] > 0.80
@@ -93,7 +93,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 25.0,
                 "tools_called": [],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["confidence"] < 0.80
@@ -120,7 +120,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 0.5,
                 "tools_called": ["t1", "t2", "t3"],
             },
-            "parsed_claim": _make_parsed("sec", comparison="eq"),
+            "parsed_claim": _make_parsed("sec", operator="eq"),
         }
         result = _simple_consensus(state)
         assert result["confidence"] <= CONSENSUS_MAX_CONFIDENCE
@@ -134,7 +134,7 @@ class TestSimpleConsensus:
                 "magnitude_difference_percent": 50.0,
                 "tools_called": [],
             },
-            "parsed_claim": _make_parsed("sec", comparison="gt"),
+            "parsed_claim": _make_parsed("sec", operator="gt"),
         }
         result = _simple_consensus(state)
         # No penalty applied, confidence unchanged

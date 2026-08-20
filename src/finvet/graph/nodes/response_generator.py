@@ -336,11 +336,6 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
     parsed_claim = state.get("parsed_claim")
 
     operator = getattr(parsed_claim, "operator", None) if parsed_claim else None
-    # comparison is emitted alongside operator through the migration: 115
-    # persisted audit rows key on it inside full_trace, the trail is
-    # append-only with a tamper hash, and backfill is impossible. It drops at
-    # CONTRACT, dated in that commit.
-    comparison = (getattr(parsed_claim, "comparison", None) or operator) if parsed_claim else None
     metric = getattr(parsed_claim, "metric", None) if parsed_claim else None
 
     metadata = {
@@ -354,7 +349,6 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         "total_tokens_used": state.get("total_tokens_used", 0),
         "retrieved_value": agent_evidence.get("retrieved_value"),
         "claimed_value": parsed_claim.value if parsed_claim else None,
-        "comparison": comparison,
         "operator": operator,
         "metric": metric,
         "magnitude_difference_percent": agent_evidence.get("magnitude_difference_percent"),
