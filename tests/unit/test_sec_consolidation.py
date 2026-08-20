@@ -9,7 +9,6 @@ which turned a true claim into a confident REFUTES.
 
 from unittest.mock import patch
 
-import pytest
 
 from finvet.mcp.sec_edgar import (
     CONSOLIDATION_SENSITIVE_CONCEPTS,

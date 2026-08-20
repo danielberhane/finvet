@@ -1,6 +1,6 @@
 """Tests for settings configuration."""
 
-from finvet.config.settings import Settings, LLMConfig, settings
+from finvet.config.settings import LLMConfig, settings
 
 
 class TestLLMConfig:
