@@ -249,11 +249,37 @@ class SECEdgarClient:
                 payload, accession_number, period_end, period
             )
             if value is None:
-                logger.info(
-                    f"{item.line_item}: no entity-wide fact for period {period_end} "
-                    f"({period}); keeping unverified filing value {item.value:,.0f} "
-                    f"for period {item.period_end}"
+                # The requested period matched nothing — the fiscal/calendar
+                # misalignment case: period_resolver maps "fiscal 2024" to
+                # 2024-12-31 while e.g. Apple's year ends 2024-09-28. Fall
+                # back to the pre-period-fix consolidation logic for the
+                # item's OWN period, or the segment-shadowing correction is
+                # silently lost with it (live regression: Apple $294.866B
+                # Products reached the verdict and refuted a true claim).
+                if item.line_item not in CONSOLIDATION_SENSITIVE_CONCEPTS:
+                    # None keeps its meaning: not consolidation-sensitive.
+                    item.consolidated = None
+                    continue
+                fallback = _select_entity_wide_fact(
+                    payload, accession_number, item.period_end
                 )
+                if fallback is None:
+                    logger.info(
+                        f"{item.line_item}: no entity-wide fact for requested "
+                        f"period {period_end} ({period}) nor for the filing's "
+                        f"own {item.period_end}; keeping unverified value "
+                        f"{item.value:,.0f}"
+                    )
+                    continue
+                if fallback != item.value:
+                    logger.info(
+                        f"{item.line_item}: requested period {period_end} "
+                        f"unmatched; entity-wide {fallback:,.0f} for the "
+                        f"filing's own {item.period_end} supersedes "
+                        f"{item.value:,.0f}"
+                    )
+                item.value = fallback
+                item.consolidated = True
                 continue
 
             if value != item.value or item.period_end != period_end:

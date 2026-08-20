@@ -136,3 +136,66 @@ class TestGetFinancialsTargetsThePeriod:
         item = next(i for i in items if i.line_item == "NetIncomeLoss")
         assert item.value == 1_895_000_000.0
         assert item.period_end == "2025-06-30"
+
+
+class TestRequestPeriodMissFallsBackToConsolidation:
+    """Regression: Apple, 'fiscal 2024'. period_resolver maps fiscal years to
+    calendar dates, so the requested end (2024-12-31) matches nothing for a
+    company whose year ends 2024-09-28. The original period fix kept the raw
+    MCP value on that miss — skipping the consolidation overlay entirely —
+    and the segment-shadowed Products figure ($294.866B) reached the verdict:
+    REFUTES 0.95 against a true $391B claim, live.
+
+    On a miss, each item now falls back to the pre-period-fix logic: confirm
+    the entity-wide fact for the item's OWN period. The fiscal/calendar
+    misalignment itself remains tracked (F-05) — this restores the safety
+    net underneath it."""
+
+    APPLE_MCP = {
+        "success": True, "cik": 320193,
+        "accession_number": "0000320193-24-000123",
+        "concepts": {
+            "RevenueFromContractWithCustomerExcludingAssessedTax": {
+                "value": 294_866_000_000.0, "unit": "USD",
+                "context": "c-13", "period": "2024-09-28",   # Products segment
+            },
+            "NetIncomeLoss": {
+                "value": 93_736_000_000.0, "unit": "USD",
+                "context": "c-1", "period": "2024-09-28",
+            },
+        },
+        "filing_reference": {"filing_date": "2024-11-01"},
+    }
+    APPLE_CC = {"units": {"USD": [
+        {"start": "2023-10-01", "end": "2024-09-28", "val": 391_035_000_000,
+         "accn": "0000320193-24-000123", "form": "10-K"},
+    ]}}
+
+    def _get(self, cc_payload):
+        from unittest.mock import patch
+        client = SECEdgarClient()
+        with patch.object(client._mcp, "call_tool", return_value=self.APPLE_MCP), \
+             patch.object(client, "_fetch_company_concept", return_value=cc_payload):
+            items = client.get_financials(
+                "0000320193", "0000320193-24-000123", "income",
+                period="annual", period_end="2024-12-31",   # the calendar miss
+            )
+        return {i.line_item: i for i in items}
+
+    def test_segment_shadowed_value_is_still_corrected_on_a_miss(self):
+        revenue = self._get(self.APPLE_CC)[
+            "RevenueFromContractWithCustomerExcludingAssessedTax"]
+        assert revenue.value == 391_035_000_000
+        assert revenue.consolidated is True
+        assert revenue.period_end == "2024-09-28"   # the honest period
+
+    def test_non_sensitive_concept_keeps_flag_semantics_on_a_miss(self):
+        """None means 'not consolidation-sensitive' everywhere else; a miss
+        must not relabel NetIncomeLoss as unverified."""
+        assert self._get(self.APPLE_CC)["NetIncomeLoss"].consolidated is None
+
+    def test_nothing_entity_wide_anywhere_stays_flagged(self):
+        revenue = self._get(None)[
+            "RevenueFromContractWithCustomerExcludingAssessedTax"]
+        assert revenue.value == 294_866_000_000.0
+        assert revenue.consolidated is False
