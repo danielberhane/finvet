@@ -119,3 +119,16 @@ class TestPromptExamplesAreNotEvalRows:
                     for line in open(GOLD_DIR / split)}
             leaked = [e for e in examples if norm(e) in rows]
             assert not leaked, f"prompt examples found in {split}: {leaked}"
+
+
+class TestBurnedRowsRegistry:
+
+    def test_registry_names_the_known_incident_rows(self):
+        from finvet.eval.exclusions import burned_ids
+        assert burned_ids("test.jsonl") == {1, 11, 18}
+        assert burned_ids("val.jsonl") == {257}
+        assert burned_ids("heldout_real_sourced.jsonl") == {12}
+
+    def test_unknown_split_burns_nothing(self):
+        from finvet.eval.exclusions import burned_ids
+        assert burned_ids("train.jsonl") == frozenset()
