@@ -8,6 +8,15 @@ from ...utils.helpers import get_confidence_label, build_preliminary_analysis
 
 logger = get_logger(__name__)
 
+# Dispositions that mean the run ended without a verdict on the claim's merits.
+_REJECT_DISPOSITIONS = {"rejected_parser", "rejected_human", "rejected_input_guard"}
+
+_REJECT_REASON_MESSAGES = {
+    "non_financial": "This is not a financial claim that can be verified.",
+    "question": "This is a question, not a claim. Please rephrase as a statement.",
+    "incomplete": "The claim is missing required information (ticker or value).",
+}
+
 
 def response_generator(state: VerificationState) -> Dict:
     """
@@ -40,8 +49,15 @@ def response_generator(state: VerificationState) -> Dict:
     if hitl_required and hitl_decision is None:
         return _generate_hitl_response(state)
 
-    # If rejected claim, return rejection response
-    if parsed_claim and parsed_claim.claim_type == "reject":
+    # If the run was rejected, return a rejection response. Keyed on disposition
+    # so this covers a human reviewer's reject (where claim_type is still
+    # "sec"/"market"/"news") and not just the parser reject path. The claim_type
+    # check remains as a fallback for states that never passed through
+    # reject_handler — e.g. a checkpoint written before disposition existed.
+    if (
+        state.get("disposition") in _REJECT_DISPOSITIONS
+        or (parsed_claim and parsed_claim.claim_type == "reject")
+    ):
         return _generate_rejection_response(state)
 
     # If no agent evidence, return error
@@ -122,6 +138,8 @@ def _generate_hitl_response(state: VerificationState) -> Dict:
             "hitl_triggers": hitl_triggers,
             "agent": agent_type,
             "tools_called": preliminary_analysis["tools_called"],
+            "disposition": "pending_review",
+            "disposition_detail": ", ".join(hitl_triggers) or None,
         },
         "preliminary_analysis": preliminary_analysis,
     }
@@ -133,20 +151,26 @@ def _generate_hitl_response(state: VerificationState) -> Dict:
 
 
 def _generate_rejection_response(state: VerificationState) -> Dict:
-    """Generate response for rejected claims."""
+    """Generate response for rejected claims (parser reject or human reject)."""
     request_id = state.get("request_id", "unknown")
     claim_raw = state.get("claim_raw", "")
     parsed_claim = state.get("parsed_claim")
 
-    reject_reason = parsed_claim.reject_reason if parsed_claim else "unknown"
+    # Fall back to the parsed claim for states that predate disposition.
+    disposition = state.get("disposition") or "rejected_parser"
+    detail = state.get("disposition_detail") or getattr(
+        parsed_claim, "reject_reason", None
+    )
 
-    reason_messages = {
-        "gibberish": "The input appears to be nonsensical text.",
-        "non_financial": "This is not a financial claim that can be verified.",
-        "question": "This is a question, not a claim. Please rephrase as a statement.",
-        "adversarial": "Invalid input detected.",
-        "incomplete": "The claim is missing required information (ticker or value).",
-    }
+    if disposition == "rejected_human":
+        summary = "Claim rejected by human reviewer."
+        explanation = detail or "A human reviewer rejected this claim during review."
+    else:
+        reject_reason = detail or "unknown"
+        summary = f"Claim rejected: {reject_reason}"
+        explanation = _REJECT_REASON_MESSAGES.get(
+            reject_reason, "Claim could not be processed."
+        )
 
     final_response = {
         "status": "rejected",
@@ -155,11 +179,17 @@ def _generate_rejection_response(state: VerificationState) -> Dict:
         "verdict": "REJECTED",
         "confidence": 1.0,
         "confidence_label": "HIGH",
-        "summary": f"Claim rejected: {reject_reason}",
-        "explanation": reason_messages.get(reject_reason, "Claim could not be processed."),
+        "summary": summary,
+        "explanation": explanation,
         "sources": [],
         "disclosures": [],
-        "metadata": {"reject_reason": reject_reason},
+        "metadata": {
+            # Kept for backward compatibility; only meaningful for a parser
+            # reject, where detail is a ParsedClaim.reject_reason value.
+            "reject_reason": detail if disposition == "rejected_parser" else None,
+            "disposition": disposition,
+            "disposition_detail": detail,
+        },
     }
 
     return {
@@ -305,10 +335,18 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
     execution_end = datetime.utcnow().isoformat()
     parsed_claim = state.get("parsed_claim")
 
-    comparison = getattr(parsed_claim, "comparison", None) if parsed_claim else None
+    operator = getattr(parsed_claim, "operator", None) if parsed_claim else None
+    # comparison is emitted alongside operator through the migration: 115
+    # persisted audit rows key on it inside full_trace, the trail is
+    # append-only with a tamper hash, and backfill is impossible. It drops at
+    # CONTRACT, dated in that commit.
+    comparison = (getattr(parsed_claim, "comparison", None) or operator) if parsed_claim else None
+    metric = getattr(parsed_claim, "metric", None) if parsed_claim else None
 
     metadata = {
         "agent": agent_evidence.get("agent"),
+        "disposition": state.get("disposition") or "released",
+        "disposition_detail": state.get("disposition_detail"),
         "tools_called": agent_evidence.get("tools_called", []),
         "tool_calls_detail": agent_evidence.get("tool_calls_detail", []),
         "execution_time_ms": agent_evidence.get("execution_time_ms", 0),
@@ -317,6 +355,8 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         "retrieved_value": agent_evidence.get("retrieved_value"),
         "claimed_value": parsed_claim.value if parsed_claim else None,
         "comparison": comparison,
+        "operator": operator,
+        "metric": metric,
         "magnitude_difference_percent": agent_evidence.get("magnitude_difference_percent"),
         "source_description": agent_evidence.get("source_description", ""),
     }

@@ -192,3 +192,125 @@ class TestResponseGenerator:
         assert final["status"] == "success"
         assert final["verdict"] == "SUPPORTS"
         assert final["confidence"] == 0.92
+
+
+class TestRejectDisposition:
+    """A human reject must produce a rejection response, not a success one.
+
+    Regression: a human reject has hitl_decision="reject" (so the pending branch
+    is skipped) and a claim_type of "sec"/"market"/"news" (so the old
+    claim_type == "reject" check was skipped). It fell into the success branch
+    and stored status="success" with the summary "Insufficient evidence from SEC
+    to verify this claim." while the audit verdict column read REJECTED.
+    """
+
+    def _human_reject_state(self):
+        return {
+            "request_id": "test_hr",
+            "claim_raw": "Apple Q4 2024 revenue was $94B",
+            "parsed_claim": _make_parsed("sec", value=94e9, comparison="eq"),
+            "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS", "reasoning": "..."},
+            "verdict": "REJECTED",
+            "confidence": 1.0,
+            "hitl_required": True,
+            "hitl_decision": "reject",
+            "disposition": "rejected_human",
+            "disposition_detail": "Agent misread the restatement",
+        }
+
+    def test_human_reject_is_not_a_success_response(self):
+        final = response_generator(self._human_reject_state())["final_response"]
+        assert final["status"] == "rejected"
+        assert final["verdict"] == "REJECTED"
+        assert "Insufficient evidence" not in final["summary"]
+
+    def test_human_reject_surfaces_reviewer_reasoning(self):
+        final = response_generator(self._human_reject_state())["final_response"]
+        assert "human reviewer" in final["summary"].lower()
+        assert final["explanation"] == "Agent misread the restatement"
+        assert final["metadata"]["disposition"] == "rejected_human"
+
+    def test_parser_reject_keeps_its_reason(self):
+        final = response_generator({
+            "request_id": "test_pr",
+            "claim_raw": "What is the price?",
+            "parsed_claim": _make_parsed("reject"),
+            "disposition": "rejected_parser",
+            "disposition_detail": "non_financial",
+        })["final_response"]
+        assert final["status"] == "rejected"
+        assert final["metadata"]["disposition"] == "rejected_parser"
+        assert "not a financial claim" in final["explanation"].lower()
+
+    def test_parser_reject_without_disposition_still_works(self):
+        """States predating disposition (older checkpoints) must not regress."""
+        final = response_generator({
+            "request_id": "test_legacy",
+            "claim_raw": "What is the price?",
+            "parsed_claim": _make_parsed("reject"),
+        })["final_response"]
+        assert final["status"] == "rejected"
+        assert final["verdict"] == "REJECTED"
+        assert final["metadata"]["disposition"] == "rejected_parser"
+
+    def test_released_response_is_labelled_released(self):
+        final = response_generator({
+            "request_id": "test_ok",
+            "claim_raw": "Apple revenue was $94B",
+            "parsed_claim": _make_parsed("sec", value=94e9, comparison="eq"),
+            "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS", "reasoning": "ok"},
+            "verdict": "SUPPORTS",
+            "confidence": 0.9,
+        })["final_response"]
+        assert final["status"] == "success"
+        assert final["metadata"]["disposition"] == "released"
+
+    def test_pending_review_is_labelled_pending(self):
+        final = response_generator({
+            "request_id": "test_pend",
+            "claim_raw": "Apple revenue was $94B",
+            "parsed_claim": _make_parsed("sec", value=94e9, comparison="eq"),
+            "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS", "reasoning": "?"},
+            "verdict": "SUPPORTS",
+            "confidence": 0.4,
+            "hitl_required": True,
+            "hitl_triggers": ["low_confidence"],
+        })["final_response"]
+        assert final["status"] == "pending_review"
+        assert final["metadata"]["disposition"] == "pending_review"
+
+
+class TestMetadataEmitsTheContract:
+    """Stage 05, reader 3: the public payload carries operator and metric.
+
+    comparison is emitted ALONGSIDE operator, not replaced: 115 persisted
+    audit_executions rows key on "comparison" inside full_trace, the trail is
+    append-only with a tamper hash, and backfill is impossible. Both keys stay
+    through EXPAND and MIGRATE; comparison drops only at CONTRACT."""
+
+    def _metadata(self, **claim_kwargs):
+        from finvet.models.claim import ParsedClaim
+        state = {
+            "request_id": "t", "claim_raw": "c", "verdict": "SUPPORTS",
+            "confidence": 0.9,
+            "parsed_claim": ParsedClaim(claim_type="sec", ticker="AAPL",
+                                        **claim_kwargs),
+            "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS",
+                               "confidence": 0.9, "reasoning": "r",
+                               "tools_called": [], "tool_calls_detail": [],
+                               "execution_time_ms": 1},
+        }
+        return response_generator(state)["final_response"]["metadata"]
+
+    def test_operator_and_comparison_both_present_and_equal(self):
+        meta = self._metadata(value=1e9, operator="approx")
+        assert meta["operator"] == "approx"
+        assert meta["comparison"] == "approx"
+
+    def test_metric_is_in_the_payload(self):
+        meta = self._metadata(metric="revenue")
+        assert meta["metric"] == "revenue"
+
+    def test_absent_metric_is_an_explicit_null(self):
+        meta = self._metadata()
+        assert "metric" in meta and meta["metric"] is None
