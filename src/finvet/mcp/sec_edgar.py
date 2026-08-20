@@ -1,5 +1,6 @@
 """SEC EDGAR MCP server adapter — typed methods backed by the real MCP server."""
 
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -178,12 +179,20 @@ class SECEdgarClient:
         accession_number: Optional[str] = None,
         statement_type: str = "income",
         period: str = "quarterly",
+        period_end: Optional[str] = None,
     ) -> List[FinancialItem]:
         """Extract financial data from a specific filing using XBRL concepts.
 
         Uses get_xbrl_concepts on the MCP server (not get_financials) because
         get_xbrl_concepts accepts an accession_number for period-specific data
         while the server's get_financials only returns the latest filing.
+
+        The MCP tool takes no period argument and returns a single, arbitrary
+        XBRL context per concept, so a filing's comparative years come back
+        interchangeably. Pass `period_end` (from the resolved canonical period)
+        to re-read each concept from SEC's companyconcept feed, which carries
+        every fact with its own start and end dates and can therefore be
+        targeted. Without it the legacy behaviour is preserved.
         """
         # Normalise cashflow → cashflow key
         key = "cashflow" if statement_type in ("cash", "cashflow") else statement_type
@@ -197,11 +206,63 @@ class SECEdgarClient:
         items = self._parse_xbrl_result(result)
 
         ref = result if isinstance(result, dict) else {}
-        return self._resolve_consolidated(
-            items,
-            cik=ref.get("cik"),
-            accession_number=ref.get("accession_number") or accession_number,
-        )
+        cik = ref.get("cik") or identifier
+        accn = ref.get("accession_number") or accession_number
+
+        if period_end:
+            return self._resolve_period(items, cik, accn, period_end, period)
+
+        return self._resolve_consolidated(items, cik=cik, accession_number=accn)
+
+    # -- period-targeted resolution ------------------------------------------
+
+    def _resolve_period(
+        self,
+        items: List[FinancialItem],
+        cik: Optional[Any],
+        accession_number: Optional[str],
+        period_end: str,
+        period: str,
+    ) -> List[FinancialItem]:
+        """Re-read every concept for the requested period end and duration.
+
+        companyconcept exposes undimensioned facts only, so this subsumes the
+        consolidated-fact overlay: a value confirmed here is both entity-wide
+        and for the period actually asked about. Anything that cannot be
+        confirmed keeps the filing value but is flagged rather than trusted.
+        """
+        for item in items:
+            item.consolidated = False
+            if cik is None:
+                continue
+
+            payload = self._fetch_company_concept(cik, item.line_item)
+            if not payload:
+                continue
+
+            value = _select_fact_for_period(
+                payload, accession_number, period_end, period
+            )
+            if value is None:
+                logger.info(
+                    f"{item.line_item}: no entity-wide fact for period {period_end} "
+                    f"({period}); keeping unverified filing value {item.value:,.0f} "
+                    f"for period {item.period_end}"
+                )
+                continue
+
+            if value != item.value or item.period_end != period_end:
+                logger.info(
+                    f"{item.line_item}: filing fact {item.value:,.0f} "
+                    f"(period {item.period_end}) superseded by entity-wide "
+                    f"{value:,.0f} for requested period {period_end}"
+                )
+            item.value = value
+            item.period_end = period_end
+            item.period = period_end
+            item.consolidated = True
+
+        return items
 
     # -- consolidated-fact resolution ----------------------------------------
 
@@ -253,6 +314,12 @@ class SECEdgarClient:
         url = SEC_COMPANY_CONCEPT_URL.format(
             cik=str(cik).lstrip("0").zfill(10), concept=concept
         )
+        if settings.sec_user_agent_is_placeholder:
+            logger.warning(
+                "SEC_EDGAR_USER_AGENT is still the placeholder contact. SEC Fair Access "
+                "requires a real name and email on automated requests; set it in .env."
+            )
+
         payload: Optional[Dict] = None
         try:
             resp = httpx.get(
@@ -341,6 +408,71 @@ def _select_entity_wide_fact(
     matches = [f for f in units if f.get("end") == period_end and f.get("val") is not None]
     if not matches:
         return None
+
+    same_filing = [f for f in matches if f.get("accn") == accession_number]
+    chosen = same_filing or matches
+    try:
+        return float(chosen[0]["val"])
+    except (TypeError, ValueError):
+        return None
+
+
+# Expected fact duration in days, by period kind. A single end date does not
+# identify a fact: a 10-Q tags both the three-month quarter and the cumulative
+# year-to-date figure with the same end, and picking the wrong one silently
+# substitutes one for the other.
+_PERIOD_DURATION_DAYS = {
+    "quarterly": (75, 105),
+    "half_year": (165, 195),
+    "annual": (330, 400),
+}
+
+
+def _fact_duration_days(fact: Dict) -> Optional[int]:
+    """Days a duration fact covers, or None for an instant (balance-sheet) fact."""
+    start, end = fact.get("start"), fact.get("end")
+    if not start or not end:
+        return None
+    try:
+        return (date.fromisoformat(end) - date.fromisoformat(start)).days
+    except (TypeError, ValueError):
+        return None
+
+
+def _select_fact_for_period(
+    payload: Dict,
+    accession_number: Optional[str],
+    period_end: Optional[str],
+    period: str,
+) -> Optional[float]:
+    """Pick the entity-wide fact for a specific period end AND duration.
+
+    companyconcept carries only undimensioned facts, but several of them can
+    share an end date at different durations. Both must match. Facts from the
+    filing under inspection win ties; otherwise any filing reporting the same
+    period is acceptable. Returns None rather than guessing.
+    """
+    if not period_end:
+        return None
+
+    units = payload.get("units") or {}
+    facts = [f for unit in units.values() for f in unit if isinstance(f, dict)]
+    matches = [f for f in facts if f.get("end") == period_end and f.get("val") is not None]
+    if not matches:
+        return None
+
+    window = _PERIOD_DURATION_DAYS.get(period)
+    if window:
+        lo, hi = window
+        sized = [
+            f for f in matches
+            if (d := _fact_duration_days(f)) is None or lo <= d <= hi
+        ]
+        # An instant fact has no duration to check; a duration fact outside the
+        # window is the wrong span and must not be substituted.
+        if not sized:
+            return None
+        matches = sized
 
     same_filing = [f for f in matches if f.get("accn") == accession_number]
     chosen = same_filing or matches
