@@ -80,13 +80,11 @@ class ParsedClaim(BaseModel):
         is explicit.
 
         Enforced here: operator/comparison mirroring, the reject/reason
-        pairing, and metric scoping. Two further §8 invariants — a reject
-        nulls every other field, and operator is non-null iff value is — are
-        deliberately NOT enforced until the stage-04 boundary normalisation
-        lands: reconcile_reject_fields currently coerces claim_type without
-        nulling the other fields, and the model can emit a comparison without
-        a value, so enforcing them now would 500 the live path (the exact bug
-        05d8300 fixed).
+        pairing, metric scoping, the §8 reject contract (a reject carries
+        nothing but its reason), and operator-iff-value pairing. The last two
+        became safe to enforce when the stage-04 boundary started nulling a
+        coerced reject's companions and defaulting a bare value to eq — before
+        that, they were the 500-crash class 05d8300 fixed.
         """
         # operator <-> comparison must be one value while both names exist
         if self.operator is None and self.comparison is not None:
@@ -111,6 +109,22 @@ class ParsedClaim(BaseModel):
                 raise ValueError(
                     f"metric {self.metric!r} is not whitelisted for "
                     f"claim_type {self.claim_type!r}"
+                )
+
+        if self.claim_type == "reject":
+            stray = [f for f in ("ticker", "metric", "operator", "comparison",
+                                 "value", "period", "currency")
+                     if getattr(self, f) is not None]
+            if stray:
+                raise ValueError(
+                    f"a reject carries nothing but its reason; stray fields: {stray}"
+                )
+        else:
+            if (self.value is None) != (self.operator is None):
+                raise ValueError(
+                    "operator and value come as a pair: a value needs a "
+                    "comparator and a comparator needs a value "
+                    f"(value={self.value!r}, operator={self.operator!r})"
                 )
 
         return self
