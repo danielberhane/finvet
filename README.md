@@ -39,7 +39,9 @@ A 12-node LangGraph `StateGraph`. Three domain agents fan out by claim type, eac
 with its own tools; their evidence is reconciled, guarded, and — when confidence is low — paused
 for human review.
 
-![Architecture](docs/diagrams/finvet_engineering.svg)
+<p align="center">
+  <img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="800">
+</p>
 
 ```
 input_guardrails → claim_parser → ┬─ period_resolver → sec_agent ─┐
@@ -55,8 +57,7 @@ input_guardrails → claim_parser → ┬─ period_resolver → sec_agent ─�
 | **Market** | Prices, valuation, market cap | Finnhub |
 | **News** | Events, announcements, macro indicators | Tavily search, FRED |
 
-Deeper dives: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · full StateGraph in
-[`docs/diagrams/finvet_engineering.svg`](docs/diagrams/finvet_engineering.svg).
+Deeper dive: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
