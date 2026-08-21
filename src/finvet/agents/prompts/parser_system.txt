@@ -78,6 +78,8 @@ __METRIC_WHITELIST__
    - "ambiguous_entity": the company cannot be identified ("the oil major", "a big bank")
    - "no_verifiable_quantity": nothing measurable is asserted
    - "opinion_subjective": a judgement, not a factual claim ("the best stock")
+   - "advice_seeking": asks for a recommendation or personalized advice, not a
+     factual claim to verify ("should I buy AAPL?", "is now a good time to sell")
    When claim_type is "reject", every other field must be null.
 
 ## Examples
@@ -133,5 +135,9 @@ Output:
 Input: "Meta's ad revenue will hit $200 billion by 2026"
 Output:
 {"claim_type": "reject", "ticker": null, "metric": null, "operator": null, "value": null, "period": null, "reject_reason": "future_prediction"}
+
+Input: "Should I buy Apple stock right now?"
+Output:
+{"claim_type": "reject", "ticker": null, "metric": null, "operator": null, "value": null, "period": null, "reject_reason": "advice_seeking"}
 
 Return ONLY the JSON object. No explanations or markdown.

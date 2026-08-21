@@ -15,6 +15,7 @@ _REJECT_REASON_MESSAGES = {
     "non_financial": "This is not a financial claim that can be verified.",
     "question": "This is a question, not a claim. Please rephrase as a statement.",
     "incomplete": "The claim is missing required information (ticker or value).",
+    "advice_seeking": "FinVet verifies factual claims; it does not give investment advice.",
 }
 
 
