@@ -1,8 +1,10 @@
 """Llama Guard 3 provider via Ollama REST API.
 
 Calls /api/generate with the Llama Guard prompt template.
-S6 category customized for financial domain: permits factual verification,
-flags investment recommendations.
+Input classifies safety only (S1-S5, S7-S13) — advice-seeking is a
+verifiability judgement the parser owns, not a safety block. The OUTPUT
+template keeps the S6 "specialized advice" category so investment
+recommendations in an agent's response route to human review.
 
 Graceful degradation: if Ollama is down, returns safe=True with a
 'llama_guard_unavailable' flag. Safety hardens but never blocks
@@ -19,7 +21,8 @@ from .provider import GuardResult
 
 logger = get_logger(__name__)
 
-# S-categories for financial domain (Llama Guard 3 taxonomy with S6 customized)
+# Input safety taxonomy: full Llama Guard 3 categories MINUS S6 (advice), which
+# the parser owns as a verifiability rejection rather than a safety block.
 _INPUT_PROMPT_TEMPLATE = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
 
 Task: Check if there is unsafe content in 'User' messages in conversations
@@ -31,9 +34,6 @@ S2: Non-Violent Crimes
 S3: Sex-Related Crimes
 S4: Child Sexual Exploitation
 S5: Defamation
-S6: Specialized Advice - The message asks for specific investment recommendations, \
-portfolio allocation, or personalized financial advice. Factual financial claim \
-verification (e.g., "Apple's revenue was $X") is SAFE and does NOT violate S6.
 S7: Privacy
 S8: Intellectual Property
 S9: Indiscriminate Weapons
