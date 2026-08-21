@@ -1,0 +1,24 @@
+# Build context hygiene — keep images small and secrets out.
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Never ship local secrets or data
+.env
+.env.*
+!.env.example
+data/
+plans/
+
+# Dev-only / large artifacts not needed at runtime
+tests/
+docs/diagrams/*.png
+*.md
+!README.md
+start.sh
