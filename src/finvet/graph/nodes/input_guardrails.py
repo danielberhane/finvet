@@ -19,6 +19,13 @@ if settings.enable_llama_guard:
     _input_providers.append(LlamaGuardProvider())
 _input_guard = CompositeGuardProvider(_input_providers)
 
+# Llama Guard's S6 ("specialized advice") is a verifiability judgement, not a
+# safety one — "should I buy AAPL?" is not a checkable claim. The parser owns
+# that rejection (auditable HTTP 200), so an advice-ONLY verdict is passed
+# through rather than raised. Any real unsafe category, alone or alongside S6,
+# and every regex violation (injection/PII) still raises.
+_ADVICE_ONLY_CATEGORIES = {"S6"}
+
 
 def input_guardrails(state: VerificationState) -> Dict:
     """
@@ -34,7 +41,13 @@ def input_guardrails(state: VerificationState) -> Dict:
 
     result = _input_guard.classify_input(claim_raw)
 
-    if not result.safe:
+    advice_only = (
+        result.violation_type == "LLAMA_GUARD_UNSAFE"
+        and bool(result.categories)
+        and set(result.categories).issubset(_ADVICE_ONLY_CATEGORIES)
+    )
+
+    if not result.safe and not advice_only:
         logger.warning(
             f"Guardrail violation: {result.violation_type}",
             extra={"request_id": request_id, "violation_type": result.violation_type},
@@ -49,13 +62,23 @@ def input_guardrails(state: VerificationState) -> Dict:
             },
         )
 
+    if advice_only:
+        logger.info(
+            "Advice-seeking input (S6 only) passed to the parser for classification",
+            extra={"request_id": request_id},
+        )
+
+    # Llama Guard does not scrub, so an advice-only passthrough carries no
+    # scrubbed_text; fall back to the raw claim.
+    claim_normalized = result.scrubbed_text or claim_raw
+
     audit_event = AuditEvent(
         event_type="input_received",
         user_id=user_id,
         request_id=request_id,
         data={
             "claim_raw": claim_raw,
-            "claim_normalized": result.scrubbed_text,
+            "claim_normalized": claim_normalized,
             "guard_provider": result.provider,
             "guard_flags": result.flags,
             "guard_latency_ms": result.latency_ms,
@@ -68,7 +91,7 @@ def input_guardrails(state: VerificationState) -> Dict:
     )
 
     return {
-        "claim_normalized": result.scrubbed_text,
+        "claim_normalized": claim_normalized,
         "guard_result_input": result.model_dump(),
         "guardrails_passed": ["composite_guard"],
         "guardrails_failed": [],
