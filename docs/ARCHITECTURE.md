@@ -2,10 +2,7 @@
 
 ## 1. High-Level Architecture
 
-> **See**: `docs/diagrams/system-overview.svg` for the visual architecture diagram.
-> **See**: `docs/diagrams/pipeline-flow.svg` for the LangGraph pipeline diagram.
-> **See**: `docs/diagrams/react-loop.svg` for the ReAct agent execution diagram.
-> **See**: `docs/diagrams/data-flow.svg` for the data flow and PostgreSQL schema diagram.
+> **See**: `docs/diagrams/finvet-linkedin.png` for the visual pipeline diagram.
 
 ```
 Streamlit UI (:8501)
@@ -593,7 +590,4 @@ The Streamlit UI at port 8501 renders:
 ## Diagrams
 
 Architecture diagrams are in `docs/diagrams/`:
-- `system-overview.svg` -- Full system architecture
-- `pipeline-flow.svg` -- LangGraph 12-node pipeline
-- `react-loop.svg` -- ReAct agent execution
-- `data-flow.svg` -- Data flow and PostgreSQL schema
+- `finvet-linkedin.png` / `finvet-linkedin.svg` -- LangGraph pipeline overview
