@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: "Berhane Araya"
     given-names: "Daniel"
-repository-code: "https://github.com/GH_USER/finvet"
+repository-code: "https://github.com/danielberhane/finvet"
 license: Apache-2.0
 preferred-citation:
   type: article
