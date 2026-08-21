@@ -253,6 +253,19 @@ class TestRejectDisposition:
         assert final["verdict"] == "REJECTED"
         assert final["metadata"]["disposition"] == "rejected_parser"
 
+    def test_advice_seeking_reject_explains_no_advice(self):
+        """Advice-seeking now reaches the parser (not an HTTP 400) and returns an
+        auditable rejection that says FinVet does not give advice."""
+        final = response_generator({
+            "request_id": "test_advice",
+            "claim_raw": "Should I buy Apple stock right now?",
+            "parsed_claim": _make_parsed("reject"),
+            "disposition": "rejected_parser",
+            "disposition_detail": "advice_seeking",
+        })["final_response"]
+        assert final["status"] == "rejected"
+        assert "advice" in final["explanation"].lower()
+
     def test_released_response_is_labelled_released(self):
         final = response_generator({
             "request_id": "test_ok",
