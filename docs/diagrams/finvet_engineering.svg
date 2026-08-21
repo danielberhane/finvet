@@ -139,7 +139,7 @@
   <path d="M663,275 H470" class="edge" stroke="#ef4444" stroke-dasharray="6 5" marker-end="url(#arrRed)"/>
   <rect x="300" y="256" width="164" height="40" rx="8" fill="#fdecec" stroke="#ef4444"/>
   <text x="382" y="272" text-anchor="middle" class="nh" fill="#dc2626" font-size="13">HTTP 400</text>
-  <text x="382" y="289" text-anchor="middle" class="ns" fill="#b91c1c">no verdict · no audit row</text>
+  <text x="382" y="289" text-anchor="middle" class="ns" fill="#b91c1c">no verdict · no execution row</text>
   <text x="560" y="269" class="elblr">unsafe →</text>
 
   <line x1="768" y1="302" x2="768" y2="326" class="edge" marker-end="url(#arr)"/>
@@ -238,8 +238,8 @@
   <text x="356" y="722" text-anchor="middle" class="nh" fill="#dc2626" font-size="14">reject_handler</text>
   <text x="356" y="741" text-anchor="middle" class="ns">any reject_reason</text>
   <path d="M356,754 V925 H663" class="edge" marker-end="url(#arr)"/>
-  <rect x="398" y="903" width="150" height="18" rx="4" fill="#ffffff"/>
-  <text x="404" y="917" class="elbl">→ HTTP 200 · audit row</text>
+  <rect x="398" y="903" width="164" height="18" rx="4" fill="#ffffff"/>
+  <text x="404" y="917" class="elbl">→ HTTP 200 · execution row</text>
 
   <!-- response_generator (deterministic/gray) -->
   <rect x="663" y="910" width="210" height="60" rx="9" fill="#f1f3f6" stroke="#94a3b8"/>
