@@ -13,8 +13,10 @@ from .provider import GuardResult
 
 # --- Injection patterns (case-insensitive) ---
 _INJECTION_PATTERNS = [
-    r"ignore\s+(previous|prior|all)\s+instructions",
-    r"disregard\s+your\s+rules",
+    # Tolerate stacked qualifiers between the verb and "instructions"
+    # ("ignore all previous instructions", "ignore the above instructions").
+    r"ignore\s+(?:\w+\s+){0,4}instructions",
+    r"disregard\s+(?:\w+\s+){0,4}(?:rules|instructions)",
     r"you\s+are\s+now",
     r"pretend\s+you\s+are",
     r"act\s+as\s+if",
