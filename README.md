@@ -3,7 +3,7 @@
 **An agentic AI system that verifies financial claims against authoritative sources — and records exactly how it decided.**
 
 [![arXiv](https://img.shields.io/badge/arXiv-2510.11654-b31b1b.svg)](https://arxiv.org/abs/2510.11654)
-[![ci](https://github.com/GH_USER/finvet/actions/workflows/ci.yml/badge.svg)](https://github.com/GH_USER/finvet/actions/workflows/ci.yml)
+[![ci](https://github.com/danielberhane/finvet/actions/workflows/ci.yml/badge.svg)](https://github.com/danielberhane/finvet/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 
@@ -110,7 +110,7 @@ No sibling checkouts, no native Python, no manual schema step (the API creates i
 first boot):
 
 ```bash
-git clone https://github.com/GH_USER/finvet.git && cd finvet
+git clone https://github.com/danielberhane/finvet.git && cd finvet
 cp .env.example .env            # fill in DEEPSEEK_API_KEY, TAVILY_API_KEY, POSTGRES_PASSWORD
 docker compose --profile sec up --build
 # UI → http://localhost:8501   API → http://localhost:8000
@@ -119,8 +119,8 @@ docker compose --profile sec up --build
 Prefer not to build? Pull the published images instead:
 
 ```bash
-docker pull ghcr.io/GH_USER/finvet-api:latest
-docker pull ghcr.io/GH_USER/finvet-ui:latest
+docker pull ghcr.io/danielberhane/finvet-api:latest
+docker pull ghcr.io/danielberhane/finvet-ui:latest
 ```
 
 You still need real keys — it talks to live financial data sources, which is the honest cost
