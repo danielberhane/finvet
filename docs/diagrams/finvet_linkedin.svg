@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 1500" font-family="'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="aR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/>
+    </marker>
+    <marker id="aP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      .title{font-size:38px;font-weight:800;fill:#0f172a}
+      .sub{font-size:17px;fill:#64748b}
+      .h{font-size:19px;font-weight:800}
+      .s{font-size:13px;fill:#475569}
+      .term{font-size:18px;font-weight:800;fill:#334155}
+      .lbl{font-size:13px;font-weight:700;fill:#475569}
+      .lblr{font-size:13px;font-weight:700;fill:#dc2626}
+      .lblg{font-size:13px;font-weight:700;fill:#16a34a}
+      .cap{font-size:15px;font-weight:800;fill:#15803d}
+      .e{stroke:#334155;stroke-width:2.4;fill:none}
+      .ed{stroke:#334155;stroke-width:2.4;fill:none;stroke-dasharray:7 5}
+      .legt{font-size:14px;fill:#334155}
+      .legh{font-size:15px;font-weight:800;fill:#0f172a}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1160" height="1500" fill="#ffffff"/>
+
+  <text x="580" y="66" text-anchor="middle" class="title">FinVet — Agentic Financial Claim Verification</text>
+  <text x="580" y="98" text-anchor="middle" class="sub">Conditional agent routing · evidence-backed deterministic verdicts · human-in-the-loop</text>
+
+  <!-- START -->
+  <rect x="500" y="132" width="160" height="44" rx="22" fill="#eef1f5" stroke="#64748b" stroke-width="1.6"/>
+  <text x="580" y="160" text-anchor="middle" class="term">START</text>
+  <line x1="580" y1="176" x2="580" y2="204" class="e" marker-end="url(#a)"/>
+
+  <!-- Input Guardrails (red) -->
+  <rect x="290" y="206" width="360" height="66" rx="12" fill="#fef2f2" stroke="#ef4444" stroke-width="1.8"/>
+  <g transform="translate(-26,0)">
+  <path d="M330 224 l16 -6 l16 6 v10 c0 10 -8 16 -16 20 c-8 -4 -16 -10 -16 -20 z" fill="none" stroke="#dc2626" stroke-width="2"/>
+  <path d="M334 238 l5 5 l9 -10" fill="none" stroke="#dc2626" stroke-width="2"/>
+  </g>
+  <text x="486" y="234" text-anchor="middle" class="h" fill="#dc2626">Input Guardrails</text>
+  <text x="486" y="256" text-anchor="middle" class="s">regex + PII · Llama Guard (fail-open)</text>
+  <line x1="470" y1="272" x2="470" y2="300" class="e" marker-end="url(#a)"/>
+
+  <!-- Claim Parser (blue) -->
+  <rect x="290" y="302" width="360" height="66" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+  <g transform="translate(-26,0)">
+  <rect x="332" y="320" width="24" height="30" rx="3" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <line x1="338" y1="328" x2="350" y2="328" stroke="#2563eb" stroke-width="2"/>
+  <line x1="338" y1="335" x2="350" y2="335" stroke="#2563eb" stroke-width="2"/>
+  <line x1="338" y1="342" x2="346" y2="342" stroke="#2563eb" stroke-width="2"/>
+  </g>
+  <text x="486" y="330" text-anchor="middle" class="h" fill="#2563eb">Claim Parser</text>
+  <text x="486" y="352" text-anchor="middle" class="s">LLM extracts a 7-field structured claim</text>
+
+  <!-- branch labels -->
+  <path d="M470,368 V392 H180 V470" class="ed" marker-end="url(#a)"/>
+  <path d="M470,368 V430" class="ed"/>
+  <path d="M470,392 H720 V430" class="ed"/>
+  <path d="M650,335 H1020 V466" class="ed" marker-end="url(#aR)" stroke="#dc2626" stroke-dasharray="7 5"/>
+  <text x="196" y="418" class="lblg">sec</text>
+  <text x="480" y="418" class="lblg">news</text>
+  <text x="672" y="418" class="lblg">market</text>
+  <text x="838" y="330" class="lblr">off-topic / unsafe</text>
+
+  <!-- Verification Agents container -->
+  <rect x="60" y="430" width="812" height="286" rx="14" fill="#f6fdf9" stroke="#16a34a" stroke-width="1.8" stroke-dasharray="8 6"/>
+  <text x="466" y="458" text-anchor="middle" class="cap">Verification Agents — exactly one primary route runs per claim</text>
+
+  <!-- period_resolver pill (SEC pre-step) -->
+  <rect x="96" y="474" width="230" height="34" rx="17" fill="#eef2ff" stroke="#8b93a7" stroke-width="1.4"/>
+  <text x="211" y="496" text-anchor="middle" class="s" font-weight="700" fill="#334155">period_resolver · SEC only</text>
+  <line x1="211" y1="508" x2="211" y2="534" class="e" marker-end="url(#a)"/>
+
+  <!-- SEC Agent -->
+  <rect x="96" y="536" width="230" height="150" rx="12" fill="#ecfdf3" stroke="#16a34a" stroke-width="1.8"/>
+  <path d="M197 560 l14 -8 l14 8 z M199 564 v18 M207 564 v18 M215 564 v18 M223 564 v18 M195 584 h32" fill="none" stroke="#15803d" stroke-width="1.6"/>
+  <text x="211" y="600" text-anchor="middle" class="h" fill="#15803d" font-size="18">SEC Agent</text>
+  <text x="211" y="623" text-anchor="middle" class="s">ReAct loop · ≤ 5 steps</text>
+  <text x="211" y="645" text-anchor="middle" class="s" font-weight="700">MCP · SEC EDGAR (XBRL)</text>
+  <text x="211" y="665" text-anchor="middle" class="s">hybrid RAG · A2A · memory</text>
+
+  <!-- News Agent -->
+  <rect x="351" y="536" width="230" height="150" rx="12" fill="#ecfdf3" stroke="#16a34a" stroke-width="1.8"/>
+  <circle cx="466" cy="570" r="13" fill="none" stroke="#15803d" stroke-width="1.6"/>
+  <path d="M453 570 h26 M466 557 v26 M456 562 c6 5 14 5 20 0 M456 578 c6 -5 14 -5 20 0" fill="none" stroke="#15803d" stroke-width="1.3"/>
+  <text x="466" y="600" text-anchor="middle" class="h" fill="#15803d" font-size="18">News Agent</text>
+  <text x="466" y="623" text-anchor="middle" class="s">ReAct loop · ≤ 5 steps</text>
+  <text x="466" y="645" text-anchor="middle" class="s" font-weight="700">API · Tavily search</text>
+  <text x="466" y="665" text-anchor="middle" class="s">FRED macro · memory</text>
+
+  <!-- Market Agent -->
+  <rect x="606" y="536" width="230" height="150" rx="12" fill="#ecfdf3" stroke="#16a34a" stroke-width="1.8"/>
+  <path d="M711 582 v-14 M721 582 v-24 M731 582 v-9" stroke="#15803d" stroke-width="3"/>
+  <line x1="705" y1="582" x2="737" y2="582" stroke="#15803d" stroke-width="1.5"/>
+  <text x="721" y="600" text-anchor="middle" class="h" fill="#15803d" font-size="18">Market Agent</text>
+  <text x="721" y="623" text-anchor="middle" class="s">ReAct loop · ≤ 5 steps</text>
+  <text x="721" y="645" text-anchor="middle" class="s" font-weight="700">API · Finnhub</text>
+  <text x="721" y="665" text-anchor="middle" class="s">quotes · valuation · memory</text>
+
+  <!-- A2A sec <-> news -->
+  <line x1="326" y1="610" x2="351" y2="610" class="e" stroke="#16a34a" marker-end="url(#aP)"/>
+  <text x="338" y="600" text-anchor="middle" class="lblg" font-size="12">A2A</text>
+
+  <!-- Rejected (red) -->
+  <rect x="920" y="466" width="200" height="86" rx="12" fill="#fef2f2" stroke="#ef4444" stroke-width="1.8"/>
+  <circle cx="958" cy="500" r="14" fill="none" stroke="#dc2626" stroke-width="2"/>
+  <line x1="952" y1="494" x2="964" y2="506" stroke="#dc2626" stroke-width="2"/>
+  <line x1="964" y1="494" x2="952" y2="506" stroke="#dc2626" stroke-width="2"/>
+  <text x="1035" y="496" text-anchor="middle" class="h" fill="#dc2626" font-size="18">Rejected</text>
+  <text x="1020" y="524" text-anchor="middle" class="s">non-financial / unsafe</text>
+  <text x="1020" y="542" text-anchor="middle" class="s">terminal · no verdict</text>
+
+  <!-- agents -> consensus -->
+  <path d="M211,686 V724 H470" class="e"/>
+  <path d="M721,686 V724 H470" class="e"/>
+  <line x1="466" y1="724" x2="466" y2="752" class="e" marker-end="url(#a)"/>
+
+  <!-- Consensus (purple) -->
+  <rect x="258" y="750" width="424" height="86" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8"/>
+  <text x="470" y="778" text-anchor="middle" class="h" fill="#6d28d9" font-size="16">Consensus — the model never writes the verdict</text>
+  <text x="470" y="800" text-anchor="middle" class="s">a 2nd anti-anchoring LLM call proposes it; Python overrides on any</text>
+  <text x="470" y="819" text-anchor="middle" class="s">numeric comparison; consensus adjusts confidence only</text>
+  <line x1="470" y1="836" x2="470" y2="862" class="e" marker-end="url(#a)"/>
+
+  <!-- Output Guardrails (purple) -->
+  <rect x="290" y="864" width="360" height="66" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8"/>
+  <g transform="translate(-30,0)">
+  <path d="M330 882 l16 -6 l16 6 v10 c0 10 -8 16 -16 20 c-8 -4 -16 -10 -16 -20 z" fill="none" stroke="#6d28d9" stroke-width="2"/>
+  </g>
+  <text x="490" y="892" text-anchor="middle" class="h" fill="#6d28d9">Output Guardrails</text>
+  <text x="490" y="914" text-anchor="middle" class="s">safety · confidence threshold (0.70)</text>
+
+  <!-- to Human Review -->
+  <path d="M650,890 H820" class="ed" marker-end="url(#a)"/>
+  <text x="700" y="878" class="lbl">conf &lt; 0.70</text>
+  <text x="700" y="922" class="lbl">OR safety flag</text>
+
+  <!-- release -->
+  <path d="M470,930 V962" class="ed" marker-end="url(#a)"/>
+  <text x="484" y="952" class="lblg">conf ≥ 0.70 → release</text>
+
+  <!-- Human Review (orange) -->
+  <rect x="820" y="856" width="250" height="74" rx="12" fill="#fff7ed" stroke="#f59e0b" stroke-width="1.8"/>
+  <circle cx="856" cy="884" r="8" fill="none" stroke="#b45309" stroke-width="2"/>
+  <path d="M844 908 c0 -12 24 -12 24 0" fill="none" stroke="#b45309" stroke-width="2"/>
+  <text x="960" y="884" text-anchor="middle" class="h" fill="#b45309" font-size="17">Human Review</text>
+  <text x="948" y="908" text-anchor="middle" class="s">interrupt / resume · approve · override · reject</text>
+  <path d="M820,912 C700,930 660,952 654,970" class="e" marker-end="url(#a)"/>
+
+  <!-- Response (blue) -->
+  <rect x="290" y="964" width="360" height="66" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/>
+  <g transform="translate(-30,0)">
+  <rect x="330" y="982" width="26" height="26" rx="5" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <path d="M336 995 l5 5 l10 -12" fill="none" stroke="#2563eb" stroke-width="2"/>
+  </g>
+  <text x="490" y="992" text-anchor="middle" class="h" fill="#2563eb">Response</text>
+  <text x="490" y="1014" text-anchor="middle" class="s">verdict · confidence · evidence · disposition</text>
+
+  <!-- Rejected -> Response -->
+  <path d="M1020,552 V997 H650" class="e" stroke="#dc2626" marker-end="url(#aR)"/>
+
+  <line x1="470" y1="1030" x2="470" y2="1058" class="e" marker-end="url(#a)"/>
+  <rect x="500" y="1060" width="160" height="44" rx="22" fill="#eef1f5" stroke="#64748b" stroke-width="1.6"/>
+  <text x="580" y="1088" text-anchor="middle" class="term">END</text>
+
+  <!-- Legend band -->
+  <rect x="60" y="1150" width="1040" height="150" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <circle cx="96" cy="1188" r="13" fill="none" stroke="#0f172a" stroke-width="1.6"/>
+  <circle cx="90" cy="1183" r="3.5" fill="#0f172a"/><circle cx="103" cy="1183" r="3.5" fill="#0f172a"/><circle cx="96" cy="1195" r="3.5" fill="#0f172a"/>
+  <text x="122" y="1194" class="legh">Built with LangGraph · MCP · Finnhub/Tavily/FRED APIs · agent-to-agent · human-in-the-loop</text>
+
+  <text x="122" y="1236" class="legh" font-size="14">12 nodes · 3 ReAct subgraphs · 4-way conditional routing · 1 interrupt point · deterministic verdict override</text>
+
+  <g transform="translate(122,1262)">
+    <rect x="0" y="0" width="15" height="15" rx="3" fill="#fef2f2" stroke="#ef4444"/><text x="22" y="12" class="legt">Guardrails / rejected</text>
+    <rect x="200" y="0" width="15" height="15" rx="3" fill="#eff6ff" stroke="#3b82f6"/><text x="222" y="12" class="legt">LLM · parser · response</text>
+    <rect x="410" y="0" width="15" height="15" rx="3" fill="#ecfdf3" stroke="#16a34a"/><text x="432" y="12" class="legt">ReAct agents</text>
+    <rect x="580" y="0" width="15" height="15" rx="3" fill="#f5f3ff" stroke="#7c3aed"/><text x="602" y="12" class="legt">Deterministic logic</text>
+    <rect x="770" y="0" width="15" height="15" rx="3" fill="#fff7ed" stroke="#f59e0b"/><text x="792" y="12" class="legt">Human review</text>
+  </g>
+</svg>
