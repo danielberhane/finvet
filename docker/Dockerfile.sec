@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+# Self-contained SEC EDGAR MCP server. Installs the published package from PyPI
+# at a pinned version, so a cloner needs no sibling checkout of the upstream repo.
+# Upstream: https://github.com/stefanoamorelli/sec-edgar-mcp
+#
+#   docker build -f docker/Dockerfile.sec -t finvet-sec-edgar-mcp .
+
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1
+
+RUN pip install --no-cache-dir "sec-edgar-mcp==1.1.0"
+
+RUN useradd -m -u 1000 mcp
+USER mcp
+
+EXPOSE 9870
+
+# SEC_EDGAR_USER_AGENT is supplied at runtime (compose / env). SEC Fair Access
+# requires a real name and contact address on automated requests.
+CMD ["python", "-m", "sec_edgar_mcp.server", \
+     "--transport", "streamable-http", "--port", "9870"]

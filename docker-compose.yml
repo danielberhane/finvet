@@ -18,13 +18,50 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Requires the SEC EDGAR MCP server checked out alongside this repo:
-  #   git clone https://github.com/stefanoamorelli/sec-edgar-mcp ../sec-edgar-mcp
+  # FastAPI backend. Reads all keys from .env; the in-network service addresses
+  # below override the localhost defaults (no user action needed in Docker mode).
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: api
+    container_name: finvet-api
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      SEC_EDGAR_MCP_URL: http://sec-edgar-mcp:9870
+      LLAMA_GUARD_URL: http://ollama:11434
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # Streamlit UI. Talks to the API over the compose network.
+  ui:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: ui
+    container_name: finvet-ui
+    env_file: .env
+    environment:
+      FINVET_API_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+
+  # SEC EDGAR MCP server — self-contained (installs the published package at a
+  # pinned version; no sibling checkout needed).
   # Start with:  docker compose --profile sec up -d
   sec-edgar-mcp:
     profiles: ["sec"]
     build:
-      context: ../sec-edgar-mcp
+      context: .
+      dockerfile: docker/Dockerfile.sec
     container_name: finvet-sec-edgar-mcp
     command: ["python", "-m", "sec_edgar_mcp.server", "--transport", "streamable-http", "--port", "9870"]
     environment:

@@ -14,7 +14,7 @@ Built as a reference implementation of an agentic AI system in a regulated domai
 - **State**: `VerificationState` TypedDict in `src/finvet/models/state.py`
 - **RAG**: Hybrid search (pgvector cosine + tsvector BM25, RRF k=60) in `src/finvet/rag/`
 - **A2A**: `corroborate_with_news` tool in `src/finvet/tools/corroborate.py`
-- **Memory**: `src/finvet/memory/` — OpenAI embeddings (text-embedding-3-small, 1536-dim), cosine similarity via NumPy
+- **Memory**: `src/finvet/memory/` — episodic claim memory via LangGraph `PostgresStore` with pgvector HNSW indexing; OpenAI `text-embedding-3-small` (1536-dim), similarity computed in Postgres. Wired in `main.py` (gated on `enable_claim_memory` + `OPENAI_API_KEY`; degrades to disabled if unavailable).
 - **Audit**: PostgreSQL via SQLAlchemy in `src/finvet/audit/`. Tables created via `init_db()`. Thread-safe request-scoped event buffer.
 - **HITL**: MemorySaver checkpointer, `interrupt_before=["hitl_checkpoint"]`, resume via `update_state()` + `invoke(None, config)`
 

@@ -3,7 +3,7 @@
 **An agentic AI system that verifies financial claims against authoritative sources — and records exactly how it decided.**
 
 [![arXiv](https://img.shields.io/badge/arXiv-2510.11654-b31b1b.svg)](https://arxiv.org/abs/2510.11654)
-[![tests](https://github.com/GH_USER/finvet/actions/workflows/tests.yml/badge.svg)](https://github.com/GH_USER/finvet/actions/workflows/tests.yml)
+[![ci](https://github.com/GH_USER/finvet/actions/workflows/ci.yml/badge.svg)](https://github.com/GH_USER/finvet/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 
@@ -94,26 +94,51 @@ Full detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
   answered from cache or used as context rather than re-run.
 - **Provenance tracking** — each number in the response carries where it came from (XBRL, RAG,
   or A2A), surfaced as badges in the UI.
+- **Pluggable LLM backend** — parser, agents, and verdict extraction each read their model from
+  config ([`src/finvet/llm/factory.py`](src/finvet/llm/factory.py)), so any OpenAI-compatible
+  endpoint drops in via env var — a self-hosted model behind vLLM/LiteLLM, or a different vendor
+  — with no code change. The agentic system is not locked to one LLM provider.
 
 ---
 
 ## Running it
 
+### Quickstart (Docker)
+
+The whole system — Postgres, API, UI, and the SEC MCP server — comes up with one command.
+No sibling checkouts, no native Python, no manual schema step (the API creates its schema on
+first boot):
+
 ```bash
 git clone https://github.com/GH_USER/finvet.git && cd finvet
+cp .env.example .env            # fill in DEEPSEEK_API_KEY, TAVILY_API_KEY, POSTGRES_PASSWORD
+docker compose --profile sec up --build
+# UI → http://localhost:8501   API → http://localhost:8000
+```
+
+Prefer not to build? Pull the published images instead:
+
+```bash
+docker pull ghcr.io/GH_USER/finvet-api:latest
+docker pull ghcr.io/GH_USER/finvet-ui:latest
+```
+
+You still need real keys — it talks to live financial data sources, which is the honest cost
+of not mocking the hard part. `DEEPSEEK_API_KEY`, `TAVILY_API_KEY`, and `POSTGRES_PASSWORD`
+are the required three; see [What runs with which keys](#what-runs-with-which-keys).
+
+### Native dev
+
+The container path leaves the native workflow untouched — `.venv`, `start.sh`, and hot reload
+still work:
+
+```bash
 uv sync                        # or: pip install -e ".[dev]"
-cp .env.example .env           # fill in DEEPSEEK_API_KEY, TAVILY_API_KEY, POSTGRES_PASSWORD
-
+cp .env.example .env
 docker compose up -d postgres  # pgvector; creates the extension on first start
-python scripts/init_database.py
-
 uvicorn finvet.main:app --port 8000 --app-dir src   # API  → :8000
 streamlit run ui/app.py --server.port 8501          # UI   → :8501
 ```
-
-**This is not a one-command demo.** It talks to real financial data sources, so it needs
-Postgres with pgvector, an SEC EDGAR MCP server, and API keys. That's the honest cost of
-not mocking the hard part.
 
 ### What runs with which keys
 
@@ -136,11 +161,11 @@ empty.
 
 `docker-compose.yml` uses profiles so you only start what you need:
 
-| Command | Starts | When |
+| Profile | Starts | When |
 |---|---|---|
-| `docker compose up -d postgres` | Postgres + pgvector | **Always.** Backs both the audit trail and the RAG vector store. |
-| `docker compose --profile sec up -d` | SEC EDGAR MCP on :9870 | For SEC-agent claims. Needs [sec-edgar-mcp](https://github.com/stefanoamorelli/sec-edgar-mcp) cloned alongside this repo, or set `SEC_MCP_DIR`. |
-| `docker compose --profile guards up -d` | Ollama on :11434 | Only for the semantic guardrail layer. |
+| *(default)* | Postgres + pgvector, API, UI | **Always.** Postgres backs both the audit trail and the RAG vector store. |
+| `--profile sec` | + SEC EDGAR MCP on :9870 | For SEC-agent claims (most demos). Self-contained — the image installs [sec-edgar-mcp](https://github.com/stefanoamorelli/sec-edgar-mcp) from PyPI; no sibling checkout. |
+| `--profile guards` | + Ollama on :11434 | Only for the optional semantic guardrail layer (~5 GB model, opt-in). |
 
 ### Guardrail modes
 
@@ -183,9 +208,51 @@ python -m finvet.rag.ingest --dir data/filings/AAPL
 ### Tests
 
 ```bash
-pytest tests/unit -q         # 167 tests, ~1s, fully mocked — no keys or database needed
+pytest tests/unit -q         # fully mocked — no keys or database needed
 pytest tests/integration     # needs Postgres and the MCP server running
 ```
+
+---
+
+## Evaluation
+
+The verification core is measured against SEC primary-source values, not self-reported. The
+harness compares each retrieved figure to the exact value the company filed (from SEC's
+`frames` / `companyconcept` endpoints), and treats *silently wrong* — a confident number that
+disagrees with the filing — as the failure mode that matters.
+
+| What | Result | Notes |
+|---|---|---|
+| **XBRL retrieval accuracy** | **198/199 (99.5%)** | Zero silently-wrong values; the single miss returned nothing (fails safe to `NOT_ENOUGH_INFO`) rather than a wrong number. |
+| **Reject classification** | **64.2% recall @ 100% precision** | Never rejects a verifiable claim; catches ~2/3 of the unverifiable ones. |
+
+Retrieval is layered so a filed number is found even when one SEC endpoint is empty for a
+given company/concept: the period-targeted `companyconcept` read falls back to the `frames`
+endpoint before giving up. That fallback is what took retrieval from ~91% to 99.5%.
+
+---
+
+## Deployment & security
+
+**FinVet is packaged for local and demo use, not public hosting as-is.**
+
+- **The API is unauthenticated.** `/verify` has no auth, no API keys, no rate limiting, and no
+  CORS policy. Anyone who can reach the port can spend your LLM credits. Run it on a trusted
+  network only; put an authenticating reverse proxy in front before any exposure.
+- **Graceful degradation is deliberate.** With the SEC MCP, Ollama, or OpenAI unreachable, the
+  API stays up and returns `NOT_ENOUGH_INFO` / routes to review rather than 500-ing. Only the
+  three required keys (`DEEPSEEK_API_KEY`, `TAVILY_API_KEY`, `POSTGRES_PASSWORD`) are hard
+  boot dependencies.
+- **Reproducible builds.** Images build from the committed `uv.lock` (`uv sync --frozen`), so
+  CI, the Docker image, and a dev machine resolve identical dependency versions.
+- **CI/CD.** [`ci.yml`](.github/workflows/ci.yml) runs lint + unit tests + a Docker build of
+  all three images on every push/PR. [`release.yml`](.github/workflows/release.yml) publishes
+  versioned images to GHCR on a `v*` tag. There is intentionally **no deploy-to-live stage** —
+  publishing pullable artifacts is the right form of CD for an open, paid-LLM-backed API.
+
+**What real production would add** (out of scope here, called out honestly): an auth gateway +
+per-key rate limits, a secrets manager instead of `.env`, managed/HA Postgres, an LLM
+cost-and-latency budget, and a DB-aware health probe.
 
 ---
 
@@ -224,9 +291,9 @@ source attribution, confidence scores, and explicit uncertainty rather than a ba
 ## Third-party dependencies
 
 FinVet's own source is Apache-2.0. It relies on external components it does not include or
-distribute — most notably the SEC EDGAR MCP server, which is **AGPL-3.0** and is run as a
-separate process you clone and start yourself. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+distribute — most notably the SEC EDGAR MCP server, which is **AGPL-3.0** and runs as a
+separate process (its own container, installed from PyPI at build time — not vendored into
+this repo). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Users are responsible for complying with the terms of every external service they configure,
 including the [SEC's automated-access / Fair Access policy](https://www.sec.gov/os/webmaster-faq#developers),

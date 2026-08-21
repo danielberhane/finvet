@@ -18,6 +18,7 @@ from .graph.workflow import create_verification_graph
 from .utils.logging import setup_logging, get_logger
 from .utils.exceptions import GuardrailViolation
 from .config.settings import settings
+from .config.database import init_db
 
 # Setup logging
 setup_logging()
@@ -102,6 +103,16 @@ async def startup_event():
     logger.info(f"HITL Confidence Threshold: {settings.confidence_threshold_hitl}")
     logger.info("Graph compiled with interrupt support")
     logger.info("=" * 60)
+
+    # Create the audit schema if missing (idempotent). Wrapped so a Postgres
+    # that is unreachable at boot logs and continues instead of crash-looping
+    # the container — audit writes degrade on their own, and the schema is
+    # created on the next boot once the database is up.
+    try:
+        init_db()
+        logger.info("Database schema initialized")
+    except Exception as e:
+        logger.warning(f"Could not initialize database schema at startup: {e}")
 
 
 # Shutdown event
