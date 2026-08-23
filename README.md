@@ -2,7 +2,9 @@
 
 **Agentic financial claim verification — evidence-backed verdicts, deterministic numeric checks, and a full audit trail.**
 
+<!-- Restore after the first push, once CI has run once:
 [![ci](https://github.com/danielberhane/finvet/actions/workflows/ci.yml/badge.svg)](https://github.com/danielberhane/finvet/actions/workflows/ci.yml)
+-->
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 
@@ -82,6 +84,20 @@ docker compose up -d postgres                        # pgvector
 uvicorn finvet.main:app --port 8000 --app-dir src    # API → :8000
 streamlit run ui/app.py --server.port 8501           # UI  → :8501
 ```
+
+### Populating the RAG index
+
+The vector store starts empty — SEC filings are not distributed with the repo. XBRL
+verification works without it; hybrid RAG over filing text needs an ingest pass:
+
+```bash
+# Place filings as data/filings/<TICKER>/<TICKER>_<FORM>_<PERIOD-END>.html
+#   e.g. data/filings/AAPL/AAPL_10-K_2024-09-28.html
+python -m finvet.rag.ingest                    # defaults to data/filings
+python -m finvet.rag.ingest --dir data/filings/AAPL
+```
+
+Requires `OPENAI_API_KEY` (embeddings) and a running Postgres.
 
 ### Profiles
 
