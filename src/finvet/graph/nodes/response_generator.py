@@ -353,6 +353,10 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         "metric": metric,
         "magnitude_difference_percent": agent_evidence.get("magnitude_difference_percent"),
         "source_description": agent_evidence.get("source_description", ""),
+        # Both verdicts travel with the response: the deterministic layer is
+        # only auditable if the verdict it replaced is visible next to it.
+        "override_applied": agent_evidence.get("override_applied", False),
+        "llm_original_verdict": agent_evidence.get("llm_original_verdict"),
     }
 
     # Always build data source provenance breakdown (XBRL vs RAG vs A2A)

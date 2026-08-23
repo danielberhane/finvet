@@ -6,7 +6,9 @@ on:
     branches: [main]
 
 env:
-  # Resolve the same Python the lock was built against; uv downloads it if absent.
+  # The version .python-version pins for local dev and the Docker images.
+  # uv downloads it if absent. The test job overrides this per matrix entry;
+  # UV_PYTHON takes precedence over .python-version, so the matrix is real.
   UV_PYTHON: "3.13"
 
 jobs:
@@ -23,6 +25,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    # pyproject declares requires-python >=3.11; test every version it claims.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

@@ -225,7 +225,10 @@ class BaseVerificationAgent(ABC):
                     "tool": tool_name,
                     "args": call_info.get("args", {}),
                     "result": content[:TOOL_RESULT_PREVIEW_CHARS],
-                    "success": True,
+                    # Read the tool's own status: a failed call recorded as a
+                    # success both corrupts the audit trail and lets
+                    # _extract_retrieved_value scrape a number out of an error.
+                    "success": getattr(msg, "status", "success") != "error",
                 })
 
                 # Truncate oversized tool results to control token spend
@@ -454,6 +457,10 @@ class BaseVerificationAgent(ABC):
             "provenance": [],
             "reasoning": compose_failure_reasoning(error_msg),
             "execution_time_ms": execution_time_ms,
+            # Same shape as the success path — consumers read these keys
+            # unconditionally.
+            "override_applied": False,
+            "llm_original_verdict": None,
         }
 
     def _build_context(self, state: VerificationState) -> str:

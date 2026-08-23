@@ -63,12 +63,33 @@ def render_review_detail():
         if hitl_triggers:
             trigger_text = ", ".join([t.replace("_", " ").title() for t in hitl_triggers])
 
+        # The deterministic layer's disagreement with the model is decisive
+        # context for the reviewer, so it sits in the banner, not the evidence.
+        override_text = ""
+        if preliminary.get("override_applied"):
+            original = preliminary.get("llm_original_verdict")
+            override_text = (
+                f"Model concluded {original}; deterministic numeric check overruled it"
+                if original
+                else "Deterministic numeric check overruled the model verdict"
+            )
+
+        # Built as one string rather than two conditional template lines: an
+        # unused conditional leaves a whitespace-only line, which ends the HTML
+        # block early in st.markdown.
+        _sub = 'font-size: 0.82rem; opacity: 0.85; margin-top: 0.25rem;'
+        sub_lines = []
+        if trigger_text:
+            sub_lines.append(f'<div style="{_sub}">Trigger: {trigger_text}</div>')
+        if override_text:
+            sub_lines.append(f'<div style="{_sub}">{override_text}</div>')
+        sub_html = "".join(sub_lines)
+
         st.markdown(f"""
         <div class="{verdict_class}" style="display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 1.25rem 1.5rem;">
             <div>
                 <div style="font-size: 0.72rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.15rem;">AI Preliminary Assessment</div>
-                <div class="verdict-text" style="font-size: 1.3rem;">Preliminary: {prelim_verdict}</div>
-                {f'<div style="font-size: 0.82rem; opacity: 0.85; margin-top: 0.25rem;">Trigger: {trigger_text}</div>' if trigger_text else ''}
+                <div class="verdict-text" style="font-size: 1.3rem;">Preliminary: {prelim_verdict}</div>{sub_html}
             </div>
             <div style="text-align: right;">
                 <div style="font-size: 2rem; font-weight: 800; letter-spacing: -1px;">{prelim_confidence:.0%}</div>
