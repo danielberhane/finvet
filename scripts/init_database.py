@@ -2,7 +2,10 @@
 """Initialize PostgreSQL database with all tables."""
 
 from src.finvet.config.database import Base, engine, check_connection
-from src.finvet.audit.models import AuditEvent, AuditExecution
+
+# Imported for the side effect of registering the tables on Base.metadata;
+# create_all() below only sees models that have been imported.
+from src.finvet.audit.models import AuditEvent, AuditExecution  # noqa: F401
 
 def init_database():
     """Create all database tables."""
