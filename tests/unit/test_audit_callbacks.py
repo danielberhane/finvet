@@ -209,3 +209,48 @@ class TestAllTrackedNodes:
 
         mock_audit.log_event.assert_called_once()
         assert mock_audit.log_event.call_args.kwargs["data"]["node"] == node_name
+
+
+class TestVerdictDecidedEvent:
+    """Node timings alone cannot answer how often the deterministic layer
+    overruled the model, so the decision is persisted as its own event."""
+
+    def _run_node(self, handler, mock_audit, outputs):
+        run_id = uuid.uuid4()
+        handler.on_chain_start(
+            serialized=None,
+            inputs={},
+            run_id=run_id,
+            parent_run_id=uuid.uuid4(),
+            name="sec_agent",
+            metadata={"langgraph_node": "sec_agent", "langgraph_step": 4},
+        )
+        mock_audit.reset_mock()
+        handler.on_chain_end(outputs=outputs, run_id=run_id)
+        return [c.kwargs for c in mock_audit.log_event.call_args_list]
+
+    def test_override_is_persisted(self, handler, mock_audit):
+        calls = self._run_node(handler, mock_audit, {
+            "agent_evidence": {
+                "agent": "sec",
+                "verdict": "REFUTES",
+                "llm_original_verdict": "SUPPORTS",
+                "override_applied": True,
+                "confidence": 0.9,
+            }
+        })
+        decided = [c for c in calls if c["event_type"] == "verdict_decided"]
+        assert len(decided) == 1
+        assert decided[0]["data"]["override_applied"] is True
+        assert decided[0]["data"]["llm_original_verdict"] == "SUPPORTS"
+        assert decided[0]["data"]["verdict"] == "REFUTES"
+
+    def test_node_completed_still_logged_alongside(self, handler, mock_audit):
+        calls = self._run_node(handler, mock_audit, {
+            "agent_evidence": {"agent": "sec", "verdict": "SUPPORTS"}
+        })
+        assert [c["event_type"] for c in calls] == ["node_completed", "verdict_decided"]
+
+    def test_non_agent_node_emits_only_node_completed(self, handler, mock_audit):
+        calls = self._run_node(handler, mock_audit, {"parsed_claim": object()})
+        assert [c["event_type"] for c in calls] == ["node_completed"]

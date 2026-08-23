@@ -30,6 +30,8 @@ def _error_evidence(agent_type: str, source_desc: str, error_msg: str) -> Dict:
         "tool_calls_detail": [],
         "reasoning": compose_failure_reasoning(error_msg),
         "execution_time_ms": 0,
+        "override_applied": False,
+        "llm_original_verdict": None,
     }
 
 
