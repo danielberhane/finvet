@@ -38,6 +38,14 @@ data/*.sqlite
 .DS_Store
 Thumbs.db
 
-# Internal planning and evaluation-policy documents — kept locally, not published
+# Internal working documents — kept locally, not published.
+# The validation docs below are commercial/consulting material and the UX
+# walkthrough is an internal readiness assessment with a demo script.
 plans/
 docs/EVAL_DATA_POLICY.md
+docs/VALIDATION_LAYER.md
+docs/RISK_BASED_VALIDATION.md
+docs/UX-WALKTHROUGH.md
+
+# Superseded by docs/diagrams/
+docs/architecture.svg
