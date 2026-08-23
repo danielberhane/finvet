@@ -128,6 +128,27 @@ class TestFormatMetadata:
         metadata = _format_metadata(state, evidence)
         assert "rag" in metadata["data_sources"]
 
+    def test_override_reaches_the_response(self):
+        """The README's headline claim is only true if both verdicts ship."""
+        evidence = {
+            "tools_called": [],
+            "agent": "sec",
+            "verdict": "REFUTES",
+            "override_applied": True,
+            "llm_original_verdict": "SUPPORTS",
+        }
+        state = {"parsed_claim": _make_parsed()}
+        metadata = _format_metadata(state, evidence)
+        assert metadata["override_applied"] is True
+        assert metadata["llm_original_verdict"] == "SUPPORTS"
+
+    def test_no_override_still_reports_the_fields(self):
+        evidence = {"tools_called": [], "agent": "sec", "verdict": "SUPPORTS"}
+        state = {"parsed_claim": _make_parsed()}
+        metadata = _format_metadata(state, evidence)
+        assert metadata["override_applied"] is False
+        assert metadata["llm_original_verdict"] is None
+
 
 class TestFormatNumber:
 

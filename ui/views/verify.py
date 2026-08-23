@@ -8,7 +8,7 @@ import streamlit as st
 from api_client import memory_accept, memory_check, verify_claim_stream
 from components.evidence import render_evidence
 from components.formatting import _escape
-from components.source_badges import _data_source_badges_html
+from components.source_badges import _data_source_badges_html, _override_badge_html
 
 
 
@@ -35,11 +35,12 @@ def _render_verification_result(data, from_memory=False, memory_similarity=None)
         verdict_class = "verdict-nei"
 
     badges_html = _data_source_badges_html(metadata)
+    override_html = _override_badge_html(metadata)
 
     if from_memory:
         source_line = f"From Memory &middot; {memory_similarity:.0%} match"
     else:
-        source_line = f"{agent_display} Agent &middot; {exec_time:.1f}s {badges_html}"
+        source_line = f"{agent_display} Agent &middot; {exec_time:.1f}s {badges_html}{override_html}"
 
     parts = [
         f'<div class="{verdict_class}" style="display: flex; align-items: center; justify-content: space-between; text-align: left;">',

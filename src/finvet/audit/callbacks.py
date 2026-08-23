@@ -129,6 +129,29 @@ class AuditCallbackHandler(BaseCallbackHandler):
             data={"node": node_name, "duration_ms": duration_ms},
         )
 
+        # The verdict decision itself, as a compact queryable event. Node
+        # timings alone cannot answer how often the deterministic layer
+        # overruled the model; the full evidence dict is too large to store,
+        # so only the decision fields are kept.
+        evidence = outputs.get("agent_evidence") if isinstance(outputs, dict) else None
+        if evidence:
+            self._audit.log_event(
+                event_type="verdict_decided",
+                request_id=self._request_id,
+                agent=evidence.get("agent"),
+                data={
+                    "agent": evidence.get("agent"),
+                    "verdict": evidence.get("verdict"),
+                    "llm_original_verdict": evidence.get("llm_original_verdict"),
+                    "override_applied": evidence.get("override_applied", False),
+                    "confidence": evidence.get("confidence"),
+                    "retrieved_value": evidence.get("retrieved_value"),
+                    "magnitude_difference_percent": evidence.get(
+                        "magnitude_difference_percent"
+                    ),
+                },
+            )
+
     def on_chain_error(
         self,
         error: BaseException,

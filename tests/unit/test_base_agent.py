@@ -338,3 +338,51 @@ class TestToolResultPreviewCoversTheStatement:
         got = BaseVerificationAgent._extract_retrieved_value(
             self._detail_for(), parsed)
         assert got == 93_736_000_000.0
+
+
+class TestEvidenceContract:
+    """The evidence dict must have the same shape however the agent exits."""
+
+    def test_error_evidence_carries_override_fields(self):
+        agent = ConcreteAgent()
+        evidence = agent._error_evidence("boom", 12)
+        assert evidence["override_applied"] is False
+        assert evidence["llm_original_verdict"] is None
+
+    def test_node_error_evidence_matches_agent_error_evidence(self):
+        from finvet.graph.nodes.domain_agents import _error_evidence
+
+        agent_keys = set(ConcreteAgent()._error_evidence("boom", 0))
+        node_keys = set(_error_evidence("sec", "SEC EDGAR", "boom"))
+        # provenance is agent-only; everything else must agree
+        assert agent_keys - node_keys == {"provenance"}
+        assert node_keys - agent_keys == set()
+
+
+class TestToolFailureIsRecorded:
+    """A failed tool call recorded as a success corrupts the audit trail and
+    lets the retrieved-value fallback read numbers out of an error string."""
+
+    def test_error_tool_message_is_not_marked_successful(self):
+        from langchain_core.messages import AIMessage, ToolMessage
+
+        agent = ConcreteAgent()
+        msgs = [
+            AIMessage(content="", tool_calls=[
+                {"name": "get_income_statement", "args": {}, "id": "t1"}]),
+            ToolMessage(content="upstream 500", tool_call_id="t1", status="error"),
+        ]
+        _, detail, _ = agent._extract_tool_info(msgs)
+        assert detail[0]["success"] is False
+
+    def test_successful_tool_message_still_marked_successful(self):
+        from langchain_core.messages import AIMessage, ToolMessage
+
+        agent = ConcreteAgent()
+        msgs = [
+            AIMessage(content="", tool_calls=[
+                {"name": "get_income_statement", "args": {}, "id": "t1"}]),
+            ToolMessage(content="ok", tool_call_id="t1"),
+        ]
+        _, detail, _ = agent._extract_tool_info(msgs)
+        assert detail[0]["success"] is True

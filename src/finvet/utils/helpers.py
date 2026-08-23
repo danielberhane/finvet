@@ -48,6 +48,10 @@ def build_preliminary_analysis(
         # bare number with no label.
         "metric": getattr(parsed_claim, "metric", None) if parsed_claim else None,
         "magnitude_difference_percent": agent_evidence.get("magnitude_difference_percent"),
+        # A reviewer deciding a paused verdict needs to know the deterministic
+        # layer overruled the model, and what the model had concluded.
+        "override_applied": agent_evidence.get("override_applied", False),
+        "llm_original_verdict": agent_evidence.get("llm_original_verdict"),
         "tools_called": agent_evidence.get("tools_called", []),
         "tool_calls_detail": agent_evidence.get("tool_calls_detail", []),
         "source_description": agent_evidence.get("source_description", ""),

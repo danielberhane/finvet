@@ -629,6 +629,7 @@ STYLES = """
     .ds-xbrl { background: #DBEAFE; color: #1E40AF; }
     .ds-rag  { background: #EDE9FE; color: #6D28D9; }
     .ds-a2a  { background: #FEF3C7; color: #92400E; }
+    .ds-override { background: #1E293B; color: #F8FAFC; }
 
     .similar-similarity {
         font-size: 0.88rem;
