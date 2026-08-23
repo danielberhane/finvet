@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """View detailed audit trail including full agent reasoning."""
 
-import json
 import sys
 from src.finvet.config.database import get_db_session
 from src.finvet.audit.models import AuditEvent, AuditExecution
@@ -58,14 +57,14 @@ def view_detailed_audit(request_id=None):
                 print(f"✓ Confidence: {data.get('confidence', 0):.2f}")
                 print(f"✓ Sources: {data.get('sources_count', 0)}")
                 print(f"✓ Execution Time: {data.get('execution_time_ms', 0)}ms")
-                print(f"\nReasoning:")
+                print("\nReasoning:")
                 print(f"  {data.get('reasoning', 'N/A')}")
-                print(f"\nEvidence Summary:")
+                print("\nEvidence Summary:")
                 print(f"  {data.get('evidence_summary', 'N/A')[:500]}")
                 
                 # Show comparison if available
                 if 'comparison' in data:
-                    print(f"\nComparison:")
+                    print("\nComparison:")
                     comp = data['comparison']
                     print(f"  Claimed: {comp.get('claimed_value', 'N/A')}")
                     print(f"  Actual: {comp.get('actual_value', 'N/A')}")
@@ -75,7 +74,7 @@ def view_detailed_audit(request_id=None):
                 print(f"Final Verdict: {data.get('final_verdict', 'N/A')}")
                 print(f"Final Confidence: {data.get('final_confidence', 0):.2f}")
                 print(f"Primary Authority: {data.get('primary_authority', 'N/A')}")
-                print(f"\nSummary:")
+                print("\nSummary:")
                 print(f"  {data.get('summary', 'N/A')}")
 
 if __name__ == '__main__':
