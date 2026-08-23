@@ -9,7 +9,7 @@ Built as a reference implementation of an agentic AI system in a regulated domai
 - **UI**: `ui/app.py` → pages in `ui/views/`, components in `ui/components/` (Streamlit, port 8501)
 - **Pipeline**: LangGraph — input_guardrails → claim_parser → period_resolver → domain_agents → consensus → output_guardrails → response_generator
 - **Agents**: SEC, Market, News in `src/finvet/agents/` — all extend `base.py` (ReAct loop + structured verdict)
-- **Prompts**: Text files in `src/finvet/agents/prompts/` (sec_system.txt, market_system.txt, news_system.txt)
+- **Prompts**: Text files in `src/finvet/agents/prompts/` (sec_system.txt, market_system.txt, news_system.txt, parser_system.txt)
 - **Constants**: All magic numbers in `src/finvet/config/constants.py` (tolerances, consensus, agent limits, thresholds)
 - **State**: `VerificationState` TypedDict in `src/finvet/models/state.py`
 - **RAG**: Hybrid search (pgvector cosine + tsvector BM25, RRF k=60) in `src/finvet/rag/`
@@ -44,7 +44,8 @@ src/finvet/
     nodes/                   # Pipeline node functions
     workflow.py              # LangGraph compilation + routing
   tools/                     # Agent tools (market, sec, news, filing_search, corroborate)
-  rag/                       # Hybrid RAG (pgvector + tsvector + RRF)
+  rag/                       # Hybrid RAG (pgvector + tsvector + RRF); ingest via `python -m finvet.rag.ingest`
+  eval/                      # Eval harness — xbrl_retrieval, reject_classification, dataset, gold-fill
   memory/                    # Claim memory (embeddings + cosine similarity)
   audit/                     # PostgreSQL audit trail (thread-safe)
   guards/                    # Input guardrails (regex + Llama Guard)
@@ -60,18 +61,18 @@ ui/
   components/
     formatting.py            # format_value, _escape, _md_inline
     source_badges.py         # _data_source_badges_html
-    data_comparison.py       # render_data_comparison
     evidence.py              # render_evidence, _parse_reasoning_sections
-    similar_claims.py        # render_similar_claims
   views/
     verify.py                # Verify Claim page
     reviews.py               # Pending Reviews list
     review_detail.py         # Single review detail + HITL submission
+    audit_list.py            # Audit trail browser
+    audit_detail.py          # Single run, node by node
 
 tests/
-  unit/                      # Mocked tests (65+ tests)
+  unit/                      # Mocked tests (480 tests, no .env or DB needed)
   integration/               # End-to-end tests
-  golden/                    # Regression tests (planned)
+  golden/                    # Regression tests (scaffold only)
 ```
 
 ## Development Environment
@@ -110,5 +111,7 @@ tests/
 - `memory_context` field on VerifyClaimRequest and VerificationState.
 - Audit events: `memory_cache_accepted`, `memory_context_injected`.
 
-## Dead Code (safe to ignore)
-- No Dockerfiles for the app itself; only Postgres and the optional MCP/Ollama services are containerised.
+## Containers
+- `docker/Dockerfile` builds both API and UI; `docker/Dockerfile.sec` builds the SEC MCP server.
+- `docker compose --profile sec up --build` brings up Postgres, API, UI, and SEC MCP.
+- Optional profiles: `sec` (SEC EDGAR MCP), `guards` (Ollama for Llama Guard).
