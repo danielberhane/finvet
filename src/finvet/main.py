@@ -38,21 +38,22 @@ deps.verification_graph = graph
 logger.info("FinVet application started with HITL checkpointer enabled")
 
 
-# Create LangGraph Store for episodic memory
-def _embed_texts(texts: list[str]) -> list[list[float]]:
-    from openai import OpenAI
-    client = OpenAI(api_key=settings.openai_api_key)
-    response = client.embeddings.create(model="text-embedding-3-small", input=texts)
-    return [e.embedding for e in response.data]
-
+# Create LangGraph Store for episodic memory. Shares the RAG embedder so both
+# subsystems stay on one locally-served model and one vector dimension.
+from .config.constants import EMBEDDING_DIMS
+from .rag.service import _embed_texts
 
 claim_store = None
 _store_cm = None  # Keep context manager alive for app lifetime
-if settings.enable_claim_memory and settings.openai_api_key:
+if settings.enable_claim_memory:
     try:
         _store_cm = PostgresStore.from_conn_string(
             settings.postgres_url,
-            index={"dims": 1536, "embed": _embed_texts, "fields": ["claim_text"]},
+            index={
+                "dims": EMBEDDING_DIMS,
+                "embed": _embed_texts,
+                "fields": ["claim_text"],
+            },
         )
         claim_store = _store_cm.__enter__()
         claim_store.setup()
