@@ -155,7 +155,7 @@ with st.sidebar:
 st.markdown("""
 <div class="main-header">
     <div class="logo-text">FinVet</div>
-    <div class="tagline">Agentic financial claim verification — the model reasons, but never has the last word on a number.</div>
+    <div class="tagline">Agentic financial claim verification</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -182,7 +182,7 @@ render_verify()
 # Footer
 st.markdown(f"""
 <div class="footer">
-    <strong>FinVet v{__version__}</strong> — Agentic financial claim verification<br>
-    Powered by SEC EDGAR, Finnhub, Tavily
+    <strong>FinVet v{__version__}</strong><br>
+    Data: SEC EDGAR &middot; Finnhub &middot; Tavily &middot; FRED
 </div>
 """, unsafe_allow_html=True)
