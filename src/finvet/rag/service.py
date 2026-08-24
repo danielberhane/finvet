@@ -7,10 +7,16 @@ Handles ingestion (parse → chunk → embed → store) and hybrid search
 from typing import Optional
 from pathlib import Path
 
-from openai import OpenAI
+import httpx
 from sqlalchemy import text, func
 
-from ..config.constants import EMBED_BATCH_SIZE, EMBEDDING_MODEL, RRF_K
+from ..config.constants import (
+    EMBED_BATCH_SIZE,
+    EMBEDDING_DIMS,
+    EMBEDDING_MODEL,
+    RRF_ABSENT_RANK,
+    RRF_K,
+)
 from ..config.database import get_db_session, Base, engine
 from ..config.settings import settings
 from ..utils.logging import get_logger
@@ -21,24 +27,29 @@ logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# OpenAI client (singleton, same pattern as memory/service.py)
+# Embeddings — served locally by Ollama, so no API key and no per-call billing.
 # ---------------------------------------------------------------------------
 
-_openai_client: Optional[OpenAI] = None
-
-
-def _get_openai_client() -> OpenAI:
-    global _openai_client
-    if _openai_client is None:
-        _openai_client = OpenAI(api_key=settings.openai_api_key)
-    return _openai_client
-
-
 def _embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed a batch of texts using OpenAI."""
-    client = _get_openai_client()
-    response = client.embeddings.create(model=EMBEDDING_MODEL, input=texts)
-    return [item.embedding for item in response.data]
+    """Embed a batch of texts using the local Ollama embedding model."""
+    response = httpx.post(
+        f"{settings.ollama_url.rstrip('/')}/api/embed",
+        json={"model": EMBEDDING_MODEL, "input": texts},
+        timeout=settings.embedding_timeout_s,
+    )
+    response.raise_for_status()
+    embeddings = response.json().get("embeddings") or []
+    if len(embeddings) != len(texts):
+        raise RuntimeError(
+            f"{EMBEDDING_MODEL} returned {len(embeddings)} embeddings "
+            f"for {len(texts)} inputs"
+        )
+    if embeddings and len(embeddings[0]) != EMBEDDING_DIMS:
+        raise RuntimeError(
+            f"{EMBEDDING_MODEL} returned {len(embeddings[0])}-dim vectors, "
+            f"but filing_chunks.embedding is vector({EMBEDDING_DIMS})"
+        )
+    return embeddings
 
 
 def _embed_single(text: str) -> list[float]:
@@ -59,7 +70,18 @@ class RAGService:
 
     @property
     def available(self) -> bool:
-        return bool(settings.openai_api_key)
+        """True when search can return results at all.
+
+        Deliberately not a check on the embedder: search degrades to keyword-only
+        when embeddings are down, so the service is still useful. It is the corpus
+        being empty that makes every query pointless.
+        """
+        try:
+            with get_db_session() as session:
+                return (session.query(func.count(FilingChunk.id)).scalar() or 0) > 0
+        except Exception as e:
+            logger.warning(f"RAG availability check failed: {e}")
+            return False
 
     def _ensure_table(self):
         """Create the filing_chunks table if it doesn't exist."""
@@ -190,7 +212,17 @@ class RAGService:
         """
         self._ensure_table()
 
-        query_embedding = _embed_single(query)
+        # The keyword arm is pure Postgres and needs no embedding. Letting an
+        # embedder outage propagate would take it down too, so degrade to
+        # keyword-only search instead of failing the whole query.
+        try:
+            query_embedding = _embed_single(query)
+        except Exception as e:
+            logger.warning(
+                f"Embedding unavailable ({type(e).__name__}: {e}) — "
+                f"falling back to keyword-only search"
+            )
+            query_embedding = None
 
         # Build WHERE clause filters
         filters = []
@@ -231,8 +263,11 @@ class RAGService:
         """)
 
         with get_db_session() as session:
-            vec_params = {**params, "query_vec": str(query_embedding)}
-            vec_results = session.execute(vec_sql, vec_params).fetchall()
+            if query_embedding is not None:
+                vec_params = {**params, "query_vec": str(query_embedding)}
+                vec_results = session.execute(vec_sql, vec_params).fetchall()
+            else:
+                vec_results = []
 
             kw_params = {**params, "query_text": query}
             kw_results = session.execute(kw_sql, kw_params).fetchall()
@@ -255,8 +290,8 @@ class RAGService:
         # Compute RRF scores
         scored = []
         for chunk_id in all_ids:
-            vec_rank = vec_ranks.get(chunk_id, 1000)  # Absent = low rank
-            kw_rank = kw_ranks.get(chunk_id, 1000)
+            vec_rank = vec_ranks.get(chunk_id, RRF_ABSENT_RANK)  # Absent = low rank
+            kw_rank = kw_ranks.get(chunk_id, RRF_ABSENT_RANK)
             rrf_score = 1.0 / (RRF_K + vec_rank) + 1.0 / (RRF_K + kw_rank)
             scored.append((chunk_id, rrf_score))
 

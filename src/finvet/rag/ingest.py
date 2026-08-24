@@ -48,9 +48,6 @@ def ingest_all_filings(filings_dir: str | Path) -> dict:
         return {"error": f"Directory not found: {filings_dir}"}
 
     rag = get_rag_service()
-    if not rag.available:
-        logger.error("OpenAI API key not configured — cannot embed")
-        return {"error": "OpenAI API key not configured"}
 
     stats = {"total_files": 0, "total_chunks": 0, "by_ticker": {}}
 
@@ -71,11 +68,11 @@ def ingest_all_filings(filings_dir: str | Path) -> dict:
         ticker = match.group(1)
         filing_type = match.group(2)
         period_end = match.group(3)
+        # CIK is metadata on the stored chunk, not a lookup key — an unknown
+        # ticker should still be ingestible without editing this file.
         cik = CIK_MAP.get(ticker, "")
-
         if not cik:
-            logger.warning(f"No CIK mapping for {ticker}, skipping {filepath.name}")
-            continue
+            logger.info(f"No CIK mapping for {ticker} — ingesting without one")
 
         print(f"  Ingesting: {ticker} {filing_type} {period_end} ...", end=" ", flush=True)
 

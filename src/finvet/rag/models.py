@@ -3,6 +3,7 @@
 from sqlalchemy import Column, Integer, String, Text, Index
 from pgvector.sqlalchemy import Vector
 
+from ..config.constants import EMBEDDING_DIMS
 from ..config.database import Base
 
 
@@ -22,7 +23,7 @@ class FilingChunk(Base):
     chunk_index = Column(Integer, nullable=False)
     chunk_text = Column(Text, nullable=False)
     token_count = Column(Integer, nullable=False)
-    embedding = Column(Vector(1536))                         # pgvector cosine search
+    embedding = Column(Vector(EMBEDDING_DIMS))               # pgvector cosine search
 
     __table_args__ = (
         Index("idx_filing_chunks_ticker_period", "ticker", "filing_type", "period_end"),
