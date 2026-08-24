@@ -49,10 +49,11 @@ CONFIDENCE_MODERATE_THRESHOLD = 0.70
 # ---------------------------------------------------------------------------
 # RAG constants (used in rag/service.py)
 # ---------------------------------------------------------------------------
-EMBEDDING_MODEL = "text-embedding-3-small"
-EMBEDDING_DIMS = 1536
+EMBEDDING_MODEL = "nomic-embed-text"
+EMBEDDING_DIMS = 768
 EMBED_BATCH_SIZE = 50
 RRF_K = 60  # Reciprocal Rank Fusion constant
+RRF_ABSENT_RANK = 1000  # Rank assigned to a chunk missing from one arm
 
 # ---------------------------------------------------------------------------
 # Memory thresholds (used in memory/service.py and main.py)

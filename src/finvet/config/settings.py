@@ -56,8 +56,12 @@ class Settings(BaseSettings):
         """True while SEC_EDGAR_USER_AGENT still carries the shipped example contact."""
         return "your@email.com" in self.sec_edgar_user_agent
 
-    # OpenAI Configuration (for embeddings)
+    # OpenAI Configuration (optional; no longer used for embeddings)
     openai_api_key: Optional[str] = None
+
+    # Embeddings (RAG + claim memory) — served locally by Ollama, no API key
+    ollama_url: str = "http://localhost:11434"
+    embedding_timeout_s: float = 60.0
 
     # Tavily Configuration
     tavily_api_key: str
