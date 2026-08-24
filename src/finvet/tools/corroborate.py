@@ -4,7 +4,7 @@ Allows the SEC agent to ask the News agent to corroborate findings
 from SEC filing text, enabling cross-source verification.
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
@@ -31,7 +31,7 @@ def corroborate_with_news(
     finding: str,
     query: str,
     ticker: str,
-) -> CorroborationResult:
+) -> Dict[str, Any]:
     """Ask the News agent to corroborate a finding from SEC filing text.
 
     Use this AFTER finding something significant in a filing via
@@ -53,8 +53,12 @@ def corroborate_with_news(
         ticker: Company ticker symbol (e.g., "AAPL").
 
     Returns:
-        CorroborationResult with the News agent's verdict and reasoning.
+        CorroborationResult fields as a dict: success, news_verdict,
+        news_confidence, news_reasoning, sources_checked, error.
     """
+    # Dict, not the model — see the note in filing_search.py: a BaseModel's repr
+    # survives neither json.loads nor ast.literal_eval, so _parse_provenance
+    # cannot recover it and the A2A result never reaches the audit trail.
     try:
         # Import here to avoid circular imports
         from ..agents.news_agent.react_agent import NewsAgent
@@ -82,8 +86,8 @@ def corroborate_with_news(
             news_confidence=evidence.get("confidence", 0.0),
             news_reasoning=evidence.get("reasoning", ""),
             sources_checked=len(evidence.get("tools_called", [])),
-        )
+        ).model_dump()
 
     except Exception as e:
         logger.error(f"corroborate_with_news failed: {e}")
-        return CorroborationResult(success=False, error=str(e))
+        return CorroborationResult(success=False, error=str(e)).model_dump()
