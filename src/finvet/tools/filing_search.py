@@ -33,7 +33,7 @@ def search_filing_text(
     section: str = "",
     filing_type: str = "",
     top_k: int = 5,
-) -> FilingSearchResult:
+) -> Dict[str, Any]:
     """Search the narrative text of SEC filings (10-K, 10-Q) for information
     NOT available in structured XBRL financial statements.
 
@@ -61,15 +61,19 @@ def search_filing_text(
         top_k: Number of results to return (default 5).
 
     Returns:
-        FilingSearchResult with matching text chunks and metadata.
+        FilingSearchResult fields as a dict: success, chunks, total_found, error.
     """
+    # Returned as a dict, not the model: LangChain stringifies a tool's return
+    # value, and a BaseModel's repr ("success=True chunks=[...]") is neither
+    # JSON nor a Python literal, so _parse_provenance cannot recover it and the
+    # retrieved chunks never reach data_sources or the audit trail.
     try:
         rag = get_rag_service()
         if not rag.available:
             return FilingSearchResult(
                 success=False,
                 error="RAG service not available (OpenAI API key not configured)",
-            )
+            ).model_dump()
 
         results = rag.search(
             query=query,
@@ -85,8 +89,8 @@ def search_filing_text(
             success=True,
             chunks=results,
             total_found=len(results),
-        )
+        ).model_dump()
 
     except Exception as e:
         logger.error(f"search_filing_text failed: {e}")
-        return FilingSearchResult(success=False, error=str(e))
+        return FilingSearchResult(success=False, error=str(e)).model_dump()

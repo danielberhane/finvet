@@ -31,9 +31,12 @@ services:
       POSTGRES_HOST: postgres
       SEC_EDGAR_MCP_URL: http://sec-edgar-mcp:9870
       LLAMA_GUARD_URL: http://ollama:11434
+      OLLAMA_URL: http://ollama:11434
     depends_on:
       postgres:
         condition: service_healthy
+      ollama:
+        condition: service_started
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -76,12 +79,14 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # Semantic guardrail layer (Llama Guard 3). Off by default — the regex guard
-  # runs standalone. Enable with ENABLE_LLAMA_GUARD=true and:
-  #   docker compose --profile guards up -d
-  #   docker exec finvet-ollama ollama pull llama-guard3:8b
+  # Local model server. Always on: it serves the embedding model that the RAG
+  # corpus and claim memory both depend on, so there is no API key anywhere in
+  # the embedding path. Pull the model once the stack is up:
+  #   docker exec finvet-ollama ollama pull nomic-embed-text
+  # It also hosts the optional Llama Guard semantic guardrail, which stays off
+  # by default (the regex guard runs standalone). To enable that as well:
+  #   ENABLE_LLAMA_GUARD=true and docker exec finvet-ollama ollama pull llama-guard3:8b
   ollama:
-    profiles: ["guards"]
     image: ollama/ollama
     container_name: finvet-ollama
     ports:
