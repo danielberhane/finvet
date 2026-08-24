@@ -60,13 +60,14 @@ Deeper dive: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Quickstart
 
-The whole system — Postgres, API, UI, and the SEC MCP server — comes up with one command. The
-API creates its schema on first boot.
+The whole system — Postgres, Ollama, API, UI, and the SEC MCP server — comes up with one
+command. The API creates its schema on first boot.
 
 ```bash
 git clone https://github.com/danielberhane/finvet.git && cd finvet
 cp .env.example .env            # add DEEPSEEK_API_KEY, TAVILY_API_KEY, POSTGRES_PASSWORD
 docker compose --profile sec up --build
+docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 # UI → http://localhost:8501   API → http://localhost:8000
 ```
 
@@ -101,15 +102,20 @@ python -m finvet.rag.ingest                    # defaults to data/filings
 python -m finvet.rag.ingest --dir data/filings/AAPL
 ```
 
-Requires `OPENAI_API_KEY` (embeddings) and a running Postgres.
+Requires a running Postgres and Ollama with `nomic-embed-text` pulled. **No API key** — the
+embedding model is served locally, so ingest and search cost nothing per call.
 
 ### Profiles
 
 | Profile | Adds | For |
 |---|---|---|
-| *(default)* | Postgres + pgvector, API, UI | always |
+| *(default)* | Postgres + pgvector, Ollama, API, UI | always |
 | `--profile sec` | SEC EDGAR MCP (self-contained, from PyPI) | SEC claims (most demos) |
-| `--profile guards` | Ollama | optional Llama Guard (~5 GB, opt-in) |
+
+Ollama runs by default because it serves the embedding model that RAG and claim memory both
+use. Pull `nomic-embed-text` once (~270 MB). The optional Llama Guard semantic guardrail uses
+the same container but stays off unless you set `ENABLE_LLAMA_GUARD=true` and pull
+`llama-guard3:8b` (~5 GB); the regex guard runs standalone either way.
 
 ### Keys
 
@@ -118,7 +124,7 @@ Requires `OPENAI_API_KEY` (embeddings) and a running Postgres.
 | `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | **required** — nothing runs |
 | `TAVILY_API_KEY` | news search | news claims → NOT_ENOUGH_INFO |
 | `FINNHUB_API_KEY` | market quotes, tickers | market claims → NOT_ENOUGH_INFO |
-| `OPENAI_API_KEY` | embeddings → RAG + claim memory | both disabled; SEC still verifies via XBRL |
+| *(none)* | embeddings → RAG + claim memory | served locally by Ollama — no key, no per-call cost |
 | *(none)* | FRED macro, SEC XBRL | free public endpoints |
 
 The LLM is pluggable ([`llm/factory.py`](src/finvet/llm/factory.py)) — point any
@@ -169,8 +175,9 @@ Packaged for **local / demo use, not public hosting as-is.**
 
 - **Unauthenticated API** — no auth, rate limiting, or CORS. Run on a trusted network; put an
   authenticating proxy in front before any exposure.
-- **Graceful degradation** — with SEC MCP, Ollama, or OpenAI down, the API stays up and
-  returns NOT_ENOUGH_INFO or routes to review rather than 500-ing.
+- **Graceful degradation** — with SEC MCP or Ollama down, the API stays up and returns
+  NOT_ENOUGH_INFO or routes to review rather than 500-ing. Losing the embedder costs the
+  semantic half of RAG; keyword search keeps working.
 - **Reproducible builds** — images build from a committed `uv.lock`, so CI, Docker, and dev
   resolve identical versions.
 - **CI/CD** — [`ci.yml`](.github/workflows/ci.yml) runs lint + tests + Docker builds on every
