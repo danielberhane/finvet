@@ -84,6 +84,16 @@ _ITEM_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Fallback for filers (Workiva/iXBRL, e.g. AMZN) that put the item number and
+# its title in separate table cells: once concatenated there is no space after
+# the period, so _ITEM_PATTERN's "\s+" never matches. Only used when the strict
+# pattern finds nothing, because this one also matches table-of-contents rows
+# ("Item 1.Business4") that would otherwise win the first-occurrence dedup.
+_ITEM_PATTERN_NO_SPACE = re.compile(
+    r"^(?:ITEM|Item)\s+(\d+[A-Ca-c]?)\.\s*(\D.*)",
+    re.IGNORECASE,
+)
+
 
 def parse_filing_html(filepath: str | Path) -> list[Section]:
     """Parse an SEC filing HTML file into structured sections.
@@ -104,15 +114,20 @@ def parse_filing_html(filepath: str | Path) -> list[Section]:
     # Find all span/div elements containing Item headings.
     # SEC filings use <span> tags for section headings in the body.
     # The <a> tags are table-of-contents links — skip those.
-    heading_elements = []
+    candidate_tags = soup.find_all(["span", "div", "p", "b"])
 
-    for tag in soup.find_all(["span", "div", "p", "b"]):
-        text = tag.get_text(strip=True)
-        match = _ITEM_PATTERN.match(text)
-        if match and len(text) < 100:
-            item_num = match.group(1).upper()
-            title = match.group(2).strip().rstrip(".")
-            heading_elements.append((tag, item_num, title))
+    def _collect(pattern):
+        found = []
+        for tag in candidate_tags:
+            text = tag.get_text(strip=True)
+            match = pattern.match(text)
+            if match and len(text) < 100:
+                item_num = match.group(1).upper()
+                title = match.group(2).strip().rstrip(".")
+                found.append((tag, item_num, title))
+        return found
+
+    heading_elements = _collect(_ITEM_PATTERN) or _collect(_ITEM_PATTERN_NO_SPACE)
 
     if not heading_elements:
         return []
@@ -142,9 +157,7 @@ def parse_filing_html(filepath: str | Path) -> list[Section]:
         next_tag = unique_headings[i + 1][0] if i + 1 < len(unique_headings) else None
 
         # Walk siblings and descendants after the heading tag
-        for sibling in _iter_after(tag, soup):
-            if next_tag and sibling is next_tag:
-                break
+        for sibling in _iter_after(tag, soup, next_tag):
             if hasattr(sibling, "get_text"):
                 t = sibling.get_text(separator=" ", strip=True)
                 if t and len(t) > 2:
@@ -166,17 +179,22 @@ def parse_filing_html(filepath: str | Path) -> list[Section]:
     return sections
 
 
-def _iter_after(start_tag, soup):
-    """Iterate over all elements after start_tag in document order.
+def _iter_after(start_tag, soup, stop_tag=None):
+    """Iterate over all elements between start_tag and stop_tag in document order.
 
     This walks the DOM tree to collect content between two Item headings.
-    Uses next_elements to traverse in document order.
+    The stop check runs against every descendant, not only the leaf elements
+    that get yielded — a heading tag is usually a container, so testing it
+    against the yielded leaves alone would never match and every section
+    would run to the end of the document.
     """
     found_start = False
     for element in soup.descendants:
         if element is start_tag:
             found_start = True
             continue
+        if stop_tag is not None and element is stop_tag:
+            return
         if found_start:
             # Only yield leaf text-bearing elements to avoid duplication
             if hasattr(element, "children"):
