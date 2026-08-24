@@ -1,6 +1,6 @@
 # FinVet
 
-**Agentic financial claim verification — evidence-backed verdicts, deterministic numeric checks, and a full audit trail.**
+**Agentic financial claim verification — the model reasons, but never has the last word on a number.**
 
 <!-- Restore after the first push, once CI has run once:
 [![ci](https://github.com/danielberhane/finvet/actions/workflows/ci.yml/badge.svg)](https://github.com/danielberhane/finvet/actions/workflows/ci.yml)
