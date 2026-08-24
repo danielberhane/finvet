@@ -8,9 +8,13 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 
-Give it a claim — *"Apple's fiscal 2024 revenue was $391 billion"* — and it returns a verdict
+Give it a claim — *"Tesla's 2024 annual revenue was $150 billion"* — and it returns a verdict
 (`SUPPORTS` / `REFUTES` / `NOT_ENOUGH_INFO`), a confidence score, the evidence chain, and an
 audit trail of every step that produced the answer.
+
+<p align="center">
+  <img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim, with retrieved value, tolerance, and tool calls" width="800">
+</p>
 
 > **Not financial advice.** A research and demonstration system; outputs may be wrong and must
 > be independently verified. Not affiliated with any data provider named here.
