@@ -1,7 +1,7 @@
 # FinVet — Project Guide for Claude Code
 
 ## What This Is
-AI-powered financial claim verification system. FastAPI backend + Streamlit UI + LangGraph pipeline.
+Agentic financial claim verification system. FastAPI backend + Streamlit UI + LangGraph pipeline.
 Built as a reference implementation of an agentic AI system in a regulated domain: multi-agent orchestration, tool use, guardrails, HITL, and a full audit trail.
 
 ## Architecture
