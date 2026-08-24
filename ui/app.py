@@ -1,4 +1,4 @@
-"""FinVet - AI-Powered Financial Claim Verification"""
+"""FinVet - Agentic Financial Claim Verification"""
 
 import streamlit as st
 
@@ -155,7 +155,7 @@ with st.sidebar:
 st.markdown("""
 <div class="main-header">
     <div class="logo-text">FinVet</div>
-    <div class="tagline">AI-powered financial claim verification</div>
+    <div class="tagline">Agentic financial claim verification — the model reasons, but never has the last word on a number.</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -182,7 +182,7 @@ render_verify()
 # Footer
 st.markdown(f"""
 <div class="footer">
-    <strong>FinVet v{__version__}</strong> — Autonomous financial claim verification<br>
+    <strong>FinVet v{__version__}</strong> — Agentic financial claim verification<br>
     Powered by SEC EDGAR, Finnhub, Tavily
 </div>
 """, unsafe_allow_html=True)
