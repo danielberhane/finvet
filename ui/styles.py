@@ -28,13 +28,6 @@ STYLES = """
         color: #64748b;
         margin-top: 0.5rem;
         margin-bottom: 2rem;
-        /* The tagline is a full sentence now: cap the measure and let the
-           browser even out the lines so it wraps deliberately, not raggedly. */
-        max-width: 46ch;
-        margin-left: auto;
-        margin-right: auto;
-        text-wrap: balance;
-        line-height: 1.45;
     }
 
     .verdict-supports {
