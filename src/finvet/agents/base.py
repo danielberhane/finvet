@@ -75,8 +75,9 @@ class BaseVerificationAgent(ABC):
     """
 
     # Subclasses can override to capture full (non-truncated) results from
-    # specific tools for provenance tracking. Market/News agents leave this
-    # empty — only SEC agent uses it for RAG and A2A tools.
+    # specific tools for provenance tracking. The SEC agent uses it for RAG
+    # (search_filing_text); the News agent uses it for its delegation tool
+    # (corroborate_with_filing). The Market agent leaves it empty.
     _provenance_tool_names: set = set()
 
     def __init__(
@@ -180,6 +181,8 @@ class BaseVerificationAgent(ABC):
             "execution_time_ms": execution_time_ms,
             "override_applied": override_applied,
             "llm_original_verdict": original_verdict,
+            "execution_status": "completed",
+            "error": None,
         }
 
     def _extract_tool_info(self, messages) -> tuple:
@@ -461,6 +464,8 @@ class BaseVerificationAgent(ABC):
             # unconditionally.
             "override_applied": False,
             "llm_original_verdict": None,
+            "execution_status": "failed",
+            "error": error_msg,
         }
 
     def _build_context(self, state: VerificationState) -> str:

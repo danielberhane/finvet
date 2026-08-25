@@ -7,6 +7,7 @@ which tools to call and returns structured evidence.
 
 from typing import Dict, Optional, Type
 from ...config.constants import AGENT_MAX_ITERATIONS, CORROBORATION_METRICS
+from ...models.a2a import reclassify_corroboration
 from ...models.state import VerificationState
 from ...agents import SECAgent, MarketAgent, NewsAgent
 from ...agents.base import BaseVerificationAgent, compose_failure_reasoning
@@ -32,6 +33,11 @@ def _error_evidence(agent_type: str, source_desc: str, error_msg: str) -> Dict:
         "execution_time_ms": 0,
         "override_applied": False,
         "llm_original_verdict": None,
+        # Why the run ended. A2A needs this: an agent that crashed and an
+        # authoritative filing that says nothing both yield NOT_ENOUGH_INFO,
+        # and only one of them is evidence.
+        "execution_status": "failed",
+        "error": error_msg,
     }
 
 
@@ -101,7 +107,12 @@ def run_news_agent(state: VerificationState) -> Dict:
     corroboration = None
     for prov in evidence.get("provenance", []):
         prov_result = prov.get("result", {})
-        if not isinstance(prov_result, dict) or not prov_result.get("success"):
+        # A failed delegation is lifted too, not skipped. Dropping it left no
+        # record that corroboration had been attempted at all, which is a worse
+        # audit trail than mislabelling the failure -- and it silently handed
+        # the claim to the policy path to run a second time.
+        # reclassify_corroboration maps success=False to A2A_FAILED.
+        if not isinstance(prov_result, dict):
             continue
         if prov["tool"] == "corroborate_with_filing":
             corroboration = prov_result
@@ -111,6 +122,18 @@ def run_news_agent(state: VerificationState) -> Dict:
         corroboration = _corroborate_by_policy(state, evidence)
 
     if corroboration:
+        # The single classification point. The tool cannot do this -- it runs
+        # inside the ReAct loop, before this agent has a verdict to compare
+        # against -- and when it tried, it compared the SEC verdict with itself
+        # and recorded contradictions as agreement.
+        corroboration = reclassify_corroboration(
+            evidence.get("verdict", ""), corroboration
+        )
+        logger.info(
+            f"A2A status: news={evidence.get('verdict')} "
+            f"sec={corroboration.get('verdict')} -> {corroboration.get('status')} "
+            f"(trigger: {corroboration.get('trigger_mode')})"
+        )
         result["corroboration_result"] = corroboration
 
     return result
@@ -148,12 +171,26 @@ def _corroborate_by_policy(state: VerificationState, evidence: Dict) -> Optional
             claimed_value=getattr(parsed, "value", None),
             operator=getattr(parsed, "operator", None) or "eq",
             period=getattr(parsed, "period", "") or "",
+            event_date=_event_date_for(state),
             trigger_mode="policy",
-            claim_verdict=evidence.get("verdict", ""),
         ).model_dump()
     except Exception as e:
         logger.error(f"A2A policy corroboration failed: {e}")
         return None
+
+
+def _event_date_for(state: VerificationState) -> str:
+    """ISO date of the claimed event, when the resolved period names one.
+
+    The temporal gate needs a date to decide whether any filing could yet cover
+    the event. On the model-triggered path the model supplies it; the policy
+    path has no model in the loop, so it reads the resolved period instead.
+    Returning "" is honest -- the result records temporal_scope="unknown" and
+    the attempt still runs, rather than silently claiming the gate was applied.
+    """
+    canonical = state.get("canonical_period")
+    end_date = getattr(canonical, "end_date", None) if canonical else None
+    return end_date or ""
 
 
 def run_sec_agent_scoped(
