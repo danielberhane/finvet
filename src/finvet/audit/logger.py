@@ -81,6 +81,7 @@ class AuditLogger:
         execution_time_ms: int,
         final_response: Optional[Dict[str, Any]] = None,
         data_sources: Optional[Dict[str, Any]] = None,
+        terminal_status: Optional[str] = None,
     ) -> bool:
         """Commit full execution trace.
 
@@ -97,8 +98,11 @@ class AuditLogger:
         Returns:
             True if committed successfully
         """
+        # Copy, do not pop: a failed write must leave the buffer intact so the
+        # caller can retry or discard deliberately. Popping first meant a
+        # database outage destroyed the only in-memory copy of the trace.
         with self._lock:
-            events = self._events.pop(request_id, [])
+            events = list(self._events.get(request_id, []))
 
         success = self.db.commit_execution(
             request_id=request_id,
@@ -110,9 +114,28 @@ class AuditLogger:
             execution_time_ms=execution_time_ms,
             final_response=final_response,
             data_sources=data_sources,
+            terminal_status=terminal_status,
         )
 
+        if success:
+            self.discard_buffer(request_id)
+
         return success
+
+    def discard_buffer(self, request_id: str) -> None:
+        """Release a request's buffered events.
+
+        Called after a successful commit, and explicitly by a caller that has
+        given up on persisting the run. Every terminal path must reach one or
+        the other, or the buffer is retained for the process lifetime.
+        """
+        with self._lock:
+            self._events.pop(request_id, None)
+
+    def buffer_size(self, request_id: str) -> int:
+        """Number of events currently buffered for a request."""
+        with self._lock:
+            return len(self._events.get(request_id, []))
 
     def get_execution(self, request_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve execution trace.
