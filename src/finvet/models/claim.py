@@ -1,5 +1,6 @@
 """Data models for claims and parsed claim information."""
 
+from math import isfinite
 from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -54,6 +55,16 @@ class ParsedClaim(BaseModel):
                     "for range claims, the band's midpoint"
     )
 
+    range_min: Optional[float] = Field(
+        None,
+        description="Lower bound; set only for operator='range'"
+    )
+
+    range_max: Optional[float] = Field(
+        None,
+        description="Upper bound; set only for operator='range'"
+    )
+
     period: Optional[str] = Field(
         None,
         description="Time period as mentioned (e.g., 'Q4 FY2024', 'fiscal 2023')"
@@ -90,7 +101,7 @@ class ParsedClaim(BaseModel):
 
         if self.claim_type == "reject":
             stray = [f for f in ("ticker", "metric", "operator",
-                                 "value", "period")
+                                 "value", "period", "range_min", "range_max")
                      if getattr(self, f) is not None]
             if stray:
                 raise ValueError(
@@ -103,6 +114,24 @@ class ParsedClaim(BaseModel):
                     "comparator and a comparator needs a value "
                     f"(value={self.value!r}, operator={self.operator!r})"
                 )
+
+            # A range is an interval, and an interval needs both ends. The
+            # midpoint alone cannot be tested for membership -- "between $50B
+            # and $150B" collapsed to $100B refutes a filed $149B that is
+            # squarely inside the stated band.
+            if self.operator == "range":
+                if self.range_min is None or self.range_max is None:
+                    raise ValueError(
+                        "operator='range' requires both range_min and range_max")
+                if not (isfinite(self.range_min) and isfinite(self.range_max)):
+                    raise ValueError("range bounds must be finite")
+                if self.range_min > self.range_max:
+                    raise ValueError(
+                        f"range_min must not exceed range_max "
+                        f"({self.range_min!r} > {self.range_max!r})")
+            elif self.range_min is not None or self.range_max is not None:
+                raise ValueError(
+                    "range_min/range_max require operator='range'")
 
         return self
 

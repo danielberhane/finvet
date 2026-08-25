@@ -75,16 +75,24 @@ class TestPromptSpeaksTheContract:
     def test_forecast_trap_is_stated(self):
         assert "estimated_revenue" in PARSER_SYSTEM_PROMPT
 
-    def test_examples_emit_seven_keys_in_contract_order(self):
-        """Every worked example must model the exact output shape."""
+    def test_examples_emit_the_contract_keys_in_order(self):
+        """Every worked example must model the exact output shape.
+
+        Range examples carry the two extra bound keys; the rest omit them, so
+        both shapes are accepted as long as the order holds.
+        """
         order = ["claim_type", "ticker", "metric", "operator",
                  "value", "period", "reject_reason"]
+        order_with_band = ["claim_type", "ticker", "metric", "operator",
+                           "value", "range_min", "range_max", "period",
+                           "reject_reason"]
         examples = re.findall(r'\{[^{}]*"claim_type"[^{}]*\}',
                               PARSER_SYSTEM_PROMPT)
         assert len(examples) >= 8, "prompt should keep a broad example set"
         for ex in examples:
             keys = re.findall(r'"(\w+)":', ex)
-            assert keys == order, f"example breaks key order: {keys}"
+            assert keys in (order, order_with_band), \
+                f"example breaks key order: {keys}"
 
 
 class TestPromptsCarryNoTolerancePolicy:

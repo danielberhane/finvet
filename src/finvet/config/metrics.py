@@ -167,3 +167,46 @@ METRIC_TO_CONCEPTS: dict[str, tuple[str, ...]] = {
     "operating_cash_flow": ("NetCashProvidedByUsedInOperatingActivities",),
     "capex": ("PaymentsToAcquirePropertyPlantAndEquipment",),
 }
+
+
+# Metrics answerable from filing narrative rather than a structured field.
+# They resolve no TrustedObservation, so a numeric claim on one cannot reach a
+# decisive verdict -- but the delegation still records what the filing says.
+NARRATIVE_METRICS: frozenset = frozenset({"fine_amount", "settlement_amount"})
+
+
+def verification_strategy_for(parsed_claim) -> str:
+    """How, if at all, this claim can be verified.
+
+    Returns "xbrl", "market", "macro", "news_search", "filing_rag" or
+    "unsupported".
+
+    The parser's whitelist is wider than what any tool can serve: price_to_book
+    is an official prompt example that no Market result model exposes.
+    SERVABLE_METRICS knew that and nothing consulted it, so those claims were
+    handed to an agent with no way to answer and left to improvise. Naming the
+    strategy up front means an unservable claim is declined rather than
+    guessed at.
+    """
+    claim_type = getattr(parsed_claim, "claim_type", None)
+    metric = getattr(parsed_claim, "metric", None)
+
+    if claim_type == "reject":
+        return "unsupported"
+
+    # No canonical metric: the narrative path, where the agent reads filing
+    # text. Legitimate, and never decisive for a number.
+    if metric is None:
+        return "filing_rag" if claim_type == "sec" else "news_search"
+
+    if metric in NARRATIVE_METRICS:
+        return "news_search"
+
+    if metric not in SERVABLE_METRICS.get(claim_type, frozenset()):
+        return "unsupported"
+
+    if claim_type == "sec":
+        return "xbrl" if metric in METRIC_TO_CONCEPTS else "filing_rag"
+    if claim_type == "market":
+        return "market"
+    return "macro"

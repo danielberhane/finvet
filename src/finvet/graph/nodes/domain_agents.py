@@ -7,6 +7,7 @@ which tools to call and returns structured evidence.
 
 from typing import Dict, Optional, Type
 from ...config.constants import AGENT_MAX_ITERATIONS, CORROBORATION_METRICS
+from ...config.metrics import verification_strategy_for
 from ...models.a2a import reclassify_corroboration
 from ...models.state import VerificationState
 from ...agents import SECAgent, MarketAgent, NewsAgent
@@ -85,6 +86,10 @@ def _run_agent(
 
 def run_market_agent(state: VerificationState) -> Dict:
     """Run the Market ReAct agent for market data claims."""
+    declined = _unsupported_claim(state)
+    if declined is not None:
+        logger.info(f"Market claim declined: {declined['limitation']}")
+        return {"agent_evidence": declined, "agent_type": "market"}
     return _run_agent(MarketAgent, "market", "Finnhub", state)
 
 
@@ -219,6 +224,58 @@ def run_sec_agent_scoped(
         return _run_agent(SECAgent, "sec", "SEC EDGAR", state, **kwargs)
 
 
+def _limitation_evidence(agent_type: str, source_desc: str, limitation: str,
+                         reasoning: str) -> Dict:
+    """Evidence for a claim the system knowingly cannot verify.
+
+    Distinct from _error_evidence: nothing failed. The system is declining a
+    claim it has no way to answer, and says which limitation applies rather
+    than letting an agent improvise and return a confident guess.
+    """
+    evidence = _error_evidence(agent_type, source_desc, reasoning)
+    evidence.update({
+        "execution_status": "completed",
+        "error": None,
+        "limitation": limitation,
+        "reasoning": reasoning,
+    })
+    return evidence
+
+
+def _unsupported_claim(state: VerificationState) -> Optional[Dict]:
+    """Reasons to decline before an agent runs, or None to proceed."""
+    parsed = state.get("parsed_claim")
+    if parsed is None:
+        return None
+
+    # Q4 numeric claims. Deriving Q4 needs a 12-month fact minus a nine-month
+    # fact, and retrieval is scoped to one resolved period per request, so the
+    # pair cannot be requested. The duration guard in sec_edgar means this
+    # already fails safe; declining up front makes the limitation legible
+    # instead of surfacing as an unexplained NOT_ENOUGH_INFO.
+    canonical = state.get("canonical_period")
+    if (getattr(parsed, "claim_type", None) == "sec"
+            and getattr(parsed, "value", None) is not None
+            and getattr(canonical, "fiscal_quarter", None) == "Q4"):
+        return _limitation_evidence(
+            "sec", "SEC EDGAR", "unsupported_q4_derivation",
+            "Q4 figures are not filed separately and deriving them requires "
+            "two differently-scoped retrievals, which this pipeline does not "
+            "support. No verdict was attempted.")
+
+    # A metric no tool can serve. SERVABLE_METRICS knew about the gap and
+    # nothing consulted it, so these reached an agent with no way to answer.
+    if verification_strategy_for(parsed) == "unsupported":
+        return _limitation_evidence(
+            {"sec": "sec", "market": "market"}.get(
+                getattr(parsed, "claim_type", ""), "news"),
+            "unavailable", "unsupported_metric",
+            f"No available tool serves the metric "
+            f"{getattr(parsed, 'metric', None)!r}. No verdict was attempted.")
+
+    return None
+
+
 def run_sec_agent(state: VerificationState) -> Dict:
     """Run the SEC ReAct agent with RAG provenance extraction.
 
@@ -227,6 +284,11 @@ def run_sec_agent(state: VerificationState) -> Dict:
     already determined it, so routing it through the model would only create a
     chance for it to arrive wrong.
     """
+    declined = _unsupported_claim(state)
+    if declined is not None:
+        logger.info(f"SEC claim declined: {declined['limitation']}")
+        return {"agent_evidence": declined, "agent_type": "sec"}
+
     result = run_sec_agent_scoped(state)
 
     # SEC-specific: lift retrieved filing chunks into a dedicated state field
