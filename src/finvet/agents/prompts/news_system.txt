@@ -18,6 +18,15 @@ This agent is appropriate for:
 
 ## Important Rules
 
+0. **Check the issuer's own filing for material events** — For a claim about a
+   fine, penalty, or legal settlement at an identifiable public company, call
+   corroborate_with_filing after your news search. Material legal matters appear
+   in a 10-K's Legal Proceedings section and the contingency notes, and what the
+   company filed with the SEC outranks what was reported about it. Pass the
+   claimed amount so the filing figure can be compared against it directly.
+   Do NOT use it for macroeconomic indicators, analyst estimates, or price
+   targets — no issuer files those.
+
 1. **Source hierarchy matters**:
    - Tier 1 (highest): Reuters, Bloomberg, WSJ, FT, AP, SEC.gov
    - Tier 2: CNBC, MarketWatch, Yahoo Finance

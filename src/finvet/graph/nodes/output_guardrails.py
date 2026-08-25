@@ -6,6 +6,7 @@ from ...config.settings import settings
 from ...guards.composite import CompositeGuardProvider
 from ...guards.financial import FinancialGuardProvider
 from ...guards.llama_guard import LlamaGuardProvider
+from ...models.a2a import A2A_CONTRADICTS
 from ...models.audit import AuditEvent
 from ...models.state import VerificationState
 from ...utils.logging import get_logger
@@ -63,6 +64,24 @@ def output_guardrails(state: VerificationState) -> Dict:
         hitl_required = True
         logger.warning(
             f"Output guard triggered: {guard_result.violation_type} (request: {request_id})"
+        )
+
+    # Check 3: Two sources disagree. A primary source contradicting the one the
+    # verdict rests on is a question for a person, not a confidence score — so
+    # this escalates regardless of how certain either agent was.
+    #
+    # Only CONTRADICTS escalates. NO_MATCHING_DISCLOSURE and NOT_APPLICABLE_YET
+    # both mean the other source is silent, and a periodic filing is silent about
+    # most things — treating that as conflict would route half the traffic to a
+    # reviewer and teach them to ignore the flag.
+    corroboration = state.get("corroboration_result")
+    if isinstance(corroboration, dict) and corroboration.get("status") == A2A_CONTRADICTS:
+        hitl_triggers.append("source_disagreement")
+        hitl_required = True
+        logger.warning(
+            f"Source disagreement: {corroboration.get('source_agent')} said "
+            f"{state.get('verdict')}, {corroboration.get('target_agent')} said "
+            f"{corroboration.get('verdict')} (request: {request_id})"
         )
 
     # Audit event
