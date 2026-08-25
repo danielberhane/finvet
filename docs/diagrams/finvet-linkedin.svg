@@ -42,8 +42,10 @@
 <rect x="1415" y="938" width="470" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
 <text x="1650.0" y="999.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">Market Agent</text>
 <text x="1650.0" y="1035.0" fill="#334155" font-size="23" text-anchor="middle">ReAct · Finnhub</text>
-<path d="M 805 1004 L 875 1004" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
-<text x="840" y="984" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">A2A</text>
+<path d="M 805 986 L 875 986" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
+<path d="M 875 1030 L 805 1030" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
+<text x="840" y="962" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">A2A</text>
+<text x="840" y="1068" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">A2A</text>
 <path d="M 570 1070 L 570 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
 <path d="M 1110 1070 L 1110 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
 <path d="M 1650 1070 L 1650 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
@@ -56,7 +58,9 @@
 <rect x="875" y="1370" width="470" height="132" rx="15" fill="#FFFBEB" stroke="#F59E0B" stroke-width="5.0"/>
 <text x="1110.0" y="1448.0" fill="#B45309" font-size="36" font-weight="700" text-anchor="middle">Output Guardrails</text>
 <path d="M 1345 1436 L 1945 1436 L 1945 1580" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
-<text x="1645" y="1418" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">Confidence &lt; 0.70</text>
+<text x="1645" y="1348" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">Confidence &lt; 0.70</text>
+<text x="1645" y="1378" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">or unsafe output</text>
+<text x="1645" y="1408" fill="#1D4ED8" font-size="23" font-weight="700" text-anchor="middle">or sources disagree</text>
 <path d="M 1110 1502 L 1110 1796" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
 <text x="1140" y="1672" fill="#334155" font-size="23" font-weight="700" text-anchor="start">Confidence ≥ 0.70</text>
 <rect x="40" y="1586" width="470" height="132" rx="15" fill="#FEF2F2" stroke="#DC2626" stroke-width="5.0"/>

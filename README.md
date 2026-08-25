@@ -40,21 +40,34 @@ text can sway the model's prose, but not a numeric verdict.
 
 ## Architecture
 
-A 12-node LangGraph `StateGraph`. Three domain agents fan out by claim type, each a ReAct loop
-with its own tools; their evidence is reconciled, guarded, and — when confidence is low —
-paused for human review.
+A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each a ReAct loop
+with its own tools. They are not isolated: an agent can delegate to another when the answer
+lies outside its sources — the SEC agent asks News to corroborate a filing disclosure, and the
+News agent asks SEC whether the issuer's own filing confirms a reported fine or settlement.
+Evidence is reconciled, guarded, and paused for human review on any of three triggers: low
+confidence, unsafe output, or **two sources disagreeing**.
 
 <p align="center">
   <img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="800">
 </p>
 
-| Agent | Handles | Sources |
-|---|---|---|
-| **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP, hybrid RAG over filings |
-| **Market** | Prices, valuation, market cap | Finnhub |
-| **News** | Events, announcements, macro indicators | Tavily search, FRED |
+| Agent | Handles | Sources | Can delegate to |
+|---|---|---|---|
+| **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP, hybrid RAG over filing text | News |
+| **Market** | Prices, valuation, market cap | Finnhub | — |
+| **News** | Events, announcements, macro indicators | Tavily search, FRED | SEC |
 
-Deeper dive: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Delegation is bounded: a delegated agent runs without its own cross-agent tool, so the two
+cannot call each other in a loop. When both sides reach a decisive but opposite verdict the
+claim escalates to a reviewer rather than shipping — filing *silence* is not treated as
+disagreement, since a periodic report is a point-in-time document.
+
+Retrieval over filing text is hybrid: pgvector dense search and Postgres `tsvector` BM25 fused
+by reciprocal rank fusion, embedded locally with `nomic-embed-text` (no API key in the
+embedding path).
+
+Deeper dives: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
+[`docs/RAG_AND_AGENTIC_RAG_GUIDE.md`](docs/RAG_AND_AGENTIC_RAG_GUIDE.md).
 
 ---
 
