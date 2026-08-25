@@ -48,7 +48,7 @@ def _run_agent(
     the evidence dict. Falls back to error evidence on failure.
 
     agent_kwargs reach the agent constructor — used by the A2A path to build a
-    SEC agent with allow_a2a=False and a reduced iteration budget.
+    SEC agent with a reduced iteration budget for A2A delegation.
     """
     request_id = state.get("request_id", "unknown")
     logger.info(f"Running {agent_type.upper()} agent (request: {request_id})")
@@ -159,7 +159,6 @@ def _corroborate_by_policy(state: VerificationState, evidence: Dict) -> Optional
 def run_sec_agent_scoped(
     state: VerificationState,
     *,
-    allow_a2a: bool = True,
     max_iterations: Optional[int] = None,
 ) -> Dict:
     """Run the SEC agent with the resolved period applied to every tool call.
@@ -169,11 +168,14 @@ def run_sec_agent_scoped(
     skips use_period_target, and a nested agent reading a different fiscal
     period than the parent is the kind of inconsistency that surfaces later as
     an unexplainable disagreement between two of your own agents.
+
+    No recursion guard is needed. The SEC agent holds no delegation tool, so
+    News -> SEC terminates by construction.
     """
     target = period_target_for(state.get("canonical_period"))
     if target:
         logger.info(f"SEC retrieval targeting period {target[0]} ({target[1]})")
-    kwargs = {"allow_a2a": allow_a2a}
+    kwargs = {}
     if max_iterations is not None:
         kwargs["max_iterations"] = max_iterations
     with use_period_target(*(target or (None, None))):
@@ -181,7 +183,7 @@ def run_sec_agent_scoped(
 
 
 def run_sec_agent(state: VerificationState) -> Dict:
-    """Run the SEC ReAct agent with RAG/A2A provenance extraction.
+    """Run the SEC ReAct agent with RAG provenance extraction.
 
     The period resolved upstream is applied to every SEC tool call the agent
     makes. It is injected rather than passed as a tool argument: period_resolver
@@ -190,10 +192,9 @@ def run_sec_agent(state: VerificationState) -> Dict:
     """
     result = run_sec_agent_scoped(state)
 
-    # SEC-specific: extract RAG and A2A provenance into dedicated state fields
+    # SEC-specific: lift retrieved filing chunks into a dedicated state field
     evidence = result.get("agent_evidence", {})
     rag_chunks = []
-    corroboration = None
     for prov in evidence.get("provenance", []):
         prov_result = prov.get("result", {})
         if not isinstance(prov_result, dict) or not prov_result.get("success"):
@@ -202,13 +203,8 @@ def run_sec_agent(state: VerificationState) -> Dict:
             for chunk in prov_result.get("chunks", []):
                 chunk["search_query"] = prov.get("args", {}).get("query", "")
                 rag_chunks.append(chunk)
-        elif prov["tool"] == "corroborate_with_news":
-            corroboration = prov_result
-            corroboration["finding"] = prov.get("args", {}).get("finding", "")
 
     if rag_chunks:
         result["rag_chunks_retrieved"] = rag_chunks
-    if corroboration:
-        result["corroboration_result"] = corroboration
 
     return result

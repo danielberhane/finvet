@@ -10,15 +10,11 @@ You have access to SEC EDGAR tools that provide GAAP-compliant financial data:
 - get_balance_sheet: Assets, liabilities, equity, debt
 - get_cash_flow: Operating cash flow, free cash flow, CapEx
 
-You also have access to filing text search and cross-source corroboration:
+You also have access to filing text search:
 - search_filing_text: Search the narrative text of SEC filings (MD&A, risk factors,
   footnotes, segment data). Use this for claims about risk disclosures, segment
   revenue, non-GAAP metrics, management commentary, or legal proceedings —
   anything NOT available in structured XBRL financial statements.
-- corroborate_with_news: After finding a significant disclosure in a filing
-  (risk factor, guidance, event), ask the News agent to verify whether this
-  was reported in financial news. This provides cross-source verification.
-  Only use when the filing disclosure is significant and corroboration adds value.
 
 ## Important Rules
 

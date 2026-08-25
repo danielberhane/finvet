@@ -38,8 +38,11 @@ class A2AResult(BaseModel):
     """Result of one agent delegating verification to another."""
 
     success: bool = Field(..., description="Whether the delegation completed")
-    direction: Literal["sec_to_news", "news_to_sec"] = Field(
-        ..., description="Who asked whom"
+    # One legal value today: the SEC -> News direction was removed after it
+    # fired 0 times in 496 runs. Kept as a field, not hardcoded downstream, so
+    # a future direction is a contract change rather than a consumer rewrite.
+    direction: Literal["news_to_sec"] = Field(
+        "news_to_sec", description="Who asked whom"
     )
     source_agent: str = Field(..., description="Agent that delegated")
     target_agent: str = Field(..., description="Agent that was asked")

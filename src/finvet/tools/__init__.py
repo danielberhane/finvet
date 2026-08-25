@@ -36,11 +36,11 @@ from .news_tools import (
 from .tavily_search import TavilyClient
 
 from .filing_search import search_filing_text
-from .corroborate import corroborate_with_news
+from .corroborate_sec import corroborate_with_filing
 from .memory_tools import search_past_verifications
 
-# RAG + A2A tools for the SEC agent
-RAG_TOOLS = [search_filing_text, corroborate_with_news]
+# RAG tool for the SEC agent
+RAG_TOOLS = [search_filing_text]
 
 __all__ = [
     # Tool collections
@@ -64,7 +64,7 @@ __all__ = [
     "verify_news_source",
     # RAG + A2A tools
     "search_filing_text",
-    "corroborate_with_news",
+    "corroborate_with_filing",
     # Memory
     "search_past_verifications",
     # Clients

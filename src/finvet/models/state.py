@@ -424,11 +424,13 @@ class VerificationState(TypedDict, total=False):
     #          _format_metadata (data_sources["rag"] section).
     rag_chunks_retrieved: list[dict[str, Any]]
 
-    # Result of cross-source verification via the News agent.
-    # Set by run_sec_agent when the SEC agent calls corroborate_with_news tool.
-    # Contains: {"news_verdict": "CONFIRMED", "news_confidence": 0.85,
-    #            "news_reasoning": "Bloomberg reported...", "finding": "..."}
-    # None if the agent didn't use A2A corroboration.
+    # Result of checking a reported event against the issuer's own filing.
+    # Set by run_news_agent, either because the model called
+    # corroborate_with_filing or because the node's policy trigger did.
+    # Contains an A2AResult.model_dump(): {"status": "CORROBORATES",
+    #   "verdict": "SUPPORTS", "confidence": 0.85, "retrieved_value": ...,
+    #   "claimed_value": ..., "trigger_mode": "agent", "sources": [...]}
+    # None when no corroboration ran.
     # Read by: response_generator (_format_sources adds A2A provenance badge),
     #          _format_metadata (data_sources["a2a"] section).
     corroboration_result: Optional[dict[str, Any]]

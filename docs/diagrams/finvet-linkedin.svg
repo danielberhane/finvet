@@ -42,10 +42,8 @@
 <rect x="1415" y="938" width="470" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
 <text x="1650.0" y="999.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">Market Agent</text>
 <text x="1650.0" y="1035.0" fill="#334155" font-size="23" text-anchor="middle">ReAct · Finnhub</text>
-<path d="M 805 986 L 875 986" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
-<path d="M 875 1030 L 805 1030" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
-<text x="840" y="962" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">A2A</text>
-<text x="840" y="1068" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">A2A</text>
+<path d="M 875 1004 L 805 1004" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
+<text x="840" y="980" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">A2A</text>
 <path d="M 570 1070 L 570 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
 <path d="M 1110 1070 L 1110 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
 <path d="M 1650 1070 L 1650 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>

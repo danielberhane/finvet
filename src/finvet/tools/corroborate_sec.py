@@ -112,7 +112,7 @@ def _corroborate(
     )
     try:
         # Imported here, not at module scope: agents import tools, so a top-level
-        # import would close the cycle. Same pattern as corroborate.py.
+        # import would close the cycle.
         from ..graph.nodes.domain_agents import run_sec_agent_scoped
         from ..graph.nodes.period_resolver import period_resolver
         from ..models.claim import ParsedClaim
@@ -162,7 +162,7 @@ def _corroborate(
             )
 
         out = run_sec_agent_scoped(
-            state, allow_a2a=False, max_iterations=A2A_MAX_ITERATIONS
+            state, max_iterations=A2A_MAX_ITERATIONS
         )
         ev = out.get("agent_evidence", {})
         target_verdict = ev.get("verdict", "NOT_ENOUGH_INFO")
