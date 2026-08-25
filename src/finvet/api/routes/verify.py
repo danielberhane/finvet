@@ -19,6 +19,7 @@ from ...audit import AuditCallbackHandler, get_audit_logger
 from ...utils.exceptions import AuditPersistenceError, GuardrailViolation
 from ..execution import (
     ExecutionFinalizer,
+    begin_request,
     build_pending_response,
     store_completed_claim,
 )
@@ -53,17 +54,7 @@ def verify_claim(request: VerifyClaimRequest):
         extra={"request_id": request_id, "user_id": user_id, "claim_length": len(request.claim)}
     )
 
-    # Record the raw input in the PostgreSQL audit trail (compliance requirement)
     audit = get_audit_logger()
-    audit.log_event(
-        event_type="input_received",
-        request_id=request_id,
-        data={
-            "claim_raw": request.claim,
-            "user_id": user_id,
-            "timestamp": start_time.isoformat(),
-        },
-    )
 
     finalizer = ExecutionFinalizer(
         audit=audit,
@@ -73,31 +64,15 @@ def verify_claim(request: VerifyClaimRequest):
     )
 
     try:
-        # Build the initial state dict that flows through every node in the graph.
-        # Each node reads what it needs and writes its own fields.
-        initial_state = {
-            "claim_raw": request.claim,
-            "user_id": user_id,
-            "request_id": request_id,
-            "timestamp_received": start_time.isoformat(),
-            "execution_start_time": start_time.isoformat(),
-            "audit_trail": [],
-            "total_tokens_used": 0,
-            "memory_context": request.memory_context,  # Prior result from /memory-check (if user chose "Verify With Context")
-        }
-
-        # If the user chose "Verify With Context" from /memory-check,
-        # record that decision in the audit trail
-        if request.memory_context:
-            audit.log_event(
-                event_type="memory_context_injected",
-                request_id=request_id,
-                data={
-                    "user_decision": "with_context",
-                    "prior_request_id": request.memory_context.get("request_id"),
-                    "prior_similarity": request.memory_context.get("similarity"),
-                },
-            )
+        # Records the request's start and builds the state every node reads.
+        initial_state = begin_request(
+            audit,
+            request_id=request_id,
+            claim_text=request.claim,
+            user_id=user_id,
+            started_at=start_time,
+            memory_context=request.memory_context,
+        )
 
         # thread_id = the checkpointer save slot. If the graph pauses for HITL,
         # we resume it later using this same thread_id via POST /review/{request_id}
@@ -269,22 +244,14 @@ def verify_claim_stream(request: VerifyClaimRequest):
     start_time = datetime.utcnow()
 
     audit = get_audit_logger()
-    audit.log_event(
-        event_type="input_received",
+    initial_state = begin_request(
+        audit,
         request_id=request_id,
-        data={"claim_raw": request.claim, "user_id": user_id},
+        claim_text=request.claim,
+        user_id=user_id,
+        started_at=start_time,
+        memory_context=request.memory_context,
     )
-
-    initial_state = {
-        "claim_raw": request.claim,
-        "user_id": user_id,
-        "request_id": request_id,
-        "timestamp_received": start_time.isoformat(),
-        "execution_start_time": start_time.isoformat(),
-        "audit_trail": [],
-        "total_tokens_used": 0,
-        "memory_context": request.memory_context,
-    }
 
     config = {
         "configurable": {"thread_id": request_id},
