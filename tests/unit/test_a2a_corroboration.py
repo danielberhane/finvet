@@ -22,6 +22,7 @@ from finvet.models.a2a import (
     A2A_FAILED,
     A2A_NOT_APPLICABLE_YET,
     A2A_NO_MATCHING_DISCLOSURE,
+    A2A_UNDISCLOSED_MATERIAL_CLAIM,
     A2AResult,
     classify_status,
     reclassify_corroboration,
@@ -542,3 +543,87 @@ class TestFailedDelegationIsRecorded:
         assert out["corroboration_result"]["status"] == A2A_FAILED
         assert "MCP server unreachable" in out["corroboration_result"]["error"]
         assert calls == [], "policy path re-ran a delegation that already failed"
+
+
+class TestUnsupportedMaterialClaimEscalates:
+    """The reachable escalation, after the trusted-observation boundary.
+
+    A fine amount is a narrative fact with no XBRL concept, so neither the news
+    claim nor the filing check can produce a decisive verdict -- both resolve to
+    NOT_ENOUGH_INFO. CONTRADICTS needs two decisive verdicts, so it is
+    unreachable for exactly the two metrics the delegation exists to check.
+
+    What *is* reachable: the claim asserted a material amount, a filing
+    covering the period exists, and it does not mention it. That escalates.
+    """
+
+    def _result(self, *, metric="fine_amount", claimed_value=5e8,
+                temporal_scope="checked", verdict="NOT_ENOUGH_INFO"):
+        return A2AResult(
+            success=True, source_agent="news", target_agent="sec",
+            status=A2A_NO_MATCHING_DISCLOSURE, verdict=verdict,
+            metric=metric, claimed_value=claimed_value,
+            temporal_scope=temporal_scope,
+        ).model_dump()
+
+    def test_silence_on_a_material_amount_is_promoted(self):
+        out = reclassify_corroboration("NOT_ENOUGH_INFO", self._result())
+        assert out["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
+
+    def test_promotion_survives_a_non_decisive_parent(self):
+        """The point of the change: it must fire when the parent is NEI, which
+        after Task 2 is the only thing the parent can be for these metrics."""
+        for parent in ("NOT_ENOUGH_INFO", "SUPPORTS", "REFUTES"):
+            out = reclassify_corroboration(parent, self._result())
+            assert out["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
+
+    def test_unknown_event_timing_does_not_escalate(self):
+        """Without a date the temporal gate never ran, so the filing's silence
+        may simply mean the event postdates it."""
+        out = reclassify_corroboration(
+            "NOT_ENOUGH_INFO", self._result(temporal_scope="unknown"))
+        assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
+
+    def test_claim_naming_no_amount_does_not_escalate(self):
+        out = reclassify_corroboration(
+            "NOT_ENOUGH_INFO", self._result(claimed_value=None))
+        assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
+
+    @pytest.mark.parametrize("metric", ["layoffs", "acquisition_value", "revenue"])
+    def test_out_of_scope_metrics_do_not_escalate(self, metric):
+        out = reclassify_corroboration(
+            "NOT_ENOUGH_INFO", self._result(metric=metric))
+        assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
+
+    def test_a_filing_that_confirms_is_not_promoted(self):
+        """Promotion applies to silence, not to a filing that answered."""
+        out = reclassify_corroboration("SUPPORTS",
+                                       self._result(verdict="SUPPORTS"))
+        assert out["status"] == A2A_CORROBORATES
+
+    def test_not_applicable_yet_is_never_promoted(self):
+        pending = A2AResult(
+            success=True, source_agent="news", target_agent="sec",
+            status=A2A_NOT_APPLICABLE_YET, verdict="NOT_ENOUGH_INFO",
+            metric="fine_amount", claimed_value=5e8, temporal_scope="checked",
+        ).model_dump()
+        assert reclassify_corroboration("NOT_ENOUGH_INFO", pending)["status"] \
+            == A2A_NOT_APPLICABLE_YET
+
+    def test_escalation_reaches_hitl(self):
+        """End to end through the real guardrail node -- the reachability check
+        this whole change exists to satisfy."""
+        from finvet.graph.nodes.output_guardrails import output_guardrails
+
+        state = {
+            "request_id": "t",
+            "agent_evidence": {"verdict": "NOT_ENOUGH_INFO", "confidence": 0.9,
+                               "reasoning": "could not verify the amount"},
+            "verdict": "NOT_ENOUGH_INFO",
+            "confidence": 0.9,
+            "corroboration_result": reclassify_corroboration(
+                "NOT_ENOUGH_INFO", self._result()),
+        }
+        out = output_guardrails(state)
+        assert "unsupported_material_claim" in out.get("hitl_triggers", [])
+        assert out.get("hitl_required") is True

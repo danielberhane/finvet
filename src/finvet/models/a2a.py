@@ -23,6 +23,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from ..config.constants import CORROBORATION_METRICS
+
 # Audit-facing outcome. Kept separate from `verdict` because a verdict answers
 # "what did the target agent conclude" while status answers "what does that mean
 # for the claim under review" — and silence is not contradiction.
@@ -32,10 +34,25 @@ A2A_NO_MATCHING_DISCLOSURE = "NO_MATCHING_DISCLOSURE"
 A2A_NOT_APPLICABLE_YET = "NOT_APPLICABLE_YET"
 A2A_FAILED = "FAILED"
 
+# A narrower, more serious case of NO_MATCHING_DISCLOSURE: the claim asserts a
+# material amount the issuer would have had to disclose, a filing exists that
+# covers the period, and that filing does not mention it. Generic silence is
+# uninformative -- a periodic report omits most things -- but silence about a
+# fine at an identifiable issuer, in a filing that could have carried it, is
+# worth a person's attention.
+#
+# This exists because neither side of the delegation can be decisive on these
+# metrics: a fine amount is a narrative fact with no XBRL concept, so after the
+# trusted-observation boundary both the news claim and the filing check resolve
+# to NOT_ENOUGH_INFO. Escalating on disagreement is therefore unreachable;
+# escalating on unsupported assertion is not.
+A2A_UNDISCLOSED_MATERIAL_CLAIM = "UNDISCLOSED_MATERIAL_CLAIM"
+
 A2AStatus = Literal[
     "CORROBORATES",
     "CONTRADICTS",
     "NO_MATCHING_DISCLOSURE",
+    "UNDISCLOSED_MATERIAL_CLAIM",
     "NOT_APPLICABLE_YET",
     "FAILED",
 ]
@@ -132,10 +149,22 @@ def reclassify_corroboration(
     if updated.get("status") == A2A_NOT_APPLICABLE_YET:
         return updated
 
-    updated["status"] = classify_status(
+    status = classify_status(
         parent_verdict,
         updated.get("verdict", "NOT_ENOUGH_INFO"),
     )
+
+    # Promote plain silence to the escalating status when the claim asserted a
+    # material amount and a filing that could have covered it said nothing.
+    # temporal_scope guards the obvious false positive: a filing that closed
+    # before the event was never going to mention it.
+    if (status == A2A_NO_MATCHING_DISCLOSURE
+            and updated.get("metric") in CORROBORATION_METRICS
+            and updated.get("claimed_value") is not None
+            and updated.get("temporal_scope") == "checked"):
+        status = A2A_UNDISCLOSED_MATERIAL_CLAIM
+
+    updated["status"] = status
     return updated
 
 

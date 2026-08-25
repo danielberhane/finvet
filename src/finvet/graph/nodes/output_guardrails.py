@@ -6,7 +6,10 @@ from ...config.settings import settings
 from ...guards.composite import CompositeGuardProvider
 from ...guards.financial import FinancialGuardProvider
 from ...guards.llama_guard import LlamaGuardProvider
-from ...models.a2a import A2A_CONTRADICTS
+from ...models.a2a import (
+    A2A_CONTRADICTS,
+    A2A_UNDISCLOSED_MATERIAL_CLAIM,
+)
 from ...models.audit import AuditEvent
 from ...models.state import VerificationState
 from ...utils.logging import get_logger
@@ -66,22 +69,43 @@ def output_guardrails(state: VerificationState) -> Dict:
             f"Output guard triggered: {guard_result.violation_type} (request: {request_id})"
         )
 
-    # Check 3: Two sources disagree. A primary source contradicting the one the
-    # verdict rests on is a question for a person, not a confidence score — so
-    # this escalates regardless of how certain either agent was.
+    # Check 3: the primary source undermines the claim. Two ways that happens,
+    # and they escalate for different reasons.
     #
-    # Only CONTRADICTS escalates. NO_MATCHING_DISCLOSURE and NOT_APPLICABLE_YET
-    # both mean the other source is silent, and a periodic filing is silent about
-    # most things — treating that as conflict would route half the traffic to a
-    # reviewer and teach them to ignore the flag.
+    # CONTRADICTS — both agents reached decisive, opposite verdicts. A primary
+    # source contradicting the one the verdict rests on is a question for a
+    # person, not a confidence score.
+    #
+    # UNDISCLOSED_MATERIAL_CLAIM — the claim asserted a fine or settlement, a
+    # filing covering the period exists, and it does not mention it. Neither
+    # agent can be decisive about a narrative amount (there is no XBRL concept
+    # for a penalty), so disagreement is unreachable for exactly the claims the
+    # delegation exists to check. An unsupported material assertion is the
+    # reachable signal, and it is the one worth a reviewer's time.
+    #
+    # Plain NO_MATCHING_DISCLOSURE and NOT_APPLICABLE_YET still do not escalate:
+    # a periodic filing is silent about most things, and one that closed before
+    # the event was never going to mention it. Treating either as conflict would
+    # route half the traffic to a reviewer and teach them to ignore the flag.
     corroboration = state.get("corroboration_result")
-    if isinstance(corroboration, dict) and corroboration.get("status") == A2A_CONTRADICTS:
+    corroboration_status = (corroboration.get("status")
+                            if isinstance(corroboration, dict) else None)
+
+    if corroboration_status == A2A_CONTRADICTS:
         hitl_triggers.append("source_disagreement")
         hitl_required = True
         logger.warning(
             f"Source disagreement: {corroboration.get('source_agent')} said "
             f"{state.get('verdict')}, {corroboration.get('target_agent')} said "
             f"{corroboration.get('verdict')} (request: {request_id})"
+        )
+    elif corroboration_status == A2A_UNDISCLOSED_MATERIAL_CLAIM:
+        hitl_triggers.append("unsupported_material_claim")
+        hitl_required = True
+        logger.warning(
+            f"Unsupported material claim: {corroboration.get('metric')} of "
+            f"{corroboration.get('claimed_value')} is not disclosed in the "
+            f"issuer's filing for the period (request: {request_id})"
         )
 
     # Audit event

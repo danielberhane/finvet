@@ -58,7 +58,7 @@
 <path d="M 1345 1436 L 1945 1436 L 1945 1580" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
 <text x="1645" y="1348" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">Confidence &lt; 0.70</text>
 <text x="1645" y="1378" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">or unsafe output</text>
-<text x="1645" y="1408" fill="#1D4ED8" font-size="23" font-weight="700" text-anchor="middle">or sources disagree</text>
+<text x="1645" y="1408" fill="#1D4ED8" font-size="23" font-weight="700" text-anchor="middle">or primary-source conflict</text>
 <path d="M 1110 1502 L 1110 1796" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
 <text x="1140" y="1672" fill="#334155" font-size="23" font-weight="700" text-anchor="start">Confidence ≥ 0.70</text>
 <rect x="40" y="1586" width="470" height="132" rx="15" fill="#FEF2F2" stroke="#DC2626" stroke-width="5.0"/>

@@ -188,22 +188,32 @@ class TestFailClosedScopeIsRecorded:
             assert not missing, f"{kind} metrics with no structured source: {missing}"
 
     def test_corroboration_metrics_have_no_structured_source(self):
-        """Characterises the consequence rather than endorsing it.
+        """Why the delegation escalates on absence rather than disagreement.
 
         fine_amount and settlement_amount are the only metrics the News -> SEC
-        delegation acts on, and neither can produce a trusted observation. The
-        parent verdict is therefore always NOT_ENOUGH_INFO, and
-        classify_status never returns CONTRADICTS unless *both* verdicts are
-        decisive -- so the source_disagreement escalation cannot fire for the
-        only claims that trigger the delegation.
+        delegation acts on, and a fine is a narrative fact -- there is no XBRL
+        concept for a penalty. So neither side can produce a trusted
+        observation, both verdicts are NOT_ENOUGH_INFO, and CONTRADICTS (which
+        needs two decisive verdicts) is unreachable for exactly the claims the
+        delegation exists to check.
 
-        If this test starts failing, someone gave those metrics a structured
-        source and the escalation is reachable again. That is the goal.
+        UNDISCLOSED_MATERIAL_CLAIM is the reachable signal instead: the claim
+        asserted an amount, a filing covering the period exists, and it does
+        not mention it. Both halves are asserted here so the trade-off cannot
+        drift silently -- if someone gives these metrics a structured source,
+        the first assertion fails and disagreement becomes reachable again.
         """
         from finvet.config.constants import CORROBORATION_METRICS
         from finvet.config.metrics import METRIC_TO_CONCEPTS
         from finvet.mcp.fred import FRED_SERIES
-        from finvet.models.a2a import A2A_CONTRADICTS, classify_status
+        from finvet.models.a2a import (
+            A2A_CONTRADICTS,
+            A2A_UNDISCLOSED_MATERIAL_CLAIM,
+            A2AResult,
+            A2A_NO_MATCHING_DISCLOSURE,
+            classify_status,
+            reclassify_corroboration,
+        )
         from finvet.models.evidence import _MARKET_FIELD_FOR_METRIC
 
         resolvable = (set(METRIC_TO_CONCEPTS) | set(_MARKET_FIELD_FOR_METRIC)
@@ -212,3 +222,12 @@ class TestFailClosedScopeIsRecorded:
 
         for target in ("SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"):
             assert classify_status("NOT_ENOUGH_INFO", target) != A2A_CONTRADICTS
+
+        # ...and the replacement signal is reachable from that same state.
+        silent = A2AResult(
+            success=True, source_agent="news", target_agent="sec",
+            status=A2A_NO_MATCHING_DISCLOSURE, verdict="NOT_ENOUGH_INFO",
+            metric="fine_amount", claimed_value=5e8, temporal_scope="checked",
+        ).model_dump()
+        assert reclassify_corroboration("NOT_ENOUGH_INFO", silent)["status"] \
+            == A2A_UNDISCLOSED_MATERIAL_CLAIM
