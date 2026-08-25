@@ -91,6 +91,13 @@ tests/
 3. **Streamlit imports**: `ui/` files must use **absolute imports** (`from api_client import ...`, `from components.formatting import ...`), NOT relative imports (`from .api_client`, `from ..components`). `streamlit run ui/app.py` adds `ui/` to `sys.path` but does NOT treat it as a package, so relative imports fail.
 4. **SQLAlchemy + pgvector**: `::vector` cast conflicts with SQLAlchemy. Use `CAST(:query_vec AS vector)` instead.
 5. **Settings model**: `extra="ignore"` in pydantic-settings — unknown env vars are silently ignored.
+6. **Tests must drive the producer.** Any test covering a verdict, an escalation, or a
+   persistence path needs at least one case whose entry point is a route callable, a graph
+   node, or a decorated tool — not a hand-built dict. Three defects survived a 500-test suite
+   because their tests constructed their own inputs: the streaming route never committed an
+   audit row, delegation compared a verdict with itself, and an escalation could not fire on
+   the only path that reaches it. A fixture you wrote asserts the shape you remembered, not
+   the shape the system emits.
 
 ## Code Style
 - Keep changes minimal. Don't refactor code you didn't change.
