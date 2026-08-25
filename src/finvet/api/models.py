@@ -1,14 +1,32 @@
 """Pydantic request/response models for the FinVet API."""
 
 from typing import Literal, Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class VerifyClaimRequest(BaseModel):
-    """Request model for claim verification."""
-    claim: str = Field(..., description="Financial claim to verify", min_length=10, max_length=2000)
+    """Request model for claim verification.
+
+    Extra keys are rejected rather than ignored. This previously accepted a
+    free-form `memory_context` dict whose text was interpolated straight into
+    the agent prompt, while input guardrails inspected only `claim`; a caller
+    could put instructions in it and reach the model unchecked. Only an
+    identifier crosses the boundary now, and the episode it names is read from
+    the server's own store.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    claim: str = Field(..., description="Financial claim to verify",
+                       min_length=10, max_length=2000)
     user_id: Optional[str] = Field(None, description="Optional user identifier")
-    memory_context: Optional[dict] = Field(None, description="Prior verification to use as agent context")
+    memory_context_request_id: Optional[str] = Field(
+        None,
+        pattern=r"^req_[0-9a-f]{12}$",
+        description="Prior verification to reuse as context, by id. The "
+                    "episode is resolved server-side; its content never "
+                    "crosses the API boundary from the client.",
+    )
 
 
 class MemoryCheckRequest(BaseModel):

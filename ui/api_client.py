@@ -59,15 +59,17 @@ def submit_review(request_id, payload):
         return None, f"Error submitting review: {e}"
 
 
-def verify_claim(claim_text, memory_context=None):
+def verify_claim(claim_text, memory_context_request_id=None):
     """Run claim verification. Returns (response_obj, error_type).
 
     error_type is None on success, or one of: 'guardrail', 'api_error',
     'timeout', 'connection'.
     """
     payload = {"claim": claim_text}
-    if memory_context:
-        payload["memory_context"] = memory_context
+    # Only the id crosses the API boundary. The server reads the episode from
+    # its own store, so nothing this client composes reaches the agent prompt.
+    if memory_context_request_id:
+        payload["memory_context_request_id"] = memory_context_request_id
     try:
         resp = requests.post(
             f"{API_BASE_URL}/verify",
@@ -81,15 +83,17 @@ def verify_claim(claim_text, memory_context=None):
         return None, "connection"
 
 
-def verify_claim_stream(claim_text, memory_context=None):
+def verify_claim_stream(claim_text, memory_context_request_id=None):
     """Run claim verification with SSE streaming.
 
     Yields dicts with type: 'progress', 'complete', 'done', or 'error'.
     Falls back to non-streaming verify_claim() on connection failure.
     """
     payload = {"claim": claim_text}
-    if memory_context:
-        payload["memory_context"] = memory_context
+    # Only the id crosses the API boundary. The server reads the episode from
+    # its own store, so nothing this client composes reaches the agent prompt.
+    if memory_context_request_id:
+        payload["memory_context_request_id"] = memory_context_request_id
     try:
         resp = requests.post(
             f"{API_BASE_URL}/verify-stream",
@@ -107,7 +111,7 @@ def verify_claim_stream(claim_text, memory_context=None):
                     continue
     except Exception:
         # Fallback to non-streaming
-        resp, error_type = verify_claim(claim_text, memory_context)
+        resp, error_type = verify_claim(claim_text, memory_context_request_id)
         if error_type:
             yield {"type": "error", "message": error_type}
         elif resp and resp.status_code == 200:

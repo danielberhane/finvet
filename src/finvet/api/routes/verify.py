@@ -20,6 +20,7 @@ from ...utils.exceptions import AuditPersistenceError, GuardrailViolation
 from ..execution import (
     ExecutionFinalizer,
     begin_request,
+    resolve_memory_context,
     build_pending_response,
     store_completed_claim,
 )
@@ -71,7 +72,8 @@ def verify_claim(request: VerifyClaimRequest):
             claim_text=request.claim,
             user_id=user_id,
             started_at=start_time,
-            memory_context=request.memory_context,
+            memory_context=resolve_memory_context(
+                deps.claim_memory, request.memory_context_request_id),
         )
 
         # thread_id = the checkpointer save slot. If the graph pauses for HITL,
@@ -250,7 +252,8 @@ def verify_claim_stream(request: VerifyClaimRequest):
         claim_text=request.claim,
         user_id=user_id,
         started_at=start_time,
-        memory_context=request.memory_context,
+        memory_context=resolve_memory_context(
+            deps.claim_memory, request.memory_context_request_id),
     )
 
     config = {

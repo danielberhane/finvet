@@ -6,9 +6,9 @@ from ...config.settings import settings
 from ...guards.composite import CompositeGuardProvider
 from ...guards.llama_guard import LlamaGuardProvider
 from ...guards.regex import RegexGuardProvider
-from ...models.audit import AuditEvent
 from ...models.state import VerificationState
 from ...utils.exceptions import GuardrailViolation
+from ...audit import get_audit_logger
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -72,11 +72,14 @@ def input_guardrails(state: VerificationState) -> Dict:
     # scrubbed_text; fall back to the raw claim.
     claim_normalized = result.scrubbed_text or claim_raw
 
-    audit_event = AuditEvent(
+    # log_event() is the path that persists. This event used to be appended to
+    # state["audit_events"], which nothing reads -- so normalized input, guard
+    # provider and guard flags were assembled and discarded.
+    get_audit_logger().log_event(
         event_type="input_received",
-        user_id=user_id,
         request_id=request_id,
         data={
+            "user_id": user_id,
             "claim_raw": claim_raw,
             "claim_normalized": claim_normalized,
             "guard_provider": result.provider,
@@ -95,5 +98,4 @@ def input_guardrails(state: VerificationState) -> Dict:
         "guard_result_input": result.model_dump(),
         "guardrails_passed": ["composite_guard"],
         "guardrails_failed": [],
-        "audit_events": state.get("audit_events", []) + [audit_event],
     }
