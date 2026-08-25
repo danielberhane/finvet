@@ -328,8 +328,8 @@ point-in-time document.
 | `confidence` | `FLOAT` | |
 | `agents_run` | `JSONB` | `["sec"]` |
 | `execution_time_ms` | `INTEGER` | |
-| `execution_hash` | `VARCHAR(64)` | SHA256 tamper detection |
-| `full_trace` | `JSONB` | Complete response + events |
+| `execution_hash` | `VARCHAR(64)` | SHA-256 integrity checksum over `full_trace`; re-verified on read |
+| `full_trace` | `JSONB` | The canonical execution envelope — exactly the object the checksum covers |
 | `data_sources` | `JSONB` | `{xbrl, rag, a2a}` GIN indexed |
 
 #### `claim_memory` (Vector Store)

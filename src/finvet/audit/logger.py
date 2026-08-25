@@ -19,6 +19,7 @@ class AuditLogger:
         self.db = AuditDatabase()
         self._events: Dict[str, List[Dict[str, Any]]] = {}  # request_id -> events
         self._lock = threading.Lock()
+        self._last_write_ok = True
 
     def log_event(
         self,
@@ -27,6 +28,7 @@ class AuditLogger:
         data: Dict[str, Any],
         parent_event_id: Optional[str] = None,
         agent: Optional[str] = None,
+        buffer_for_execution: bool = True,
     ) -> str:
         """Log an audit event.
 
@@ -36,6 +38,11 @@ class AuditLogger:
             data: Event data
             parent_event_id: Optional parent event ID
             agent: Optional agent name
+            buffer_for_execution: Whether this event belongs to the run that is
+                still in flight. False for anything recorded *after* that run
+                was finalized -- accepting a cached result reuses the original
+                request_id, and buffering it would leave events accumulating
+                under a request nothing will ever commit again.
 
         Returns:
             Generated event_id
@@ -54,13 +61,14 @@ class AuditLogger:
         }
 
         # Add to request-scoped in-memory buffer
-        with self._lock:
-            if request_id not in self._events:
-                self._events[request_id] = []
-            self._events[request_id].append(event)
+        if buffer_for_execution:
+            with self._lock:
+                if request_id not in self._events:
+                    self._events[request_id] = []
+                self._events[request_id].append(event)
 
         # Write to database
-        self.db.log_event(
+        self._last_write_ok = self.db.log_event(
             event_id=event_id,
             request_id=request_id,
             event_type=event_type,
@@ -70,6 +78,17 @@ class AuditLogger:
         )
 
         return event_id
+
+    def log_event_persisted(self, **kwargs) -> bool:
+        """Log an event and report whether the database write succeeded.
+
+        For callers that must not claim an event was recorded when it was not.
+        log_event returns an id whether or not the row landed, which is fine
+        while a later commit_execution reconciles the buffer -- and wrong for a
+        post-hoc event, where nothing else will.
+        """
+        self.log_event(**kwargs)
+        return bool(self._last_write_ok)
 
     def commit_execution(
         self,

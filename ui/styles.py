@@ -1129,5 +1129,17 @@ STYLES = """
         font-weight: 700;
         flex-shrink: 0;
     }
+
+    .hash-failed {
+        color: #DC2626;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .hash-unknown {
+        color: #6B7280;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
 </style>
 """

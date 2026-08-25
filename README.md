@@ -160,9 +160,10 @@ var, no code change.
   layer, on both input and output. Safety is the guards' job; verifiability is the parser's.
 - **Human-in-the-loop** — LangGraph `interrupt_before` pauses low-confidence or flagged
   verdicts for a reviewer, then resumes from the checkpoint with the decision merged in.
-- **Full audit trail** — every node's I/O, tool calls, and data provenance persisted to
-  Postgres with a SHA-256 hash per run; any past verification can be reconstructed node by
-  node.
+- **Audit trail with an integrity checksum** — every tool call, verdict decision, and data
+  source persisted to Postgres, with a SHA-256 checksum over the stored execution envelope
+  that the API re-verifies on read. It detects a record altered without its checksum being
+  recomputed; it is not tamper-proof against a writer who can change both.
 - **Bounded agent delegation** — the news agent can ask SEC whether the issuer's own filing
   discloses a reported fine or settlement. If the claim names an amount and a filing covering
   that period does not mention it, the claim goes to a human rather than shipping.
