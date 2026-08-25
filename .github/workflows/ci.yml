@@ -58,12 +58,18 @@ jobs:
       - run: uv sync --frozen
       # Integration tests are excluded by pyproject addopts; eval-dependent tests
       # skip without FINVET_EVAL_DATA_DIR, so no secrets are needed here.
-      # Coverage floor. Measured 72% on 2026-08-25; the gate sits just below so
-      # a regression fails while the suite keeps room to grow. Task 11 Step 5
-      # targets 75% overall and 85% on verify.py, review.py, audit/database.py,
-      # base.py, rag/service.py and output_guardrails.py -- reachable once
-      # Tasks 6, 8 and 9 add their tests, and raised at the Task 12 gate.
-      - run: uv run pytest tests/unit -q --cov=src/finvet --cov-fail-under=70
+      # Coverage floor, ratcheted. Measured 72% overall on 2026-08-25 with all
+      # ten implementation tasks complete. Task 11 Step 5 asked for 75% overall
+      # and 85% on six named modules; two of those are met -- review.py 95%,
+      # output_guardrails.py 87% -- and the rest are not: audit/database.py 57%
+      # and rag/service.py 59% are mostly database error paths and the ingest
+      # half of the RAG service, neither of which the remaining tasks touch.
+      #
+      # The floor sits at today's measured level rather than at the target,
+      # because a gate the repo cannot pass protects nothing and gets disabled.
+      # Raise it when those two modules gain tests; the target stands as the
+      # destination, recorded here rather than quietly dropped.
+      - run: uv run pytest tests/unit -q --cov=src/finvet --cov-fail-under=72
 
   docker:
     runs-on: ubuntu-latest
