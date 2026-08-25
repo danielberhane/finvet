@@ -278,3 +278,80 @@ class TestProvenanceRoundTrip:
         parsed = BaseVerificationAgent._parse_provenance(str(payload))
         assert parsed.get("success") is None
         assert list(parsed) == ["raw"]
+
+
+class TestParentChildClassification:
+    """Status must be computed against the parent verdict, not the child's own.
+
+    corroborate_with_filing has no claim_verdict parameter, so on the
+    model-triggered path _corroborate falls back to `claim_verdict or
+    target_verdict` and compares the SEC verdict with itself -- which is
+    CORROBORATES for any decisive verdict. run_news_agent then lifts that
+    status verbatim. A filing that contradicts the news is recorded as
+    agreeing with it, and source_disagreement never fires.
+
+    The policy path passes a real claim_verdict and is unaffected; that
+    divergence is why one path was correct and the other was not.
+    """
+
+    def _news_state(self):
+        return {"request_id": "t", "claim_raw": "Issuer was fined",
+                "parsed_claim": _parsed()}
+
+    def test_model_triggered_disagreement_is_a_contradiction(self):
+        nested = A2AResult(
+            success=True, direction="news_to_sec", source_agent="news",
+            target_agent="sec", status=A2A_CORROBORATES, verdict="REFUTES",
+            confidence=0.95, trigger_mode="agent",
+        ).model_dump()
+        evidence = {
+            "verdict": "SUPPORTS", "confidence": 0.9,
+            "tools_called": ["corroborate_with_filing"],
+            "provenance": [{"tool": "corroborate_with_filing",
+                            "args": {"finding": "Issuer was fined"},
+                            "result": nested}],
+        }
+        with patch.object(domain_agents, "_run_agent",
+                          lambda c, a, d, s, **k: {"agent_evidence": evidence,
+                                                   "agent_type": "news"}):
+            out = domain_agents.run_news_agent(self._news_state())
+
+        assert out["corroboration_result"]["status"] == A2A_CONTRADICTS
+
+    def test_model_triggered_agreement_stays_agreement(self):
+        nested = A2AResult(
+            success=True, direction="news_to_sec", source_agent="news",
+            target_agent="sec", status=A2A_CORROBORATES, verdict="SUPPORTS",
+            confidence=0.9, trigger_mode="agent",
+        ).model_dump()
+        evidence = {
+            "verdict": "SUPPORTS", "confidence": 0.9,
+            "tools_called": ["corroborate_with_filing"],
+            "provenance": [{"tool": "corroborate_with_filing",
+                            "args": {"finding": "f"}, "result": nested}],
+        }
+        with patch.object(domain_agents, "_run_agent",
+                          lambda c, a, d, s, **k: {"agent_evidence": evidence,
+                                                   "agent_type": "news"}):
+            out = domain_agents.run_news_agent(self._news_state())
+
+        assert out["corroboration_result"]["status"] == A2A_CORROBORATES
+
+    def test_filing_silence_is_not_a_contradiction(self):
+        nested = A2AResult(
+            success=True, direction="news_to_sec", source_agent="news",
+            target_agent="sec", status=A2A_CORROBORATES,
+            verdict="NOT_ENOUGH_INFO", confidence=0.2, trigger_mode="agent",
+        ).model_dump()
+        evidence = {
+            "verdict": "SUPPORTS", "confidence": 0.9,
+            "tools_called": ["corroborate_with_filing"],
+            "provenance": [{"tool": "corroborate_with_filing",
+                            "args": {"finding": "f"}, "result": nested}],
+        }
+        with patch.object(domain_agents, "_run_agent",
+                          lambda c, a, d, s, **k: {"agent_evidence": evidence,
+                                                   "agent_type": "news"}):
+            out = domain_agents.run_news_agent(self._news_state())
+
+        assert out["corroboration_result"]["status"] == A2A_NO_MATCHING_DISCLOSURE
