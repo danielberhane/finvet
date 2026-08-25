@@ -178,9 +178,17 @@ class AuditLogger:
         """
         return self.db.get_events(request_id)
 
-    def update_execution_verdict(self, request_id: str, verdict: str, confidence: float) -> bool:
-        """Update verdict after HITL review so it leaves the pending queue."""
-        return self.db.update_execution_verdict(request_id, verdict, confidence)
+    def claim_pending_review(self, request_id: str) -> str:
+        """Take ownership of a pending review: "claimed", "conflict", "missing"."""
+        return self.db.claim_pending_review(request_id)
+
+    def release_review_claim(self, request_id: str) -> bool:
+        """Return a claimed row to PENDING after a failed resume."""
+        return self.db.release_review_claim(request_id)
+
+    def finalize_review(self, request_id: str, **kwargs) -> bool:
+        """Write the reviewed outcome, its events and its checksum atomically."""
+        return self.db.finalize_review(request_id, **kwargs)
 
     def get_pending_reviews(self) -> List[Dict[str, Any]]:
         """Get all executions pending HITL review.

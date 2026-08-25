@@ -160,7 +160,10 @@ not a dependency on any provider.
 - **Layered guardrails** — always-on regex/PII checks, plus an optional Llama Guard semantic
   layer, on both input and output. Safety is the guards' job; verifiability is the parser's.
 - **Human-in-the-loop** — LangGraph `interrupt_before` pauses low-confidence or flagged
-  verdicts for a reviewer, then resumes from the checkpoint with the decision merged in.
+  verdicts for a reviewer, then resumes from the checkpoint with the decision merged in. A
+  review is claimed atomically, so a second reviewer gets a conflict rather than overwriting
+  the first. Checkpoints are held in memory: **pending reviews do not survive an API
+  restart**, and an unresumable claim is refused rather than answered.
 - **Audit trail with an integrity checksum** — every tool call, verdict decision, and data
   source persisted to Postgres, with a SHA-256 checksum over the stored execution envelope
   that the API re-verifies on read. It detects a record altered without its checksum being
