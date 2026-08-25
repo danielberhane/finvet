@@ -19,9 +19,9 @@ from langchain_core.tools import tool
 from ..config.constants import A2A_MAX_ITERATIONS
 from ..models.a2a import (
     A2A_FAILED,
+    A2A_NO_MATCHING_DISCLOSURE,
     A2A_NOT_APPLICABLE_YET,
     A2AResult,
-    classify_status,
 )
 from ..utils.logging import get_logger
 
@@ -97,18 +97,23 @@ def _corroborate(
     period: str = "",
     event_date: str = "",
     trigger_mode: str = "agent",
-    claim_verdict: str = "",
 ) -> A2AResult:
     """Shared body, callable directly by the policy path in domain_agents.
 
     Kept separate from the @tool wrapper so run_news_agent can invoke it without
     going through LangChain's tool plumbing, and so it returns the model rather
     than a dict to its Python caller.
+
+    This returns the target's findings and never classifies them. Status
+    describes the relationship between the parent claim's verdict and the
+    target's, and inside the News agent's loop the parent verdict does not
+    exist yet. `reclassify_corroboration` decides it afterwards.
     """
     base = dict(
         direction="news_to_sec", source_agent="news", target_agent="sec",
         claimed_value=claimed_value, finding=finding, trigger_mode=trigger_mode,
         metric=metric or "",
+        temporal_scope="checked" if event_date else "unknown",
     )
     try:
         # Imported here, not at module scope: agents import tools, so a top-level
@@ -165,6 +170,21 @@ def _corroborate(
             state, max_iterations=A2A_MAX_ITERATIONS
         )
         ev = out.get("agent_evidence", {})
+
+        # run_sec_agent_scoped catches its own failures and returns
+        # NOT_ENOUGH_INFO evidence, which is indistinguishable from an
+        # authoritative filing that genuinely says nothing. Only one of those
+        # is evidence, so read the execution status rather than the verdict.
+        if ev.get("execution_status") == "failed":
+            logger.error(
+                f"A2A delegation failed inside the SEC agent: {ev.get('error')}"
+            )
+            return A2AResult(
+                success=False, status=A2A_FAILED,
+                error=ev.get("error") or "nested SEC agent failed",
+                **base,
+            )
+
         target_verdict = ev.get("verdict", "NOT_ENOUGH_INFO")
 
         # Pull filing references straight out of the nested agent's provenance.
@@ -194,7 +214,9 @@ def _corroborate(
 
         return A2AResult(
             success=True,
-            status=classify_status(claim_verdict or target_verdict, target_verdict),
+            # Neutral placeholder: reclassify_corroboration sets the real
+            # status once the parent verdict exists. Never classify here.
+            status=A2A_NO_MATCHING_DISCLOSURE,
             verdict=target_verdict,
             confidence=ev.get("confidence", 0.0),
             reasoning=ev.get("reasoning", ""),
