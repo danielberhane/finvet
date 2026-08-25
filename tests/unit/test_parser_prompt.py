@@ -87,16 +87,39 @@ class TestPromptSpeaksTheContract:
             assert keys == order, f"example breaks key order: {keys}"
 
 
-class TestVerdictPromptKnowsApprox:
-    """Stage-05 verification note: the verdict-extraction prompt named the
-    base tolerances but not the approx widening. The override corrects the
-    verdict deterministically either way; this just stops the LLM arguing."""
+class TestPromptsCarryNoTolerancePolicy:
+    """One tolerance policy, and it lives in Python.
 
-    def test_approx_widening_is_stated(self):
+    The prompts used to state their own thresholds -- the SEC prompt said 1%
+    where constants.py says 1.5%, the market prompt said 2% for historical
+    prices where the code applies 5%. A model told one number while the
+    deterministic layer applies another produces reasoning that contradicts
+    its own verdict, and the numbers drift apart the moment either side is
+    tuned. The comparison is Python's, so the thresholds are Python's alone.
+    """
+
+    TOLERANCE_SHAPED = ("% tolerance", "Allow 1%", "Allow 2%", "Allow 5%",
+                        "Allow 10%")
+
+    def test_verdict_prompt_states_no_threshold(self):
         import inspect
+
         from finvet.agents.base import BaseVerificationAgent
+
         src = inspect.getsource(BaseVerificationAgent._extract_verdict)
-        assert "approx" in src
+        offenders = [s for s in self.TOLERANCE_SHAPED if s in src]
+        assert not offenders, f"verdict prompt carries a tolerance: {offenders}"
+
+    @pytest.mark.parametrize("prompt", ["sec_system.txt", "market_system.txt",
+                                        "news_system.txt"])
+    def test_agent_prompts_state_no_threshold(self, prompt):
+        from pathlib import Path as _Path
+
+        import finvet.agents as agents_pkg
+
+        text = (_Path(agents_pkg.__file__).parent / "prompts" / prompt).read_text()
+        offenders = [s for s in self.TOLERANCE_SHAPED if s in text]
+        assert not offenders, f"{prompt} carries a tolerance: {offenders}"
 
 
 GOLD_DIR = eval_data_dir() or Path("/nonexistent")
