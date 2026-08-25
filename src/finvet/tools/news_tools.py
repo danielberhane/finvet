@@ -100,7 +100,7 @@ def search_financial_news(
     company_ticker: Optional[str] = None,
     max_results: int = 10,
     use_credible_sources_only: bool = True,
-) -> NewsSearchResult:
+) -> Dict[str, Any]:
     """
     Search for news articles about a financial claim or event.
 
@@ -162,7 +162,7 @@ def search_financial_news(
             query=search_query,
             articles=articles,
             count=len(articles),
-        )
+        ).model_dump()
 
     except Exception as e:
         logger.error(f"search_financial_news failed: {e}")
@@ -170,11 +170,11 @@ def search_financial_news(
             success=False,
             query=query,
             error=str(e),
-        )
+        ).model_dump()
 
 
 @tool
-def verify_news_source(url: str) -> SourceCredibilityResult:
+def verify_news_source(url: str) -> Dict[str, Any]:
     """
     Check the credibility of a news source URL.
 
@@ -240,7 +240,7 @@ def verify_news_source(url: str) -> SourceCredibilityResult:
             credibility_tier=tier,
             is_primary_source=is_primary,
             notes=notes,
-        )
+        ).model_dump()
 
     except Exception as e:
         logger.error(f"verify_news_source failed for {url}: {e}")
@@ -251,7 +251,7 @@ def verify_news_source(url: str) -> SourceCredibilityResult:
             credibility_tier="LOW",
             is_primary_source=False,
             notes=[f"Error checking source: {str(e)}"],
-        )
+        ).model_dump()
 
 
 # Export all tools for the agent

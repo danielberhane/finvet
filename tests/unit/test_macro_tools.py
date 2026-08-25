@@ -84,19 +84,19 @@ class TestTool:
         with patch("finvet.mcp.fred._fetch_csv", return_value=UNRATE_CSV):
             r = get_macro_indicator.invoke(
                 {"metric": "unemployment_rate", "period": "April 2026"})
-        assert r.success and r.value == 4.3
-        assert r.series_id == "UNRATE"
-        assert r.observation_date == "2026-04-01"
-        assert "revis" in r.note.lower()      # the restatement caveat travels
+        assert r["success"] and r["value"] == 4.3
+        assert r["series_id"] == "UNRATE"
+        assert r["observation_date"] == "2026-04-01"
+        assert "revis" in r["note"].lower()      # the restatement caveat travels
 
     def test_unknown_metric_fails_closed(self):
         r = get_macro_indicator.invoke({"metric": "pmi", "period": "April 2026"})
-        assert not r.success and "pmi" in (r.error or "")
+        assert not r["success"] and "pmi" in (r["error"] or "")
 
     def test_unparseable_period_fails_closed(self):
         r = get_macro_indicator.invoke(
             {"metric": "unemployment_rate", "period": "recently"})
-        assert not r.success and "month and year" in (r.error or "")
+        assert not r["success"] and "month and year" in (r["error"] or "")
 
 
 class TestNewsAgentCarriesTheTool:
