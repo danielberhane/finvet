@@ -287,3 +287,100 @@ class TestEmbedContract:
         )
         with pytest.raises(RuntimeError, match="2 inputs"):
             _embed_texts(["one", "two"])
+
+
+# ---------------------------------------------------------------------------
+# Chunking bounds the ingest pipeline actually has to honour
+# ---------------------------------------------------------------------------
+
+def _ten_q_html() -> str:
+    """A 10-Q repeats Item 1 across Part I and Part II.
+
+    Part I: 1 Financial Statements, 2 MD&A, 3 Market Risk, 4 Controls.
+    Part II: 1 Legal Proceedings, 1A Risk Factors.
+    """
+    body = " ".join(f"w{i}" for i in range(80))
+    return f"""
+    <html><body>
+      <p>PART I - FINANCIAL INFORMATION</p>
+      <p>Item 1. Financial Statements</p>
+      <p>Condensed consolidated balance sheets. {body}</p>
+      <p>Item 2. Management's Discussion and Analysis</p>
+      <p>MDA_MARKER revenue increased twelve percent. {body}</p>
+      <p>Item 3. Quantitative and Qualitative Disclosures About Market Risk</p>
+      <p>MARKETRISK_MARKER interest rate exposure. {body}</p>
+      <p>PART II - OTHER INFORMATION</p>
+      <p>Item 1. Legal Proceedings</p>
+      <p>LEGAL_MARKER the Commission fined the Company. {body}</p>
+      <p>Item 1A. Risk Factors</p>
+      <p>RISK_MARKER our business faces risks. {body}</p>
+    </body></html>
+    """
+
+
+@pytest.fixture
+def ten_q_filing(tmp_path):
+    p = tmp_path / "AAPL_10-Q_2025-06-28.html"
+    p.write_text(_ten_q_html(), encoding="utf-8")
+    return p
+
+
+class TestHardChunkBounds:
+    """The advertised 500/100 contract must actually hold.
+
+    Oversized paragraphs are split by sentence, and a sentence longer than the
+    ceiling is never split further -- so one long run of text becomes one
+    oversized chunk. Overlap keeps only whole trailing parts, so when the last
+    part exceeds the overlap budget the chunks share nothing.
+    """
+
+    def test_single_oversized_sentence_is_split(self):
+        from finvet.rag.parser import Section
+
+        section = Section(item_number="7", name="mda", title="MD&A",
+                          text="token " * 3000)
+        chunks = chunk_sections([section], max_tokens=500, overlap_tokens=100)
+
+        assert chunks
+        assert max(c.token_count for c in chunks) <= 500
+
+    def test_consecutive_chunks_actually_overlap(self):
+        from finvet.rag.parser import Section
+
+        text = ("alpha " * 300).strip() + "\n\n" + ("beta " * 300).strip()
+        section = Section(item_number="7", name="mda", title="MD&A", text=text)
+        chunks = chunk_sections([section], max_tokens=500, overlap_tokens=100)
+
+        assert len(chunks) >= 2
+        shared = set(chunks[0].text.split()) & set(chunks[1].text.split())
+        assert shared, "consecutive chunks share no tokens despite overlap_tokens=100"
+
+
+class TestTenQSectionIdentity:
+    """Part I and Part II both contain an "Item 1"; they are different sections.
+
+    Section identity is the item number alone and the map is the 10-K one, so
+    Part I Item 1 is labelled `business`, Part I Item 2 (MD&A) maps to
+    `properties` and is dropped as non-indexable, Part I Item 3 is labelled
+    `legal_proceedings`, and Part II's real Legal Proceedings heading is
+    discarded as a duplicate of Item 1.
+    """
+
+    def test_mda_is_retained_and_named(self, ten_q_filing):
+        sections = parse_filing_html(ten_q_filing)
+        mda = [s for s in sections if "MDA_MARKER" in s.text]
+        assert mda, "MD&A was dropped entirely"
+        assert mda[0].name == "mda"
+
+    def test_legal_proceedings_holds_the_legal_text(self, ten_q_filing):
+        sections = parse_filing_html(ten_q_filing)
+        legal = [s for s in sections if s.name == "legal_proceedings"]
+        assert legal, "no legal_proceedings section"
+        assert "LEGAL_MARKER" in legal[0].text
+        assert "MARKETRISK_MARKER" not in legal[0].text, \
+            "market-risk text was filed under legal_proceedings"
+
+    def test_market_risk_is_named_correctly(self, ten_q_filing):
+        sections = parse_filing_html(ten_q_filing)
+        risk = [s for s in sections if "MARKETRISK_MARKER" in s.text]
+        assert risk and risk[0].name == "market_risk"
