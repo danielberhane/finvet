@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines the testing and validation approach for FinVet, targeting enterprise MRM (Model Risk Management) readiness aligned with SR 11-7, E-23, and SS1/23 regulatory guidance.
+This document defines the testing and validation approach for FinVet, targeting enterprise MRM (Model Risk Management) readiness aligned with SR 26-2, E-23, and SS1/23 regulatory guidance.
 
 ## Test Taxonomy
 
@@ -76,10 +76,18 @@ Frameworks: RAGAS, DeepEval, or custom judge prompts.
 
 ## Regulatory Alignment
 
-### SR 11-7 (Fed) — Model Risk Management
+### SR 26-2 (Fed/OCC/FDIC) — Model Risk Management
 - **Model Documentation**: Architecture docs, prompt text files (versionable)
 - **Validation**: Unit tests + golden tests provide ongoing validation
 - **Audit Trail**: Every verification logged with tools called, data sources, and verdict
+
+> **Scope note.** SR 26-2 (17 Apr 2026) supersedes the Fed's earlier model-risk letters, replacing
+> annual revalidation with risk-based oversight tied to model materiality. It also places
+> generative and agentic AI **outside** its formal scope as "novel and rapidly evolving",
+> directing institutions to apply the underlying principles — materiality, ongoing
+> monitoring, effective challenge — to systems it does not cover. FinVet is such a system:
+> the alignment claimed here is with those principles, not with a compliance obligation
+> SR 26-2 imposes on it.
 
 ### E-23 (OCC) — Model Governance
 - **Input Guardrails**: Injection detection, PII scrubbing, length limits

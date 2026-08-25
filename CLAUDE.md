@@ -14,7 +14,7 @@ Built as a reference implementation of an agentic AI system in a regulated domai
 - **State**: `VerificationState` TypedDict in `src/finvet/models/state.py`
 - **RAG**: Hybrid search (pgvector cosine + tsvector BM25, RRF k=60) in `src/finvet/rag/`
 - **A2A**: News -> SEC only. `corroborate_with_filing` in `src/finvet/tools/corroborate_sec.py`, contract in `src/finvet/models/a2a.py`. Two triggers: the model calls it, or `run_news_agent`'s policy path does for `CORROBORATION_METRICS`.
-- **Memory**: `src/finvet/memory/` — episodic claim memory via LangGraph `PostgresStore` with pgvector HNSW indexing; OpenAI `text-embedding-3-small` (1536-dim), similarity computed in Postgres. Wired in `main.py` (gated on `enable_claim_memory` + `OPENAI_API_KEY`; degrades to disabled if unavailable).
+- **Memory**: `src/finvet/memory/` — episodic claim memory via LangGraph `PostgresStore` with pgvector HNSW indexing; `nomic-embed-text` (768-dim) served locally by Ollama, similarity computed in Postgres. `main.py` passes `rag.service._embed_texts` into the store, so RAG and memory share one embedding path. Gated on `enable_claim_memory`; degrades to disabled if unavailable. No hosted embedding provider is used.
 - **Audit**: PostgreSQL via SQLAlchemy in `src/finvet/audit/`. Tables created via `init_db()`. Thread-safe request-scoped event buffer.
 - **HITL**: MemorySaver checkpointer, `interrupt_before=["hitl_checkpoint"]`, resume via `update_state()` + `invoke(None, config)`
 

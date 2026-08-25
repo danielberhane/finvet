@@ -206,13 +206,13 @@ when forced.
 
 ### One inconsistency worth knowing
 
-`_count_tokens` uses **`cl100k_base`** — OpenAI's tokenizer (`parser.py:75`). But embedding is
-now done by **nomic-embed-text**, which uses a different vocabulary. So "500 tokens" is
+`_count_tokens` uses **`cl100k_base`**, the tiktoken vocabulary (`parser.py:75`). But embedding
+is done by **nomic-embed-text**, which uses a different vocabulary. So "500 tokens" is
 measured with the wrong ruler.
 
 It is harmless in practice: the counts are close enough, the target is a soft one, and
-nomic's 2048-token context leaves ample headroom. But it is a leftover from the OpenAI era and
-worth a comment so the next reader doesn't assume it is exact.
+nomic's 2048-token context leaves ample headroom. But it is a leftover from the earlier hosted
+embedder and worth a comment so the next reader doesn't assume it is exact.
 
 ## 7. Stage 3 — Embedding
 
@@ -257,14 +257,14 @@ if embeddings and len(embeddings[0]) != EMBEDDING_DIMS:
 49 vectors back, and every chunk after the gap is paired with the wrong embedding, corrupting
 the store invisibly. The dimension guard catches exactly the split-brain state that occurred
 earlier today: the corpus was ingested at 768 dims by Ollama while the query path still called
-OpenAI at 1536.
+the previous hosted embedder at 1536.
 
 > **Best practice.** Assert the shape of anything crossing a process boundary. Embedding bugs
 > are silent — you get *worse results*, never an exception.
 
 ### Local versus hosted
 
-| | OpenAI `text-embedding-3-small` | `nomic-embed-text` (current) |
+| | hosted API embedder (1536-dim) | `nomic-embed-text`, local (current) |
 |---|---|---|
 | Dimensions | 1536 | 768 |
 | Runs | remote API | **local Ollama** |
