@@ -64,9 +64,14 @@ a filing covering the period never mentions. Silence on its own does not — a p
 omits most things — and neither does silence from a filing that closed before the event, which
 is tracked separately rather than counted as absence of evidence.
 
-Retrieval over filing text is hybrid: pgvector dense search and Postgres `tsvector` BM25 fused
-by reciprocal rank fusion, embedded locally with `nomic-embed-text` (no API key in the
-embedding path).
+Retrieval over filing text is hybrid: Postgres full-text relevance (`ts_rank` over a
+`tsvector` column) plus pgvector cosine similarity, fused with reciprocal rank fusion.
+Embeddings come from `nomic-embed-text` served locally, so no API key sits in the embedding
+path. Both 10-K and 10-Q narrative text are indexed; sections are keyed by form part and item,
+because a 10-Q restarts its numbering in each part and "Item 1" means different things in
+Part I and Part II. Retrieval is scoped to the resolved period, and the dense arm has a relevance floor
+calibrated against a labelled set rather than chosen — below it, the tool returns no evidence
+instead of the nearest available passage.
 
 Deeper dives: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
 [`docs/RAG_AND_AGENTIC_RAG_GUIDE.md`](docs/RAG_AND_AGENTIC_RAG_GUIDE.md).
@@ -155,8 +160,16 @@ not a dependency on any provider.
 
 - **Deterministic verdict override** — Python recomputes numeric comparisons; the LLM never
   has the final say on a number.
-- **Hybrid RAG over filings** — pgvector dense retrieval + Postgres `tsvector` BM25, fused by
-  reciprocal rank fusion.
+- **Model-directed ReAct agents in a deterministic workflow** — routing, period resolution,
+  consensus and guardrails are fixed pipeline stages; within the selected agent the model
+  chooses its own tools and iterations.
+- **Hybrid retrieval over filings** — Postgres full-text relevance plus pgvector similarity,
+  fused with RRF, scoped to the resolved period, with a calibrated relevance floor. Measured
+  on 30 positive and 30 negative queries over a 988-chunk corpus: zero irrelevant results
+  accepted at full recall.
+- **Bounded, in-process News-to-SEC delegation** — one hop, one direction. Not a network
+  agent-to-agent protocol; the SEC agent holds no delegation tool, which is what makes the
+  call terminate by construction.
 - **Layered guardrails** — always-on regex/PII checks, plus an optional Llama Guard semantic
   layer, on both input and output. Safety is the guards' job; verifiability is the parser's.
 - **Human-in-the-loop** — LangGraph `interrupt_before` pauses low-confidence or flagged
@@ -214,7 +227,18 @@ Postgres, and an LLM cost budget.
 ## Limitations
 
 - **US equities only** · **point-in-time claims** (no time series) · **latency 15–40s/claim**
-  (three ReAct agents making real tool calls).
+  (one ReAct agent making real tool calls, plus an optional delegated run).
+- **A numeric verdict requires a structured source.** Values are compared only when they come
+  from an XBRL fact, a market quote field, or a FRED series. A number the model read out of
+  prose is not evidence, so claims whose metric has no structured source — fines,
+  settlements, analyst targets and 38 others the parser can emit — return NOT_ENOUGH_INFO
+  rather than a verdict resting on an LLM's reading.
+- **Q4 numeric derivation is unsupported.** Q4 is not filed separately, and deriving it needs
+  a 12-month fact minus a nine-month one; retrieval is scoped to a single resolved period per
+  request, so that pair cannot be requested. Such claims are declined explicitly rather than
+  answered approximately.
+- **Pending reviews do not survive an API restart.** Checkpoints are `MemorySaver`-backed; an
+  unresumable review is refused rather than answered from the reviewer's own submission.
 - The consensus step is **heuristic**, not learned.
 - **Historical prices need a paid Finnhub tier**; on a free key the market agent reports
   NOT_ENOUGH_INFO rather than scraping around it.
