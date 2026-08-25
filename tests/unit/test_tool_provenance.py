@@ -12,7 +12,7 @@ RAG correctly and the system could not prove it.
 from typing import Any, Dict
 
 from finvet.agents.base import BaseVerificationAgent
-from finvet.tools.corroborate import CorroborationResult, corroborate_with_news
+from finvet.tools.corroborate_sec import corroborate_with_filing
 from finvet.tools.filing_search import FilingSearchResult, search_filing_text
 
 
@@ -32,15 +32,6 @@ class TestProvenanceRoundTrip:
         parsed = _roundtrip(payload)
         assert parsed.get("success") is True
         assert parsed["chunks"][0]["chunk_text"].startswith("Services net sales")
-
-    def test_corroboration_result_survives_as_dict(self):
-        payload = CorroborationResult(
-            success=True, news_verdict="SUPPORTS", news_confidence=0.9,
-            news_reasoning="two outlets confirm", sources_checked=2,
-        ).model_dump()
-        parsed = _roundtrip(payload)
-        assert parsed.get("success") is True
-        assert parsed["news_verdict"] == "SUPPORTS"
 
     def test_bare_model_does_not_survive(self):
         """The shape of the bug, pinned: returning the model loses everything."""
@@ -66,9 +57,9 @@ class TestToolsReturnDicts:
 
     def test_corroborate_returns_dict_on_error(self, monkeypatch):
         monkeypatch.setattr(
-            "finvet.agents.news_agent.react_agent.NewsAgent",
-            lambda **kw: (_ for _ in ()).throw(RuntimeError("news down")))
-        out = corroborate_with_news.invoke(
-            {"finding": "f", "query": "q", "ticker": "AAPL"})
+            "finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("sec down")))
+        out = corroborate_with_filing.invoke(
+            {"finding": "f", "ticker": "AAPL"})
         assert isinstance(out, dict)
         assert out["success"] is False

@@ -321,9 +321,10 @@ def _format_sources(
         sources.append({
             "type": "a2a",
             "description": (
-                f"Cross-source verification via News agent: "
-                f"{corroboration.get('news_verdict', 'N/A')} "
-                f"(confidence: {corroboration.get('news_confidence', 0):.0%})"
+                f"Primary-source check against SEC filings: "
+                f"{corroboration.get('status', 'UNKNOWN')} — "
+                f"{corroboration.get('verdict', 'N/A')} "
+                f"(confidence: {corroboration.get('confidence', 0):.0%})"
             ),
         })
 
@@ -380,18 +381,15 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         }
 
     if corroboration:
-        # Reads the normalized A2A contract, so both directions surface the same
-        # way. The legacy news_* keys are kept as a fallback for any SEC->News
-        # result produced before the migration.
+        # Reads the normalized A2A contract (models/a2a.py). Delegation runs
+        # News -> SEC only, so there is one direction to surface.
         data_sources["a2a"] = {
             "used": True,
-            "direction": corroboration.get("direction", "sec_to_news"),
+            "direction": corroboration.get("direction", "news_to_sec"),
             "status": corroboration.get("status", ""),
             "trigger_mode": corroboration.get("trigger_mode", ""),
-            "verdict": corroboration.get("verdict", corroboration.get("news_verdict", "")),
-            "confidence": corroboration.get(
-                "confidence", corroboration.get("news_confidence", 0)
-            ),
+            "verdict": corroboration.get("verdict", ""),
+            "confidence": corroboration.get("confidence", 0),
             "retrieved_value": corroboration.get("retrieved_value"),
             "claimed_value": corroboration.get("claimed_value"),
             "sources": len(corroboration.get("sources") or []),

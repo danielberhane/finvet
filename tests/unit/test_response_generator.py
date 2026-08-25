@@ -95,17 +95,27 @@ class TestFormatSources:
         assert "1 chunks" in rag[0]["description"]
 
     def test_a2a_sources(self):
+        """Renders the normalized A2A contract, not the removed news_* keys.
+
+        The old shape read news_verdict/news_confidence, which the current
+        contract does not carry -- so the line rendered as 'N/A (0%)' while its
+        test stayed green against the legacy dict.
+        """
         evidence = {"tools_called": []}
         state = {
             "corroboration_result": {
-                "news_verdict": "CONFIRMED",
-                "news_confidence": 0.85,
+                "status": "CORROBORATES",
+                "verdict": "SUPPORTS",
+                "confidence": 0.85,
             },
         }
         sources = _format_sources(evidence, state)
         a2a = [s for s in sources if s["type"] == "a2a"]
         assert len(a2a) == 1
-        assert "CONFIRMED" in a2a[0]["description"]
+        assert "CORROBORATES" in a2a[0]["description"]
+        assert "SUPPORTS" in a2a[0]["description"]
+        assert "85%" in a2a[0]["description"]
+        assert "N/A" not in a2a[0]["description"]
 
 
 class TestFormatMetadata:

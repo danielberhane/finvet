@@ -49,3 +49,11 @@ docs/UX-WALKTHROUGH.md
 
 # Superseded by docs/diagrams/
 docs/architecture.svg
+
+# Claude Code worktrees — a nested git repo; never a submodule of this one.
+.claude/worktrees/
+
+# Local study collection: copies of the RAG/A2A files already tracked at their
+# real paths. Duplicating them in the repo would go stale the first time either
+# side changed.
+RAGagentic/

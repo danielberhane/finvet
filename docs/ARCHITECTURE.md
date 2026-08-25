@@ -11,18 +11,19 @@ FastAPI API (:8000)
        |
 LangGraph Pipeline (12-node DAG + HITL checkpoint)
        |
-  SEC Agent -----> SEC EDGAR MCP (:9870) ----> XBRL/Filing Data
-  |   |                                            |
-  |   +---> RAG (pgvector + tsvector + RRF) <------+
-  |   +---> A2A (spawns News Agent)                |
-  |                                                |
-  Market Agent --> Finnhub REST                     |
-  |                                                |
-  News Agent ----> Tavily News Search              |
-                                                   |
-                  PostgreSQL 16 + pgvector (:5432)  |
-                  [audit_events, audit_executions,  |
-                   claim_memory, filing_chunks] <---+
+  SEC Agent ------> SEC EDGAR MCP (:9870) ---> XBRL/Filing Data
+  ^    |                                            |
+  |    +---------> RAG (pgvector + tsvector + RRF) <+
+  |                                                 |
+  | A2A: corroborate_with_filing                    |
+  |                                                 |
+  News Agent -----> Tavily News Search              |
+                                                    |
+  Market Agent ---> Finnhub REST                    |
+                                                    |
+                   PostgreSQL 16 + pgvector (:5432) |
+                   [audit_events, audit_executions, |
+                    claim_memory, filing_chunks] <--+
 ```
 
 ---
@@ -199,9 +200,9 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 
 | Agent | File | Tools | Data Sources | Provenance |
 |-------|------|-------|-------------|------------|
-| **SECAgent** | `agents/sec_agent/react_agent.py` | `get_company_info`, `get_recent_filings`, `get_income_statement`, `get_balance_sheet`, `get_cash_flow`, `search_filing_text`, `corroborate_with_news` | SEC EDGAR (XBRL), RAG, A2A | `{"search_filing_text", "corroborate_with_news"}` |
+| **SECAgent** | `agents/sec_agent/react_agent.py` | `get_company_info`, `get_recent_filings`, `get_income_statement`, `get_balance_sheet`, `get_cash_flow`, `search_filing_text` | SEC EDGAR (XBRL), RAG | `{"search_filing_text"}` |
 | **MarketAgent** | `agents/market_agent/react_agent.py` | `get_stock_quote`, `get_daily_prices`, `get_company_overview`, `get_earnings` | Finnhub | (none) |
-| **NewsAgent** | `agents/news_agent/react_agent.py` | `search_financial_news`, `verify_news_source` | Tavily | (none) |
+| **NewsAgent** | `agents/news_agent/react_agent.py` | `search_financial_news`, `verify_news_source`, `corroborate_with_filing` | Tavily, A2A | `{"corroborate_with_filing"}` |
 
 System prompts: git-tracked text files in `src/finvet/agents/prompts/`.
 
@@ -264,19 +265,35 @@ Query --> OpenAI Embed (1536-dim)
 
 #### A2A (Agent-to-Agent Corroboration)
 
-**File**: `src/finvet/tools/corroborate.py`
+**Files**: `src/finvet/tools/corroborate_sec.py`, `src/finvet/models/a2a.py`
 
-SEC agent spawns a mini NewsAgent (max_iterations=3) to cross-verify filing disclosures against news.
+Delegation runs **News -> SEC only**. A news claim about a fine or settlement is checked
+against the issuer's own filing: a 10-K's Legal Proceedings section is the primary source and
+press coverage is secondary. The reverse direction existed once and was removed — it fired 0
+times in 496 benchmark runs, because an audited filing is already the strongest source and the
+claims a filing cannot settle parse as `news` and never reach the SEC agent.
+
+Two triggers, one field. `trigger_mode="agent"` when the model called the tool itself (the
+result is lifted from ReAct provenance); `"policy"` when `run_news_agent` invoked it after the
+loop for a `CORROBORATION_METRICS` claim with a ticker — that call is absent from the message
+history, so the node attaches the result explicitly.
 
 ```
-SEC Agent ReAct loop
-  +-- Finds disclosure via search_filing_text()
-  +-- Calls corroborate_with_news(finding, query, ticker)
-       +-- Instantiates NewsAgent(max_iterations=3)
-       +-- News agent searches Tavily
-       +-- Returns: news_verdict, news_confidence, reasoning, sources_checked
-  +-- SEC agent incorporates into evidence
+News Agent ReAct loop
+  +-- Verifies the event via search_financial_news()
+  +-- Calls corroborate_with_filing(finding, ticker, claimed_value, operator, period)
+       +-- Temporal gate: a filing that closed before the event cannot cover it
+       |    -> NOT_APPLICABLE_YET, no nested run
+       +-- Builds a real ParsedClaim carrying claimed_value, so _apply_override runs
+       +-- run_sec_agent_scoped(state, max_iterations=3)  <- same period targeting
+       +-- Returns A2AResult.model_dump(): status, verdict, retrieved_value, sources
+  +-- run_news_agent writes it to corroboration_result
 ```
+
+Recursion is structurally impossible: the SEC agent holds no delegation tool, so News -> SEC
+terminates by construction. `status=CONTRADICTS` adds the `source_disagreement` HITL trigger;
+`NO_MATCHING_DISCLOSURE` and `NOT_APPLICABLE_YET` do not — filing silence is expected from a
+point-in-time document.
 
 ---
 
@@ -446,7 +463,7 @@ LangGraph `interrupt_before` pauses graph. State persisted. API returns `pending
 
 ### Provenance for Audit Compliance
 
-SEC agent captures full untruncated results from RAG and A2A tools. Flows through as `rag_chunks_retrieved` and `corroboration_result` into response metadata and audit DB `data_sources` JSONB.
+The SEC agent captures full untruncated RAG results and the News agent its A2A result. These flow through as `rag_chunks_retrieved` and `corroboration_result` into response metadata and audit DB `data_sources` JSONB.
 
 ### Non-Critical Memory and Similar Claims
 
@@ -494,9 +511,9 @@ models/
 agents/
   base.py          <-- config/constants, llm/factory, models/state
   prompts/*.txt    <-- (loaded at import time)
-  sec_agent/       <-- base, tools/sec_tools, tools/filing_search, tools/corroborate
+  sec_agent/       <-- base, tools/sec_tools, tools/filing_search, tools/memory_tools
   market_agent/    <-- base, tools/market_tools
-  news_agent/      <-- base, tools/news_tools
+  news_agent/      <-- base, tools/news_tools, tools/corroborate_sec
 
 graph/
   nodes/           <-- agents, models/state
@@ -507,7 +524,7 @@ tools/
   sec_tools.py     <-- mcp/sec_edgar
   news_tools.py    <-- tools/tavily_search
   filing_search.py <-- rag/service
-  corroborate.py   <-- agents/news_agent (runtime import)
+  corroborate_sec.py <-- graph/nodes/domain_agents (runtime import)
 
 rag/
   service.py       <-- config/constants, config/database

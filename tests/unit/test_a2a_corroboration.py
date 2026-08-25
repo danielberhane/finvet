@@ -3,8 +3,8 @@
 The A2A path was unreachable before this: corroborate_with_news fired 0 times in
 496 benchmark runs, because every metric that warrants cross-source checking
 (fine_amount, settlement_amount) parses as `news`, and only the SEC agent owned a
-corroboration tool. Inverting the direction is the fix; these tests pin the parts
-that are easy to get quietly wrong.
+corroboration tool. Inverting the direction is the fix, and the old direction was
+then removed; these tests pin the parts that are easy to get quietly wrong.
 """
 
 from unittest.mock import patch
@@ -35,14 +35,18 @@ def _parsed(metric="fine_amount", ticker="AAPL", value=500_000_000.0):
 
 
 class TestRecursionIsStructurallyImpossible:
-    """News -> SEC -> News must not be constructible, not merely guarded."""
+    """News -> SEC terminates because SEC holds no delegation tool at all.
 
-    def test_delegated_sec_agent_has_no_a2a_tool(self):
-        agent = SECAgent(allow_a2a=False)
-        assert "corroborate_with_news" not in agent.tool_map
+    The SEC -> News direction was removed after measuring 0 invocations in 496
+    runs: an audited filing is the strongest source available, so press
+    agreement adds nothing to it, and the one case a filing cannot settle -- an
+    outcome or subsequent event -- parses as a news claim and never reaches the
+    SEC agent. With only one direction there is no cycle to guard.
+    """
 
-    def test_top_level_sec_agent_keeps_it(self):
-        assert "corroborate_with_news" in SECAgent().tool_map
+    def test_sec_agent_holds_no_delegation_tool(self):
+        tools = SECAgent().tool_map
+        assert not [t for t in tools if t.startswith("corroborate")]
 
     def test_news_agent_can_delegate_to_sec(self):
         assert "corroborate_with_filing" in NewsAgent().tool_map
@@ -102,7 +106,7 @@ class TestDelegationCarriesTheClaimedValue:
         pc = captured["state"]["parsed_claim"]
         assert pc.value is None and pc.operator is None
 
-    def test_delegation_disables_a2a_and_shortens_the_budget(self):
+    def test_delegation_shortens_the_budget(self):
         captured = {}
 
         def fake_scoped(state, **kwargs):
@@ -112,7 +116,6 @@ class TestDelegationCarriesTheClaimedValue:
         with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped", fake_scoped):
             corroborate_sec._corroborate(finding="x", ticker="AAPL")
 
-        assert captured["allow_a2a"] is False
         assert captured["max_iterations"] == 3
 
     def test_result_carries_both_numbers_for_audit(self):
