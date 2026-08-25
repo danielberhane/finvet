@@ -1,7 +1,7 @@
 """Pydantic request/response models for the FinVet API."""
 
-from typing import Optional
-from pydantic import BaseModel, Field
+from typing import Literal, Optional
+from pydantic import BaseModel, Field, model_validator
 
 
 class VerifyClaimRequest(BaseModel):
@@ -24,10 +24,32 @@ class MemoryAcceptRequest(BaseModel):
 
 
 class HITLReviewRequest(BaseModel):
-    """Request model for HITL review submission."""
-    decision: str = Field(..., description="Decision: 'approve', 'override', or 'reject'")
-    override_verdict: Optional[str] = Field(None, description="New verdict if decision is 'override'")
-    reviewer_notes: Optional[str] = Field(None, description="Optional notes from reviewer")
+    """Request model for HITL review submission.
+
+    Validation lives here rather than in the route: a malformed decision should
+    be rejected by the contract before any audit event is written or any
+    pending row is claimed.
+    """
+
+    decision: Literal["approve", "override", "reject"] = Field(
+        ..., description="Reviewer's decision")
+    override_verdict: Optional[Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]] = Field(
+        None, description="New verdict; required for, and only for, 'override'")
+    reviewer_notes: Optional[str] = Field(
+        None, max_length=2000, description="Optional notes from reviewer")
+
+    @model_validator(mode="after")
+    def validate_override(self):
+        """A verdict without an override is as wrong as an override without one.
+
+        The first silently discards the reviewer's intent; the second leaves the
+        route guessing what they meant.
+        """
+        if (self.decision == "override") != (self.override_verdict is not None):
+            raise ValueError(
+                "override_verdict is required for decision='override' "
+                "and must be omitted otherwise")
+        return self
 
 
 class HealthResponse(BaseModel):

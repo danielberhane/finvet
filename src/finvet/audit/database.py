@@ -258,29 +258,122 @@ class AuditDatabase:
             logger.error(f"Failed to get events for {request_id}: {e}")
             return []
 
-    def update_execution_verdict(self, request_id: str, verdict: str, confidence: float) -> bool:
-        """Update the verdict and confidence of an execution after HITL review.
+    def claim_pending_review(self, request_id: str) -> str:
+        """Atomically take ownership of a pending review.
 
-        Args:
-            request_id: Request identifier
-            verdict: New verdict after review
-            confidence: New confidence after review
+        Returns "claimed", "conflict", or "missing".
 
-        Returns:
-            True if updated successfully
+        The transition is a single conditional UPDATE. Reading the row and then
+        writing it leaves a window where two reviewers both see PENDING and both
+        proceed, and the previous code had no status check at all: a second
+        submission simply overwrote the first, and a review for a request that
+        never existed reported success.
         """
         try:
             with get_db_session() as session:
-                execution = session.query(AuditExecution).filter(
-                    AuditExecution.request_id == request_id
-                ).first()
-                if execution:
-                    execution.verdict = verdict
-                    execution.confidence = confidence
-                    return True
-                return False
+                changed = (
+                    session.query(AuditExecution)
+                    .filter(AuditExecution.request_id == request_id,
+                            AuditExecution.verdict == "PENDING")
+                    .update({"verdict": "REVIEWING"}, synchronize_session=False)
+                )
+                if changed:
+                    return "claimed"
+                # Nothing changed: either the row is gone or somebody else has
+                # it. One read distinguishes 404 from 409.
+                exists = (
+                    session.query(AuditExecution.request_id)
+                    .filter(AuditExecution.request_id == request_id)
+                    .first()
+                )
+                return "conflict" if exists else "missing"
         except Exception as e:
-            logger.error(f"Failed to update execution verdict for {request_id}: {e}")
+            logger.error(f"Failed to claim review for {request_id}: {e}")
+            return "missing"
+
+    def release_review_claim(self, request_id: str) -> bool:
+        """Return a claimed row to PENDING after a failed resume.
+
+        Without this a lost checkpoint would strand the claim in REVIEWING and
+        no reviewer could pick it up again.
+        """
+        try:
+            with get_db_session() as session:
+                changed = (
+                    session.query(AuditExecution)
+                    .filter(AuditExecution.request_id == request_id,
+                            AuditExecution.verdict == "REVIEWING")
+                    .update({"verdict": "PENDING"}, synchronize_session=False)
+                )
+                return bool(changed)
+        except Exception as e:
+            logger.error(f"Failed to release review claim for {request_id}: {e}")
+            return False
+
+    def finalize_review(
+        self,
+        request_id: str,
+        *,
+        verdict: str,
+        confidence: float,
+        final_response: Optional[Dict[str, Any]],
+        data_sources: Optional[Dict[str, Any]],
+        events: list,
+        review_decision: str,
+        reviewer_notes: Optional[str] = None,
+    ) -> bool:
+        """Write the reviewed outcome and its checksum in one transaction.
+
+        The previous version updated verdict and confidence alone, leaving
+        full_trace, the checksum and the event count describing the pending-era
+        run -- so the header could say REFUTES while the stored response still
+        said PENDING.
+
+        The new envelope records the review decision and the checksum it
+        supersedes, so the pre-review state remains identifiable rather than
+        being silently overwritten.
+        """
+        try:
+            with get_db_session() as session:
+                execution = (
+                    session.query(AuditExecution)
+                    .filter(AuditExecution.request_id == request_id,
+                            AuditExecution.verdict == "REVIEWING")
+                    .first()
+                )
+                if execution is None:
+                    logger.warning(
+                        f"finalize_review found no REVIEWING row for {request_id}")
+                    return False
+
+                envelope = build_execution_envelope(
+                    request_id=request_id,
+                    claim_text=execution.claim_text,
+                    terminal_status="reviewed",
+                    verdict=verdict,
+                    confidence=confidence,
+                    agents_run=execution.agents_run or [],
+                    events=events,
+                    final_response=final_response,
+                    data_sources=data_sources,
+                )
+                envelope["review"] = {
+                    "decision": review_decision,
+                    "reviewer_notes": reviewer_notes,
+                    "supersedes_checksum": execution.execution_hash,
+                }
+
+                execution.verdict = verdict
+                execution.confidence = confidence
+                execution.full_trace = envelope
+                execution.execution_hash = compute_execution_checksum(envelope)
+                execution.total_events = len(events)
+                if data_sources is not None:
+                    execution.data_sources = data_sources
+                self._insert_missing_events(session, request_id, events)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to finalize review for {request_id}: {e}")
             return False
 
     def get_pending_reviews(self) -> list:
@@ -291,8 +384,14 @@ class AuditDatabase:
         """
         try:
             with get_db_session() as session:
+                # REVIEWING is included deliberately. A claim is moved there
+                # while its reviewer works; if that process dies before the
+                # claim is released, filtering on PENDING alone would drop the
+                # row from every reviewer's queue permanently. Showing it is
+                # safe -- claim_pending_review still serialises access, so a
+                # second reviewer gets a conflict rather than a duplicate.
                 executions = session.query(AuditExecution).filter(
-                    AuditExecution.verdict == "PENDING"
+                    AuditExecution.verdict.in_(("PENDING", "REVIEWING"))
                 ).order_by(AuditExecution.timestamp.desc()).all()
 
                 results = []

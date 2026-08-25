@@ -32,6 +32,13 @@ app = FastAPI(
 )
 
 # Create verification graph with MemorySaver for HITL interrupt/resume.
+#
+# Release A decision: checkpoints live in process memory, so a pending review
+# does not survive an API restart. Resuming a lost checkpoint returns 409
+# checkpoint_unavailable rather than a verdict computed from the reviewer's
+# request -- an unresumable claim has nothing to review. Release B swaps in
+# PostgresSaver via the langgraph-checkpoint-postgres dependency already
+# declared, with setup during lifespan and a restart-resume test.
 checkpointer = MemorySaver()
 graph = create_verification_graph(checkpointer=checkpointer)
 deps.verification_graph = graph
