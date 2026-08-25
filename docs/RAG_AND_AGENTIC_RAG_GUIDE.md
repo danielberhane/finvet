@@ -583,20 +583,22 @@ Agents are defined by their tools; the parser's `claim_type` picks exactly one.
 | `get_balance_sheet` | XBRL assets, liabilities, equity |
 | `get_cash_flow` | XBRL operating / investing / financing |
 | **`search_filing_text`** | **RAG — filing prose** |
-| `corroborate_with_news` | **A2A — asks the News agent to confirm** |
 | `search_past_verifications` | episodic memory |
 
 **Market agent** (`claim_type="market"`): `get_stock_quote`, `get_daily_prices`,
 `get_company_overview`, `get_earnings`, `search_past_verifications`.
 
 **News agent** (`claim_type="news"`): `search_financial_news`, `verify_news_source`,
-`get_macro_indicator`, `search_past_verifications`.
+`get_macro_indicator`, `search_past_verifications`, **`corroborate_with_filing`** (A2A).
 
 **RAG lives only in the SEC agent.** Market and News have no retrieval over documents.
 
-**A2A (agent-to-agent)** is worth naming: `corroborate_with_news` lets the SEC agent call the
-News agent *as a tool*, giving cross-source verification instead of one agent guessing outside
-its domain.
+**A2A (agent-to-agent)** is worth naming: `corroborate_with_filing` lets the News agent call
+the SEC agent *as a tool*, checking a reported fine or settlement against the issuer's own
+filing instead of trusting press coverage alone. It runs in that direction only — the filing is
+the primary source and the news report the secondary one, so corroboration is only informative
+when it flows from the weaker source to the stronger. The reverse tool existed once and fired 0
+times in 496 runs; see `docs/ARCHITECTURE.md` §2.5.
 
 ## 20. Why the tool order is forced — the dependency chain
 
@@ -665,8 +667,8 @@ answer: which passage, from which filing, found by which query?
 
 FinVet captures this in three moves:
 
-1. `_provenance_tool_names = {"search_filing_text", "corroborate_with_news"}` on the SEC agent
-   marks which tools have their **full, untruncated** results stored.
+1. `_provenance_tool_names` marks which tools have their **full, untruncated** results
+   stored — `{"search_filing_text"}` on the SEC agent, `{"corroborate_with_filing"}` on News.
 2. `run_sec_agent` lifts the chunks into `state["rag_chunks_retrieved"]`, tagging each with the
    query that found it.
 3. `_format_metadata` sets `data_sources["rag"]`, rendering the purple **RAG** badge and
@@ -682,8 +684,8 @@ failed both, and fell back to `{"raw": "..."}`. Then `run_sec_agent` checked
 
 **The fix.** Return `.model_dump()` instead. The models stay for validation and documentation,
 but what LangChain stringifies is now a Python dict literal that `ast.literal_eval` recovers
-cleanly. Applied to `corroborate_with_news` too — it had the identical bug, which would have
-silently discarded agent-to-agent evidence the same way.
+cleanly. The A2A tool returns `.model_dump()` for the same reason — the identical bug would
+otherwise silently discard agent-to-agent evidence.
 
 **Verified live, not just in tests.** Re-running the same Apple Services claim:
 
@@ -806,7 +808,8 @@ Root: `~/Projects/Active/finvet-v2.0.9/.claude/worktrees/rag-fix`
 | File | Lines | Role |
 |---|---:|---|
 | `src/finvet/tools/filing_search.py` | 96 | **`search_filing_text`** — the RAG tool |
-| `src/finvet/tools/corroborate.py` | 93 | **`corroborate_with_news`** — A2A, SEC agent → News agent |
+| `src/finvet/tools/corroborate_sec.py` | 218 | **`corroborate_with_filing`** — A2A, News agent → SEC agent |
+| `src/finvet/models/a2a.py` | 107 | the normalized A2A result contract + `classify_status` |
 | `src/finvet/tools/sec_tools.py` | 392 | the five XBRL tools + `SEC_TOOLS` list |
 | `src/finvet/tools/memory_tools.py` | 82 | `search_past_verifications` |
 

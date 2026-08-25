@@ -42,8 +42,8 @@ text can sway the model's prose, but not a numeric verdict.
 
 A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each a ReAct loop
 with its own tools. They are not isolated: an agent can delegate to another when the answer
-lies outside its sources — the SEC agent asks News to corroborate a filing disclosure, and the
-News agent asks SEC whether the issuer's own filing confirms a reported fine or settlement.
+lies outside its sources: the News agent asks SEC whether the issuer's own filing confirms a
+reported fine or settlement, checking press coverage against the primary source.
 Evidence is reconciled, guarded, and paused for human review on any of three triggers: low
 confidence, unsafe output, or **two sources disagreeing**.
 
@@ -53,14 +53,14 @@ confidence, unsafe output, or **two sources disagreeing**.
 
 | Agent | Handles | Sources | Can delegate to |
 |---|---|---|---|
-| **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP, hybrid RAG over filing text | News |
+| **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP, hybrid RAG over filing text | — |
 | **Market** | Prices, valuation, market cap | Finnhub | — |
 | **News** | Events, announcements, macro indicators | Tavily search, FRED | SEC |
 
-Delegation is bounded: a delegated agent runs without its own cross-agent tool, so the two
-cannot call each other in a loop. When both sides reach a decisive but opposite verdict the
-claim escalates to a reviewer rather than shipping — filing *silence* is not treated as
-disagreement, since a periodic report is a point-in-time document.
+Delegation runs one way only, so it terminates by construction. When both sides reach a
+decisive but opposite verdict the claim escalates to a reviewer rather than shipping — filing
+*silence* is not treated as disagreement, since a periodic report is a point-in-time
+document.
 
 Retrieval over filing text is hybrid: pgvector dense search and Postgres `tsvector` BM25 fused
 by reciprocal rank fusion, embedded locally with `nomic-embed-text` (no API key in the
@@ -161,7 +161,8 @@ var, no code change.
 - **Full audit trail** — every node's I/O, tool calls, and data provenance persisted to
   Postgres with a SHA-256 hash per run; any past verification can be reconstructed node by
   node.
-- **Agent-to-agent** — the SEC agent can call the news agent when filing data is ambiguous.
+- **Agent-to-agent** — the news agent can ask SEC whether the issuer's own filing confirms a
+  reported fine or settlement; a contradiction escalates to a human.
 - **Claim memory** — embedding search over past verifications for caching and context.
 
 ---

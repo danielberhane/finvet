@@ -108,33 +108,26 @@ class TestSECProvenance:
         assert result["rag_chunks_retrieved"][0]["search_query"] == "revenue Q4"
 
     @patch("finvet.graph.nodes.domain_agents.SECAgent")
-    def test_a2a_provenance_extraction(self, MockAgent):
+    def test_sec_route_produces_no_corroboration(self, MockAgent):
+        """The SEC -> News direction was removed; this node no longer sets it.
+
+        Corroboration now originates from run_news_agent, so a SEC-routed claim
+        must not populate corroboration_result even if provenance carried
+        something unexpected.
+        """
         mock_instance = MagicMock()
         mock_instance.execute.return_value = {
             "verdict": "SUPPORTS",
             "confidence": 0.88,
-            "tools_called": ["corroborate_with_news"],
+            "tools_called": ["search_filing_text"],
             "agent": "sec",
-            "provenance": [
-                {
-                    "tool": "corroborate_with_news",
-                    "args": {"finding": "Revenue increased 5%"},
-                    "result": {
-                        "success": True,
-                        "news_verdict": "CONFIRMED",
-                        "news_confidence": 0.85,
-                    },
-                },
-            ],
+            "provenance": [],
         }
         MockAgent.return_value = mock_instance
 
-        state = {"request_id": "test_a2a"}
-        result = run_sec_agent(state)
+        result = run_sec_agent({"request_id": "test_no_a2a"})
 
-        assert "corroboration_result" in result
-        assert result["corroboration_result"]["finding"] == "Revenue increased 5%"
-        assert result["corroboration_result"]["news_verdict"] == "CONFIRMED"
+        assert "corroboration_result" not in result
 
     @patch("finvet.graph.nodes.domain_agents.SECAgent")
     def test_failed_provenance_skipped(self, MockAgent):
