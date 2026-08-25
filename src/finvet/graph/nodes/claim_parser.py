@@ -293,8 +293,31 @@ def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
             data["operator"] = None
             operator_decision = "dropped_operator_without_value"
 
+    # Range bounds. A model that omits them leaves None -- the band is not
+    # reconstructable from a midpoint, and guessing one would silently answer
+    # a claim nobody stated. A range without both bounds is downgraded to
+    # approx, which is honest about having only a point estimate; bounds on a
+    # non-range operator are dropped rather than allowed to imply an interval.
+    range_decision = "none"
+    if data.get("claim_type") != "reject":
+        has_bounds = (data.get("range_min") is not None
+                      and data.get("range_max") is not None)
+        if data.get("operator") == "range" and not has_bounds:
+            data["operator"] = "approx"
+            data["range_min"] = data["range_max"] = None
+            range_decision = "range_without_bounds_downgraded_to_approx"
+        elif data.get("operator") != "range" and (
+                data.get("range_min") is not None
+                or data.get("range_max") is not None):
+            data["range_min"] = data["range_max"] = None
+            range_decision = "dropped_bounds_without_range"
+        elif has_bounds and data["range_min"] > data["range_max"]:
+            data["range_min"], data["range_max"] = (
+                data["range_max"], data["range_min"])
+            range_decision = "swapped_inverted_bounds"
+
     return data, {"reject": reject_decision, "metric": metric_decision,
-                  "operator": operator_decision}
+                  "operator": operator_decision, "range": range_decision}
 
 
 def claim_parser(state: VerificationState) -> Dict:

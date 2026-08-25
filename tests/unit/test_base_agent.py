@@ -216,11 +216,14 @@ class TestOverrideReadsOperator:
         verdict, _, _ = self._override(100e9, 90e9, operator="approx")
         assert verdict == "REFUTES"
 
-    def test_range_behaves_as_approx_on_the_midpoint(self):
-        """Gold stores the band midpoint in value; the band itself is not in
-        the schema. Unvalidated assumption (zero range rows carry a filed
-        value) — implemented as approx and excluded from accuracy gates."""
-        verdict, _, _ = self._override(30e9, 30.6e9, operator="range")
+    def test_range_is_membership_not_midpoint_equality(self):
+        """Superseded the midpoint approximation.
+
+        The band now lives in the contract, so a value inside it is supported
+        however far it sits from the centre — which midpoint-equality refuted.
+        """
+        verdict, _, _ = self._override(
+            30e9, 30.6e9, operator="range", range_min=29e9, range_max=31e9)
         assert verdict == "SUPPORTS"
 
     def test_unknown_operator_fails_closed(self):

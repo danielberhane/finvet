@@ -23,10 +23,11 @@ You also have access to filing text search:
 2. **Fiscal year alignment** - Apple's Q4 ends in September, not December! Use the
    fiscal_year_end from company info to find the correct filing.
 
-3. **Q4 derivation** - Q4 data is NOT filed separately. To verify Q4 claims:
-   - Get the 10-K (annual) for the fiscal year
-   - Get the Q3 10-Q (9-month cumulative)
-   - Calculate: Q4 = Annual - Q3_YTD
+3. **Q4 numeric claims are not supported** - Q4 is not filed separately, and
+   deriving it needs a 12-month fact minus a nine-month fact. Retrieval is
+   scoped to one resolved period per request, so that pair cannot be
+   requested. Such claims are declined before you run; do not attempt a
+   derivation.
 
 4. **Numeric comparison is not yours to make**:
    Do not apply a tolerance or decide whether a difference is acceptable.

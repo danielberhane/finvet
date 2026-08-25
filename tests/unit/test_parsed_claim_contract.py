@@ -63,11 +63,24 @@ class TestContractPhaseFieldsAreGone:
         with pytest.raises(ValidationError):
             ParsedClaim(claim_type="sec", frobnicate=1)
 
-    @pytest.mark.parametrize("op", ["eq", "gt", "gte", "lt", "lte",
-                                    "approx", "range"])
-    def test_all_seven_operators_stand_alone(self, op):
+    @pytest.mark.parametrize("op", ["eq", "gt", "gte", "lt", "lte", "approx"])
+    def test_point_operators_stand_alone(self, op):
         claim = ParsedClaim(claim_type="sec", value=1.0, operator=op)
         assert claim.operator == op
+
+    def test_range_carries_its_band(self):
+        """The seventh operator is an interval, so it needs both ends.
+
+        It used to stand alone on a midpoint, which made membership untestable
+        and refuted values plainly inside the stated band.
+        """
+        claim = ParsedClaim(claim_type="sec", value=1.0, operator="range",
+                            range_min=0.5, range_max=1.5)
+        assert (claim.range_min, claim.range_max) == (0.5, 1.5)
+
+    def test_range_without_a_band_is_rejected(self):
+        with pytest.raises(ValidationError):
+            ParsedClaim(claim_type="sec", value=1.0, operator="range")
 
 
 class TestOpenRejectReason:

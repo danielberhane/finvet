@@ -1,6 +1,7 @@
 """Tests for domain agent wrapper functions."""
 
 from unittest.mock import patch, MagicMock
+from finvet.graph.nodes import domain_agents
 from finvet.graph.nodes.domain_agents import (
     _error_evidence,
     run_market_agent,
@@ -151,3 +152,96 @@ class TestSECProvenance:
         result = run_sec_agent(state)
 
         assert "rag_chunks_retrieved" not in result
+
+
+class TestClaimsTheSystemDeclines:
+    """Two limitations, named before an agent runs rather than improvised.
+
+    A claim the pipeline cannot serve used to reach an agent anyway, which then
+    produced whatever it could from tools that do not carry the answer. Naming
+    the limitation up front turns an unexplained NOT_ENOUGH_INFO into a stated
+    one, and saves the round trip.
+    """
+
+    class _Q4Period:
+        fiscal_quarter = "Q4"
+        end_date = "2024-09-28"
+        start_date = "2024-06-30"
+
+    def _sec_state(self, **claim_kwargs):
+        from finvet.models.claim import ParsedClaim
+        kwargs = dict(claim_type="sec", ticker="AAPL", metric="revenue",
+                      operator="eq", value=100e9)
+        kwargs.update(claim_kwargs)
+        return {"request_id": "t", "claim_raw": "c",
+                "parsed_claim": ParsedClaim(**kwargs)}
+
+    def test_q4_numeric_claim_is_declined_before_the_agent_runs(self):
+        state = self._sec_state()
+        state["canonical_period"] = self._Q4Period()
+
+        with patch.object(domain_agents, "run_sec_agent_scoped") as scoped:
+            out = run_sec_agent(state)
+
+        scoped.assert_not_called()
+        evidence = out["agent_evidence"]
+        assert evidence["limitation"] == "unsupported_q4_derivation"
+        assert evidence["verdict"] == "NOT_ENOUGH_INFO"
+        assert evidence["confidence"] == 0.2
+        assert evidence["execution_status"] == "completed"
+
+    def test_q4_claim_without_a_number_still_runs(self):
+        """Only numeric Q4 claims need the derivation. A narrative question
+        about the quarter is answerable from filing text."""
+        state = self._sec_state(metric=None, operator=None, value=None)
+        state["canonical_period"] = self._Q4Period()
+
+        with patch.object(domain_agents, "run_sec_agent_scoped",
+                          return_value={"agent_evidence": {"verdict": "SUPPORTS"}}) as scoped:
+            run_sec_agent(state)
+
+        scoped.assert_called_once()
+
+    def test_non_q4_numeric_claim_still_runs(self):
+        class _Annual:
+            fiscal_quarter = None
+            end_date = "2024-09-28"
+
+        state = self._sec_state()
+        state["canonical_period"] = _Annual()
+
+        with patch.object(domain_agents, "run_sec_agent_scoped",
+                          return_value={"agent_evidence": {"verdict": "SUPPORTS"}}) as scoped:
+            run_sec_agent(state)
+
+        scoped.assert_called_once()
+
+    def test_metric_no_tool_serves_is_declined(self):
+        """price_to_book is an official parser example that no Market result
+        model exposes. SERVABLE_METRICS knew; nothing consulted it."""
+        from finvet.models.claim import ParsedClaim
+
+        state = {"request_id": "t", "claim_raw": "c",
+                 "parsed_claim": ParsedClaim(
+                     claim_type="market", ticker="GS", metric="price_to_book",
+                     operator="eq", value=1.34)}
+
+        with patch.object(domain_agents, "_run_agent") as run:
+            out = run_market_agent(state)
+
+        run.assert_not_called()
+        assert out["agent_evidence"]["limitation"] == "unsupported_metric"
+
+    def test_servable_market_metric_still_runs(self):
+        from finvet.models.claim import ParsedClaim
+
+        state = {"request_id": "t", "claim_raw": "c",
+                 "parsed_claim": ParsedClaim(
+                     claim_type="market", ticker="TSLA", metric="market_cap",
+                     operator="gt", value=8e11)}
+
+        with patch.object(domain_agents, "_run_agent",
+                          return_value={"agent_evidence": {}, "agent_type": "market"}) as run:
+            run_market_agent(state)
+
+        run.assert_called_once()
