@@ -380,10 +380,21 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         }
 
     if corroboration:
+        # Reads the normalized A2A contract, so both directions surface the same
+        # way. The legacy news_* keys are kept as a fallback for any SEC->News
+        # result produced before the migration.
         data_sources["a2a"] = {
             "used": True,
-            "news_verdict": corroboration.get("news_verdict", ""),
-            "news_confidence": corroboration.get("news_confidence", 0),
+            "direction": corroboration.get("direction", "sec_to_news"),
+            "status": corroboration.get("status", ""),
+            "trigger_mode": corroboration.get("trigger_mode", ""),
+            "verdict": corroboration.get("verdict", corroboration.get("news_verdict", "")),
+            "confidence": corroboration.get(
+                "confidence", corroboration.get("news_confidence", 0)
+            ),
+            "retrieved_value": corroboration.get("retrieved_value"),
+            "claimed_value": corroboration.get("claimed_value"),
+            "sources": len(corroboration.get("sources") or []),
         }
 
     metadata["data_sources"] = data_sources

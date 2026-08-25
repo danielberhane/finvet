@@ -40,6 +40,19 @@ CONSENSUS_MAX_CONFIDENCE = 0.95         # confidence cap
 AGENT_MAX_ITERATIONS = 5
 AGENT_MAX_RESULT_CHARS = 50000  # ~12K tokens, safe for 131K context
 
+# News claims whose truth an issuer's own filing can settle, so the News agent
+# delegates to SEC even when the model does not think to. Deliberately narrow:
+# fines and settlements land in Legal Proceedings and contingency notes, which
+# the RAG corpus indexes. Acquisitions live in 8-Ks and exhibits that are not
+# ingested, and layoffs are often absent from periodic filings — both would
+# manufacture NOT_ENOUGH_INFO results that say nothing. Widen only after
+# measuring these two.
+CORROBORATION_METRICS = frozenset({"fine_amount", "settlement_amount"})
+
+# Budget for a delegated (nested) agent. Lower than a top-level run: it answers
+# one bounded question, and it is spending the caller's step budget.
+A2A_MAX_ITERATIONS = 3
+
 # ---------------------------------------------------------------------------
 # Confidence thresholds (used in helpers.py)
 # ---------------------------------------------------------------------------

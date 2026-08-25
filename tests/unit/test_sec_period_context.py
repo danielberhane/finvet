@@ -128,7 +128,7 @@ class TestSecAgentNodeAppliesTheTarget:
     def test_resolved_period_is_active_while_the_agent_runs(self, monkeypatch):
         seen = {}
 
-        def fake_run_agent(agent_cls, agent_type, source_desc, state):
+        def fake_run_agent(agent_cls, agent_type, source_desc, state, **kwargs):
             seen["target"] = sec_tools._current_period_target()
             return {"agent_evidence": {"provenance": []}, "agent_type": "sec"}
 

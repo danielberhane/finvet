@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
+from ..models.a2a import A2A_FAILED, A2AResult, classify_status
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -80,14 +81,32 @@ def corroborate_with_news(
             f"(confidence: {evidence['confidence']:.2f})"
         )
 
-        return CorroborationResult(
+        news_verdict = evidence.get("verdict", "NOT_ENOUGH_INFO")
+        out = A2AResult(
             success=True,
-            news_verdict=evidence.get("verdict", "NOT_ENOUGH_INFO"),
-            news_confidence=evidence.get("confidence", 0.0),
-            news_reasoning=evidence.get("reasoning", ""),
-            sources_checked=len(evidence.get("tools_called", [])),
+            direction="sec_to_news",
+            source_agent="sec",
+            target_agent="news",
+            status=classify_status(news_verdict, news_verdict),
+            verdict=news_verdict,
+            confidence=evidence.get("confidence", 0.0),
+            reasoning=evidence.get("reasoning", ""),
+            retrieved_value=evidence.get("retrieved_value"),
+            provenance=evidence.get("provenance", []) or [],
+            tools_used=evidence.get("tools_called", []) or [],
+            trigger_mode="agent",
+            finding=finding,
         ).model_dump()
+        # Legacy aliases: response_generator and existing tests read these.
+        out["news_verdict"] = out["verdict"]
+        out["news_confidence"] = out["confidence"]
+        out["news_reasoning"] = out["reasoning"]
+        out["sources_checked"] = len(out["tools_used"])
+        return out
 
     except Exception as e:
         logger.error(f"corroborate_with_news failed: {e}")
-        return CorroborationResult(success=False, error=str(e)).model_dump()
+        return A2AResult(
+            success=False, direction="sec_to_news", source_agent="sec",
+            target_agent="news", status=A2A_FAILED, error=str(e), finding=finding,
+        ).model_dump()
