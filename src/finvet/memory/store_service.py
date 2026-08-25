@@ -98,6 +98,38 @@ class ClaimMemoryService:
             logger.warning(f"Memory store failed: {e}")
             return False
 
+    def get_claim(self, request_id: str) -> Optional[dict]:
+        """The stored episode for one request id, validated, or None.
+
+        The verify route injects only what this returns. Reading the episode
+        here rather than accepting it from the client is the whole point: the
+        content is then something this system wrote, not something a caller
+        supplied.
+        """
+        try:
+            item = self.store.get(NAMESPACE, key=request_id)
+        except Exception as e:
+            logger.warning(f"Memory lookup failed for {request_id}: {e}")
+            return None
+
+        if item is None:
+            return None
+
+        try:
+            validated = ClaimMemoryItem(**item.value)
+        except Exception as e:
+            logger.warning(f"Stored memory for {request_id} is malformed: {e}")
+            return None
+
+        return {
+            "request_id": request_id,
+            "claim": validated.claim_text,
+            "verdict": validated.verdict,
+            "confidence": validated.confidence,
+            "summary": validated.summary,
+            "verified_at": validated.verified_at,
+        }
+
     def search_similar(
         self,
         claim_text: str,

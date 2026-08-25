@@ -163,7 +163,7 @@ _NEXT_STEP_LABELS = {
 }
 
 
-def _run_verification(claim_text, memory_context=None):
+def _run_verification(claim_text, memory_context_request_id=None):
     """Run the full verification pipeline with SSE streaming progress."""
     status_placeholder = st.empty()
     results_placeholder = st.container()
@@ -175,7 +175,7 @@ def _run_verification(claim_text, memory_context=None):
             st.caption(claim_text)
 
             data = None
-            for event in verify_claim_stream(claim_text, memory_context):
+            for event in verify_claim_stream(claim_text, memory_context_request_id):
                 event_type = event.get("type")
 
                 if event_type == "progress":
@@ -428,12 +428,8 @@ def render_verify():
             _run_verification(pending)
 
         elif choice == "with_context":
-            memory_ctx = {
-                "request_id": match.get("request_id"),
-                "claim": match.get("claim"),
-                "verdict": match.get("verdict"),
-                "confidence": match.get("confidence"),
-                "similarity": match.get("similarity"),
-                "summary": match.get("summary"),
-            }
-            _run_verification(pending, memory_context=memory_ctx)
+            # The match stays here for display; only its id is submitted.
+            _run_verification(
+                pending,
+                memory_context_request_id=match.get("request_id"),
+            )

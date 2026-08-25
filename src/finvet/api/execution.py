@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Literal, Mapping, Optional
 
+from fastapi import HTTPException
+
 from ..audit.logger import AuditLogger
 from ..utils.exceptions import AuditPersistenceError
 from ..utils.logging import get_logger
@@ -46,6 +48,30 @@ def agents_run_from_state(state: Mapping[str, Any]) -> list:
     if not agent or agent == "unknown":
         return []
     return [_AGENT_DISPLAY_NAMES.get(agent, agent)]
+
+
+def resolve_memory_context(claim_memory, request_id: Optional[str],
+                           ) -> Optional[Dict[str, Any]]:
+    """Read the prior episode the caller named, from the server's own store.
+
+    Returns None when no id was given. Raises HTTPException(404) when an id was
+    given and names nothing: the caller asked for specific context, and
+    silently proceeding without it would verify a different question than the
+    one they submitted.
+    """
+    if not request_id:
+        return None
+    if claim_memory is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Claim memory is disabled; no prior verification to reuse.")
+
+    match = claim_memory.get_claim(request_id)
+    if match is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No stored verification for {request_id}")
+    return match
 
 
 def begin_request(audit, *, request_id: str, claim_text: str, user_id: str,

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Tuple
 from ...models.state import VerificationState
 from ...models.claim import CanonicalPeriod
-from ...models.audit import AuditEvent
+from ...audit import get_audit_logger
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -43,7 +43,8 @@ def period_resolver(state: VerificationState) -> Dict:
 
     Returns dictionary with:
     - canonical_period: Resolved period with exact dates
-    - period_assumptions: List of assumptions made
+    Assumptions are carried on canonical_period.assumptions rather than as
+    a parallel state field, so they travel with what they describe.
     - audit_events: Period resolution audit event (SEC only)
     """
     parsed_claim = state["parsed_claim"]
@@ -166,7 +167,10 @@ def period_resolver(state: VerificationState) -> Dict:
             return _create_current_period(state)
 
         # Audit event (all resolved claim types)
-        audit_event = AuditEvent(
+        # log_event() persists; state["audit_events"] did not. The period the
+        # whole SEC retrieval path is scoped to, and the assumptions made to
+        # reach it, were being discarded.
+        get_audit_logger().log_event(
             event_type="period_resolved",
             request_id=request_id,
             data={
@@ -183,8 +187,6 @@ def period_resolver(state: VerificationState) -> Dict:
 
         return {
             "canonical_period": canonical_period,
-            "period_assumptions": assumptions,
-            "audit_events": state.get("audit_events", []) + [audit_event],
         }
 
     except Exception as e:
@@ -207,7 +209,6 @@ def _create_current_period(state: VerificationState) -> Dict:
     )
     return {
         "canonical_period": canonical_period,
-        "period_assumptions": ["Using current date"],
     }
 
 
@@ -231,7 +232,6 @@ def _create_event_relative_period(state: VerificationState, period_str: str) -> 
     )
     return {
         "canonical_period": canonical_period,
-        "period_assumptions": [assumption],
     }
 
 

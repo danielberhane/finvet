@@ -149,6 +149,15 @@ class CanonicalPeriod(BaseModel):
         description="First day of period (YYYY-MM-DD)"
     )
 
+    assumptions: list[str] = Field(
+        default_factory=list,
+        description="What had to be assumed to resolve the period, e.g. a "
+                    "fiscal-year end inferred from the company's calendar. "
+                    "Carried on the period itself rather than as a parallel "
+                    "state field, so an auditor reading the period sees what "
+                    "it rests on."
+    )
+
     end_date: str = Field(
         ...,
         description="Last day of period (YYYY-MM-DD)"

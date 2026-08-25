@@ -10,8 +10,8 @@ from ...models.a2a import (
     A2A_CONTRADICTS,
     A2A_UNDISCLOSED_MATERIAL_CLAIM,
 )
-from ...models.audit import AuditEvent
 from ...models.state import VerificationState
+from ...audit import get_audit_logger
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -109,7 +109,10 @@ def output_guardrails(state: VerificationState) -> Dict:
         )
 
     # Audit event
-    audit_event = AuditEvent(
+    # log_event() persists; state["audit_events"] did not. Without this, a run
+    # released after Llama Guard degraded to advice-only left no record that
+    # semantic safety had been unavailable.
+    get_audit_logger().log_event(
         event_type="output_guardrails_checked",
         request_id=request_id,
         data={
@@ -130,5 +133,4 @@ def output_guardrails(state: VerificationState) -> Dict:
         "hitl_required": hitl_required,
         "hitl_triggers": hitl_triggers,
         "guard_result_output": guard_result_dict,
-        "audit_events": state.get("audit_events", []) + [audit_event],
     }

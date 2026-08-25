@@ -426,7 +426,6 @@ def claim_parser(state: VerificationState) -> Dict:
 
         return {
             "parsed_claim": parsed_claim,
-            "parser_used": "deepseek",
             "total_tokens_used": state.get("total_tokens_used", 0) + tokens_used,
         }
 
