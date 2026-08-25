@@ -93,7 +93,7 @@ class EarningsResult(BaseModel):
 
 
 @tool
-def get_stock_quote(ticker: str) -> QuoteResult:
+def get_stock_quote(ticker: str) -> Dict[str, Any]:
     """
     Get the current or most recent stock quote for a ticker.
 
@@ -114,10 +114,10 @@ def get_stock_quote(ticker: str) -> QuoteResult:
     try:
         client = _get_client()
         quote = client.get_quote(symbol=ticker)
-        return QuoteResult(success=True, **quote.model_dump())
+        return QuoteResult(success=True, **quote.model_dump()).model_dump()
     except Exception as e:
         logger.error(f"get_stock_quote failed for {ticker}: {e}")
-        return QuoteResult(success=False, error=str(e))
+        return QuoteResult(success=False, error=str(e)).model_dump()
 
 
 @tool
@@ -126,7 +126,7 @@ def get_daily_prices(
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     full_history: bool = False,
-) -> DailyPricesResult:
+) -> Dict[str, Any]:
     """
     Get historical daily price data (OHLCV) for a stock.
 
@@ -179,14 +179,14 @@ def get_daily_prices(
                 for p in prices.prices
             ],
             count=len(prices.prices),
-        )
+        ).model_dump()
     except Exception as e:
         logger.error(f"get_daily_prices failed for {ticker}: {e}")
-        return DailyPricesResult(success=False, error=str(e))
+        return DailyPricesResult(success=False, error=str(e)).model_dump()
 
 
 @tool
-def get_company_overview(ticker: str) -> CompanyOverviewResult:
+def get_company_overview(ticker: str) -> Dict[str, Any]:
     """
     Get company fundamentals and valuation metrics from Finnhub.
 
@@ -212,14 +212,14 @@ def get_company_overview(ticker: str) -> CompanyOverviewResult:
         overview = client.get_company_overview(symbol=ticker)
         # Exclude 'description' — CompanyOverview has it but CompanyOverviewResult doesn't
         data = overview.model_dump(exclude={"description"})
-        return CompanyOverviewResult(success=True, **data)
+        return CompanyOverviewResult(success=True, **data).model_dump()
     except Exception as e:
         logger.error(f"get_company_overview failed for {ticker}: {e}")
-        return CompanyOverviewResult(success=False, error=str(e))
+        return CompanyOverviewResult(success=False, error=str(e)).model_dump()
 
 
 @tool
-def get_earnings(ticker: str) -> EarningsResult:
+def get_earnings(ticker: str) -> Dict[str, Any]:
     """
     Get historical earnings data and estimates for a company.
 
@@ -251,10 +251,10 @@ def get_earnings(ticker: str) -> EarningsResult:
             symbol=ticker,
             quarterly_earnings=quarterly,
             annual_earnings=[],  # Finnhub doesn't provide annual aggregates
-        )
+        ).model_dump()
     except Exception as e:
         logger.error(f"get_earnings failed for {ticker}: {e}")
-        return EarningsResult(success=False, error=str(e))
+        return EarningsResult(success=False, error=str(e)).model_dump()
 
 
 # Export all tools for the agent

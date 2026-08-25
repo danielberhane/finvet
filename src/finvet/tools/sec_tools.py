@@ -128,7 +128,7 @@ class FinancialsResult(BaseModel):
 
 
 @tool
-def get_company_info(ticker_or_name: str) -> CompanyInfoResult:
+def get_company_info(ticker_or_name: str) -> Dict[str, Any]:
     """
     Look up company information from SEC EDGAR by ticker symbol or company name.
 
@@ -151,10 +151,10 @@ def get_company_info(ticker_or_name: str) -> CompanyInfoResult:
     try:
         client = _get_client()
         info = client.get_company_info(identifier=ticker_or_name)
-        return CompanyInfoResult(success=True, **info.model_dump())
+        return CompanyInfoResult(success=True, **info.model_dump()).model_dump()
     except Exception as e:
         logger.error(f"get_company_info failed for {ticker_or_name}: {e}")
-        return CompanyInfoResult(success=False, error=str(e))
+        return CompanyInfoResult(success=False, error=str(e)).model_dump()
 
 
 @tool
@@ -162,7 +162,7 @@ def get_recent_filings(
     cik: str,
     form_type: str,
     limit: int = 10,
-) -> FilingsResult:
+) -> Dict[str, Any]:
     """
     List recent SEC filings for a company to find the one covering the claimed period.
 
@@ -206,10 +206,10 @@ def get_recent_filings(
                 for f in filings
             ],
             count=len(filings),
-        )
+        ).model_dump()
     except Exception as e:
         logger.error(f"get_recent_filings failed for CIK {cik}: {e}")
-        return FilingsResult(success=False, error=str(e))
+        return FilingsResult(success=False, error=str(e)).model_dump()
 
 
 @tool
@@ -217,7 +217,7 @@ def get_income_statement(
     cik: str,
     accession_number: str,
     period: str = "quarterly",
-) -> FinancialsResult:
+) -> Dict[str, Any]:
     """
     Extract income statement data from an SEC filing for revenue and earnings claims.
 
@@ -259,21 +259,21 @@ def get_income_statement(
             items=_format_financial_items(financials),
             filing_accession=accession_number,
             period_end=financials[0].period_end if financials else None,
-        )
+        ).model_dump()
     except Exception as e:
         logger.error(f"get_income_statement failed: {e}")
         return FinancialsResult(
             success=False,
             statement_type="income",
             error=str(e),
-        )
+        ).model_dump()
 
 
 @tool
 def get_balance_sheet(
     cik: str,
     accession_number: str,
-) -> FinancialsResult:
+) -> Dict[str, Any]:
     """
     Extract balance sheet data from an SEC filing for asset and liability claims.
 
@@ -315,14 +315,14 @@ def get_balance_sheet(
             items=_format_financial_items(financials),
             filing_accession=accession_number,
             period_end=financials[0].period_end if financials else None,
-        )
+        ).model_dump()
     except Exception as e:
         logger.error(f"get_balance_sheet failed: {e}")
         return FinancialsResult(
             success=False,
             statement_type="balance",
             error=str(e),
-        )
+        ).model_dump()
 
 
 @tool
@@ -330,7 +330,7 @@ def get_cash_flow(
     cik: str,
     accession_number: str,
     period: str = "quarterly",
-) -> FinancialsResult:
+) -> Dict[str, Any]:
     """
     Extract cash flow statement data from an SEC filing for cash-related claims.
 
@@ -372,14 +372,14 @@ def get_cash_flow(
             items=_format_financial_items(financials),
             filing_accession=accession_number,
             period_end=financials[0].period_end if financials else None,
-        )
+        ).model_dump()
     except Exception as e:
         logger.error(f"get_cash_flow failed: {e}")
         return FinancialsResult(
             success=False,
             statement_type="cashflow",
             error=str(e),
-        )
+        ).model_dump()
 
 
 # Export all tools for the agent

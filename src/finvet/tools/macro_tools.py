@@ -5,7 +5,7 @@ could not keep: macro claims went to free-text news search and mostly died as
 NOT_ENOUGH_INFO or false rejects. Eight of them now read the primary source.
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
@@ -36,7 +36,7 @@ class MacroIndicatorResult(BaseModel):
 
 
 @tool
-def get_macro_indicator(metric: str, period: str) -> MacroIndicatorResult:
+def get_macro_indicator(metric: str, period: str) -> Dict[str, Any]:
     """Look up a US macroeconomic indicator from FRED (the primary source).
 
     USE THIS — not news search — for claims about:
@@ -57,31 +57,31 @@ def get_macro_indicator(metric: str, period: str) -> MacroIndicatorResult:
         return MacroIndicatorResult(
             success=False, metric=metric,
             error=f"'{metric}' has no FRED series mapping; verifiable macro "
-                  f"metrics are: {', '.join(sorted(FRED_SERIES))}")
+                  f"metrics are: {', '.join(sorted(FRED_SERIES))}").model_dump()
 
     date = period_to_observation_date(period)
     if date is None:
         return MacroIndicatorResult(
             success=False, metric=metric,
             error="period must name a month and year (e.g. 'April 2026') or "
-                  "a quarter (e.g. 'Q1 2026')")
+                  "a quarter (e.g. 'Q1 2026')").model_dump()
 
     try:
         value = value_for(metric, period)
     except Exception as e:
         logger.error(f"get_macro_indicator failed for {metric} {period}: {e}")
-        return MacroIndicatorResult(success=False, metric=metric, error=str(e))
+        return MacroIndicatorResult(success=False, metric=metric, error=str(e)).model_dump()
 
     series_id, transform = entry
     if value is None:
         return MacroIndicatorResult(
             success=False, metric=metric, series_id=series_id,
             error=f"no observation for {date} in {series_id} (or no "
-                  f"prior-year base for the year-over-year calculation)")
+                  f"prior-year base for the year-over-year calculation)").model_dump()
 
     return MacroIndicatorResult(
         success=True, metric=metric, value=round(value, 2),
         series_id=series_id, observation_date=date, transform=transform,
         units="index" if metric == "consumer_confidence" else "percent",
         note=_REVISION_NOTE,
-    )
+    ).model_dump()
