@@ -48,6 +48,53 @@ def agents_run_from_state(state: Mapping[str, Any]) -> list:
     return [_AGENT_DISPLAY_NAMES.get(agent, agent)]
 
 
+def begin_request(audit, *, request_id: str, claim_text: str, user_id: str,
+                  started_at: datetime,
+                  memory_context: Optional[Dict[str, Any]] = None,
+                  ) -> Dict[str, Any]:
+    """Open a request: record its start and build the graph's initial state.
+
+    Shared because the two routes had drifted here as well as at the end. Both
+    built the same state dict by hand, but only /verify logged the
+    memory_context_injected decision -- and the UI always streams, so that
+    audit event never fired in practice. Only /verify put a timestamp on
+    input_received. One builder means one answer.
+    """
+    audit.log_event(
+        event_type="input_received",
+        request_id=request_id,
+        data={
+            "claim_raw": claim_text,
+            "user_id": user_id,
+            "timestamp": started_at.isoformat(),
+        },
+    )
+
+    if memory_context:
+        # The user chose "Verify With Context" at /memory-check. That decision
+        # changes what the agent sees, so it belongs in the trail.
+        audit.log_event(
+            event_type="memory_context_injected",
+            request_id=request_id,
+            data={
+                "user_decision": "with_context",
+                "prior_request_id": memory_context.get("request_id"),
+                "prior_similarity": memory_context.get("similarity"),
+            },
+        )
+
+    return {
+        "claim_raw": claim_text,
+        "user_id": user_id,
+        "request_id": request_id,
+        "timestamp_received": started_at.isoformat(),
+        "execution_start_time": started_at.isoformat(),
+        "audit_trail": [],
+        "total_tokens_used": 0,
+        "memory_context": memory_context,
+    }
+
+
 @dataclass
 class ExecutionFinalizer:
     """Commits a request's execution record exactly once.
