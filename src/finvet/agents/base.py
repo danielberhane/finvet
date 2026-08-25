@@ -266,14 +266,9 @@ class BaseVerificationAgent(ABC):
                 )
                 tool_records.append(record)
 
-                tool_calls_detail.append({
-                    "tool": tool_name,
-                    "args": record.args,
-                    "result": record.result_preview,
-                    # Display/audit flag, not the evidence gate: a tool that
-                    # returns a plain string has not failed.
-                    "success": record.call_succeeded,
-                })
+                # Built by the record so the audit view and the evidence gate
+                # cannot drift apart.
+                tool_calls_detail.append(record.to_detail())
 
                 # Truncate oversized tool results to control token spend
                 # on the verdict extraction LLM call

@@ -111,6 +111,14 @@ class AgentEvidence(TypedDict):
     # Written to PostgreSQL full_trace for complete auditability.
     tool_calls_detail: list[dict[str, Any]]
 
+    # Whether the agent ran to completion, and why not when it did not.
+    # A crashed agent and an authoritative source that genuinely says nothing
+    # both surface as NOT_ENOUGH_INFO; only the second is evidence. The
+    # News -> SEC delegation reads this to tell operational failure apart from
+    # filing silence instead of reporting one as the other.
+    execution_status: Literal["completed", "failed"]
+    error: Optional[str]
+
     # The LLM's natural language explanation of its verdict.
     # Example: "Apple reported revenue of $94.9B for Q4 2024, within 1% of
     #           the claimed $94B."
