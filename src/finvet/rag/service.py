@@ -140,7 +140,7 @@ class RAGService:
                 return 0
 
         # Parse and chunk
-        sections = parse_filing_html(filepath)
+        sections = parse_filing_html(filepath, filing_type=filing_type)
         if not sections:
             logger.warning(f"No sections found in {filepath}")
             return 0

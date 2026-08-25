@@ -4,6 +4,7 @@ No database and no embedder are required: the parser tests run on inline HTML,
 and the search tests stub out both the embedding call and the DB session.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -134,55 +135,55 @@ class TestItemPatterns:
 
 class TestParseFilingHtml:
     def test_extracts_indexable_sections(self, inline_filing):
-        names = {s.name for s in parse_filing_html(inline_filing)}
+        names = {s.name for s in parse_filing_html(inline_filing, filing_type="10-K")}
         assert {"business", "risk_factors", "legal_proceedings"} <= names
 
     def test_sections_do_not_bleed_into_each_other(self, inline_filing):
         """Regression: _iter_after only yields leaf elements, so a stop tag
         tested against yielded elements alone never matched and every section
         ran to the end of the document."""
-        sections = {s.name: s.text for s in parse_filing_html(inline_filing)}
+        sections = {s.name: s.text for s in parse_filing_html(inline_filing, filing_type="10-K")}
         assert "smartphones" in sections["business"]
         assert "intense competition" not in sections["business"]
         assert "ordinary course" not in sections["business"]
 
     def test_no_section_runs_to_end_of_document(self, inline_filing):
-        for section in parse_filing_html(inline_filing):
+        for section in parse_filing_html(inline_filing, filing_type="10-K"):
             assert "Securities Exchange Act" not in section.text, (
                 f"{section.name} bled through to the signature page"
             )
 
     def test_later_section_is_still_bounded(self, inline_filing):
-        sections = {s.name: s.text for s in parse_filing_html(inline_filing)}
+        sections = {s.name: s.text for s in parse_filing_html(inline_filing, filing_type="10-K")}
         assert "ordinary course" in sections["legal_proceedings"]
         assert "Disclosure controls" not in sections["legal_proceedings"]
 
     def test_parses_table_cell_headings(self, table_filing):
         """Workiva/iXBRL filers previously yielded zero sections."""
-        sections = parse_filing_html(table_filing)
+        sections = parse_filing_html(table_filing, filing_type="10-K")
         assert sections, "table-cell heading layout produced no sections"
         assert "business" in {s.name for s in sections}
 
     def test_table_cell_sections_are_bounded(self, table_filing):
-        sections = {s.name: s.text for s in parse_filing_html(table_filing)}
+        sections = {s.name: s.text for s in parse_filing_html(table_filing, filing_type="10-K")}
         assert "physical stores" in sections["business"]
         assert "intense competition" not in sections["business"]
 
     def test_returns_empty_when_no_headings(self, tmp_path):
         p = tmp_path / "X_10-K_2024-01-01.html"
         p.write_text("<html><body><p>No item headings here.</p></body></html>")
-        assert parse_filing_html(p) == []
+        assert parse_filing_html(p, filing_type="10-K") == []
 
 
 class TestChunkSections:
     def test_chunks_carry_section_metadata(self, inline_filing):
-        chunks = chunk_sections(parse_filing_html(inline_filing))
+        chunks = chunk_sections(parse_filing_html(inline_filing, filing_type="10-K"))
         assert chunks
         assert all(c.section_name for c in chunks)
         assert all(c.token_count > 0 for c in chunks)
 
     def test_chunk_indices_restart_per_section(self, inline_filing):
-        chunks = chunk_sections(parse_filing_html(inline_filing))
+        chunks = chunk_sections(parse_filing_html(inline_filing, filing_type="10-K"))
         by_section = {}
         for c in chunks:
             by_section.setdefault(c.section_name, []).append(c.chunk_index)
@@ -190,9 +191,22 @@ class TestChunkSections:
             assert indices[0] == 0
 
     def test_respects_token_ceiling(self, inline_filing):
-        chunks = chunk_sections(parse_filing_html(inline_filing), max_tokens=50)
-        # Overlap can push a chunk slightly past the target; allow headroom.
-        assert all(c.token_count <= 120 for c in chunks)
+        """A hard bound, not a target.
+
+        This allowed 120 tokens for a max of 50 -- 2.4x -- on the theory that
+        overlap could push a chunk past it. Overlap now yields to the ceiling
+        instead, so the bound is exact.
+        """
+        chunks = chunk_sections(
+            parse_filing_html(inline_filing, filing_type="10-K"),
+            max_tokens=50, overlap_tokens=10)
+        assert chunks
+        assert all(c.token_count <= 50 for c in chunks)
+
+    def test_overlap_must_be_smaller_than_the_chunk(self):
+        """overlap >= max_tokens cannot make progress; refuse it at entry."""
+        with pytest.raises(ValueError):
+            chunk_sections([], max_tokens=50, overlap_tokens=100)
 
 
 # ---------------------------------------------------------------------------
@@ -367,13 +381,13 @@ class TestTenQSectionIdentity:
     """
 
     def test_mda_is_retained_and_named(self, ten_q_filing):
-        sections = parse_filing_html(ten_q_filing)
+        sections = parse_filing_html(ten_q_filing, filing_type="10-Q")
         mda = [s for s in sections if "MDA_MARKER" in s.text]
         assert mda, "MD&A was dropped entirely"
         assert mda[0].name == "mda"
 
     def test_legal_proceedings_holds_the_legal_text(self, ten_q_filing):
-        sections = parse_filing_html(ten_q_filing)
+        sections = parse_filing_html(ten_q_filing, filing_type="10-Q")
         legal = [s for s in sections if s.name == "legal_proceedings"]
         assert legal, "no legal_proceedings section"
         assert "LEGAL_MARKER" in legal[0].text
@@ -381,6 +395,71 @@ class TestTenQSectionIdentity:
             "market-risk text was filed under legal_proceedings"
 
     def test_market_risk_is_named_correctly(self, ten_q_filing):
-        sections = parse_filing_html(ten_q_filing)
+        sections = parse_filing_html(ten_q_filing, filing_type="10-Q")
         risk = [s for s in sections if "MARKETRISK_MARKER" in s.text]
         assert risk and risk[0].name == "market_risk"
+
+
+# ---------------------------------------------------------------------------
+# Tracked fixtures: real-shaped filings with a table of contents
+# ---------------------------------------------------------------------------
+
+FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "rag"
+
+
+class TestTableOfContentsDoesNotWin:
+    """A contents page repeats every heading before the body.
+
+    Taking the first occurrence of each item handed every section the few
+    nodes between two adjacent contents rows, and the body text attached to
+    whichever contents entry happened to be last -- a 10-K collapsed to a
+    single mislabelled section. Selection is by substantive text in the span,
+    which a contents row does not have.
+    """
+
+    def test_10k_sections_carry_their_body_text(self):
+        sections = parse_filing_html(FIXTURE_DIR / "sample-10-k.html",
+                                     filing_type="10-K")
+        by_name = {s.name: s.text for s in sections}
+
+        assert "BUSINESS_MARKER" in by_name["business"]
+        assert "RISK_MARKER" in by_name["risk_factors"]
+        assert "MDA_MARKER" in by_name["mda"]
+
+    def test_10q_parts_stay_distinct(self):
+        sections = parse_filing_html(FIXTURE_DIR / "sample-10-q.html",
+                                     filing_type="10-Q")
+        keys = {(s.part, s.item_number, s.name) for s in sections}
+
+        assert ("I", "2", "mda") in keys
+        assert ("II", "1", "legal_proceedings") in keys
+        assert ("I", "1", "financial_statements_and_notes") in keys
+
+    def test_10q_legal_proceedings_is_not_market_risk(self):
+        """Both defects in one assertion: Part II Item 1 must hold the legal
+        text, and Part I Item 3 must not be filed under it."""
+        sections = parse_filing_html(FIXTURE_DIR / "sample-10-q.html",
+                                     filing_type="10-Q")
+        legal = next(s for s in sections if s.name == "legal_proceedings")
+
+        assert "LEGAL_MARKER" in legal.text
+        assert "MARKETRISK_MARKER" not in legal.text
+
+    def test_form_type_changes_the_mapping(self):
+        """The same document read as the wrong form must not silently produce
+        the 10-K labels -- which is what filename inference used to do."""
+        as_10q = {s.name for s in parse_filing_html(
+            FIXTURE_DIR / "sample-10-q.html", filing_type="10-Q")}
+        as_10k = {s.name for s in parse_filing_html(
+            FIXTURE_DIR / "sample-10-q.html", filing_type="10-K")}
+
+        assert "financial_statements_and_notes" in as_10q
+        assert as_10q != as_10k
+
+    def test_chunks_from_a_real_fixture_respect_the_ceiling(self):
+        sections = parse_filing_html(FIXTURE_DIR / "sample-10-k.html",
+                                     filing_type="10-K")
+        chunks = chunk_sections(sections, max_tokens=60, overlap_tokens=15)
+
+        assert chunks
+        assert all(c.token_count <= 60 for c in chunks)
