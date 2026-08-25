@@ -66,7 +66,24 @@ EMBEDDING_MODEL = "nomic-embed-text"
 EMBEDDING_DIMS = 768
 EMBED_BATCH_SIZE = 50
 RRF_K = 60  # Reciprocal Rank Fusion constant
-RRF_ABSENT_RANK = 1000  # Rank assigned to a chunk missing from one arm
+
+# Dense-arm relevance floor. pgvector always returns a nearest neighbour, so
+# without a floor a query about a disclosure that does not exist still comes
+# back with the closest passages and the tool reports success. Calibrated
+# against a labelled set rather than chosen: see
+# tests/accuracy/rag_relevance_cases.json and the header of test_rag.py.
+# Measured 2026-08-25 against 988 chunks from 15 filings (5 tickers), using
+# 30 positive and 30 negative query/ticker pairs in
+# tests/accuracy/rag_relevance_cases.json:
+#
+#   positives  n=30  min 0.5469  median 0.6656  max 0.7791
+#   negatives  n=30  max 0.5168  median 0.4544  min 0.3929
+#
+# Any threshold in [0.5169, 0.5469) accepts zero negatives at 100% positive
+# recall. 0.53 sits near the middle of that band rather than on its edge, so
+# an unseen negative scoring slightly high, or an unseen positive scoring
+# slightly low, does not immediately cross it.
+RAG_MIN_VECTOR_SIMILARITY = 0.53
 
 # ---------------------------------------------------------------------------
 # Memory thresholds (used in memory/service.py and main.py)

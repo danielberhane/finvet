@@ -374,10 +374,33 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         }
 
     if rag_chunks:
+        # Counts and section names cannot reconstruct what the model actually
+        # read. Each retrieved passage keeps its identity -- which chunk, from
+        # which filing and period, found by which query, at what raw scores,
+        # with a hash of the text -- so a reviewer can go back to the filing
+        # rather than trusting this record of it.
         data_sources["rag"] = {
             "used": True,
             "chunks_retrieved": len(rag_chunks),
             "sections": sorted(set(c.get("section", "") for c in rag_chunks)),
+            "evidence": [
+                {
+                    "chunk_id": c.get("chunk_id"),
+                    "ticker": c.get("ticker"),
+                    "cik": c.get("cik"),
+                    "filing_type": c.get("filing_type"),
+                    "period_end": c.get("period_end"),
+                    "section": c.get("section"),
+                    "chunk_index": c.get("chunk_index"),
+                    "query": c.get("search_query"),
+                    "vector_similarity": c.get("vector_similarity"),
+                    "keyword_rank": c.get("keyword_rank"),
+                    "rrf_score": c.get("score"),
+                    "content_sha256": c.get("content_sha256"),
+                    "excerpt": c.get("chunk_text"),
+                }
+                for c in rag_chunks
+            ],
         }
 
     if corroboration:
