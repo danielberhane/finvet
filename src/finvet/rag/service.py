@@ -4,6 +4,7 @@ Handles ingestion (parse → chunk → embed → store) and hybrid search
 (vector similarity + full-text keyword search with Reciprocal Rank Fusion).
 """
 
+import hashlib
 from typing import Optional
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from ..config.constants import (
     EMBED_BATCH_SIZE,
     EMBEDDING_DIMS,
     EMBEDDING_MODEL,
-    RRF_ABSENT_RANK,
+    RAG_MIN_VECTOR_SIMILARITY,
     RRF_K,
 )
 from ..config.database import get_db_session, Base, engine
@@ -60,6 +61,20 @@ def _embed_single(text: str) -> list[float]:
 # ---------------------------------------------------------------------------
 # RAG Service
 # ---------------------------------------------------------------------------
+
+def rrf_component(rank: int | None) -> float:
+    """One arm's contribution to a chunk's fused score.
+
+    Absence contributes nothing. The previous code substituted a fixed distant
+    rank (1000), which handed every unmatched document the same small positive
+    score -- a participation credit for not matching, and one that mattered
+    more as the candidate pool grew.
+
+    Module level rather than a closure so a test can exercise this function
+    instead of re-implementing it.
+    """
+    return 0.0 if rank is None else 1.0 / (RRF_K + rank)
+
 
 class RAGService:
     """Handles ingestion and hybrid search over SEC filing chunks."""
@@ -192,7 +207,11 @@ class RAGService:
         ticker: str | None = None,
         section: str | None = None,
         filing_type: str | None = None,
+        period_end: str | None = None,
+        period_start: str | None = None,
+        period_end_max: str | None = None,
         top_k: int = 5,
+        min_vector_similarity: float | None = None,
     ) -> list[dict]:
         """Search filing chunks using hybrid vector + keyword search.
 
@@ -204,7 +223,17 @@ class RAGService:
             ticker: Filter by company ticker (e.g., "AAPL").
             section: Filter by section name (e.g., "risk_factors", "mda").
             filing_type: Filter by filing type (e.g., "10-K", "10-Q").
+            period_end: Exact filing period to restrict to.
+            period_start: Earliest acceptable period_end (inclusive).
+            period_end_max: Latest acceptable period_end (inclusive).
             top_k: Number of results to return.
+            min_vector_similarity: Floor for the dense arm; defaults to
+                RAG_MIN_VECTOR_SIMILARITY. A chunk below it is not evidence.
+
+        The period filters exist because a chunk from the wrong fiscal year is
+        not weak evidence, it is the wrong evidence, and nothing downstream can
+        tell. The resolved retrieval scope supplies them; the model cannot
+        substitute an unrelated date.
 
         Returns:
             List of dicts with chunk_text, section, filing_type, period_end,
@@ -236,13 +265,23 @@ class RAGService:
         if filing_type:
             filters.append("filing_type = :filing_type")
             params["filing_type"] = filing_type
+        if period_end:
+            filters.append("period_end = :period_end")
+            params["period_end"] = period_end
+        if period_start:
+            filters.append("period_end >= :period_start")
+            params["period_start"] = period_start
+        if period_end_max:
+            filters.append("period_end <= :period_end_max")
+            params["period_end_max"] = period_end_max
 
         where_clause = "WHERE " + " AND ".join(filters) if filters else ""
 
         # Vector search: top 20 by cosine similarity
         # Use CAST() instead of ::vector to avoid conflict with SQLAlchemy :param syntax
         vec_sql = text(f"""
-            SELECT id, chunk_text, section, section_title, filing_type, period_end, ticker,
+            SELECT id, chunk_text, section, section_title, filing_type, period_end,
+                   ticker, cik, chunk_index,
                    1 - (embedding <=> CAST(:query_vec AS vector)) AS vec_score
             FROM filing_chunks
             {where_clause}
@@ -253,7 +292,8 @@ class RAGService:
         # Keyword search: top 20 by ts_rank
         kw_filter = "AND" if filters else "WHERE"
         kw_sql = text(f"""
-            SELECT id, chunk_text, section, section_title, filing_type, period_end, ticker,
+            SELECT id, chunk_text, section, section_title, filing_type, period_end,
+                   ticker, cik, chunk_index,
                    ts_rank(tsv, plainto_tsquery('english', :query_text)) AS kw_score
             FROM filing_chunks
             {where_clause}
@@ -272,11 +312,22 @@ class RAGService:
             kw_params = {**params, "query_text": query}
             kw_results = session.execute(kw_sql, kw_params).fetchall()
 
+        # Step 5: the dense arm always returns a nearest neighbour, however far
+        # away. Without a floor, a ticker with any corpus yields passages for a
+        # disclosure that does not exist, and the tool reports success. The
+        # lexical arm needs no floor: tsv @@ plainto_tsquery is already a
+        # predicate, so a row only appears if it matched.
+        floor = (RAG_MIN_VECTOR_SIMILARITY if min_vector_similarity is None
+                 else min_vector_similarity)
+        vec_scores = {row.id: float(row.vec_score) for row in vec_results}
+        vec_results = [row for row in vec_results if float(row.vec_score) >= floor]
+        kw_scores = {row.id: float(row.kw_score) for row in kw_results}
+
         # Build rank maps (id → rank position, 1-indexed)
         vec_ranks = {row.id: rank + 1 for rank, row in enumerate(vec_results)}
         kw_ranks = {row.id: rank + 1 for rank, row in enumerate(kw_results)}
 
-        # Collect all candidate IDs
+        # Only chunks that cleared an arm are candidates.
         all_ids = set(vec_ranks.keys()) | set(kw_ranks.keys())
 
         # Build result lookup from both result sets
@@ -286,13 +337,12 @@ class RAGService:
         for row in kw_results:
             if row.id not in result_map:
                 result_map[row.id] = row
+        result_map = {cid: row for cid, row in result_map.items() if cid in all_ids}
 
-        # Compute RRF scores
         scored = []
         for chunk_id in all_ids:
-            vec_rank = vec_ranks.get(chunk_id, RRF_ABSENT_RANK)  # Absent = low rank
-            kw_rank = kw_ranks.get(chunk_id, RRF_ABSENT_RANK)
-            rrf_score = 1.0 / (RRF_K + vec_rank) + 1.0 / (RRF_K + kw_rank)
+            rrf_score = (rrf_component(vec_ranks.get(chunk_id))
+                         + rrf_component(kw_ranks.get(chunk_id)))
             scored.append((chunk_id, rrf_score))
 
         # Sort by RRF score descending, take top_k
@@ -304,12 +354,24 @@ class RAGService:
         for chunk_id, score in top_results:
             row = result_map[chunk_id]
             output.append({
+                # Identity: enough to find this passage in the filing again
+                # without trusting the pipeline's copy of it.
+                "chunk_id": chunk_id,
+                "cik": row.cik,
+                "chunk_index": row.chunk_index,
+                "content_sha256": hashlib.sha256(
+                    row.chunk_text.encode("utf-8")).hexdigest(),
                 "chunk_text": row.chunk_text,
                 "section": row.section,
                 "section_title": row.section_title,
                 "filing_type": row.filing_type,
                 "period_end": row.period_end,
                 "ticker": row.ticker,
+                # Raw arm scores alongside the fused rank: RRF discards them,
+                # and without them nothing downstream can judge how strong a
+                # result actually was.
+                "vector_similarity": round(vec_scores.get(chunk_id, 0.0), 6),
+                "keyword_rank": round(kw_scores.get(chunk_id, 0.0), 6),
                 "score": round(score, 6),
             })
 
