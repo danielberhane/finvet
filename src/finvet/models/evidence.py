@@ -66,6 +66,21 @@ class ToolExecutionRecord(BaseModel):
     application_success: Optional[bool] = None
     result_preview: str = ""
 
+    def to_detail(self) -> Dict[str, Any]:
+        """The audit/API view of this call.
+
+        Deliberately not `model_dump()`: the response schema and the Streamlit
+        evidence panel read `tool`/`args`/`result`/`success`, and the payload
+        and two status flags are internal. Producing it here keeps the record
+        the single source for both views, so they cannot drift.
+        """
+        return {
+            "tool": self.tool,
+            "args": self.args,
+            "result": self.result_preview,
+            "success": self.call_succeeded,
+        }
+
     @property
     def call_succeeded(self) -> bool:
         """Did the call fail? Used for display and the audit trail.
