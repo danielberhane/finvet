@@ -47,7 +47,10 @@ LangGraph Pipeline (12-node DAG + HITL checkpoint)
 | `POST` | `/search-history` | Find past verifications (7-day window) | -- |
 
 **Request/Response Models** (Pydantic v2, `src/finvet/api/models.py`):
-- `VerifyClaimRequest`: claim (10-2000 chars), optional user_id, optional memory_context
+- `VerifyClaimRequest`: claim (10-2000 chars), optional user_id, optional
+  `memory_context_request_id`. Extra fields are rejected: the request carries an
+  identifier, never prior-context content, and the episode it names is read from the
+  server's own store.
 - `MemoryCheckRequest`: claim (10-2000 chars)
 - `MemoryAcceptRequest`: original_request_id, claim, similarity
 - `HITLReviewRequest`: decision (approve/override/reject), optional override_verdict, optional reviewer_notes
@@ -55,7 +58,8 @@ LangGraph Pipeline (12-node DAG + HITL checkpoint)
 **`/verify` Flow**:
 1. Generate `request_id = "req_<12-hex>"`
 2. Audit: log `input_received`
-3. If memory_context provided: Audit: log `memory_context_injected`
+3. If `memory_context_request_id` provided: resolve the episode server-side (404 if it
+   names nothing), then audit-log `memory_context_injected`
 4. Build initial `VerificationState` dict
 5. `graph.invoke(state, config={thread_id: request_id})`
 6. If HITL interrupted: return `status="pending_review"` + `preliminary_analysis`
@@ -247,7 +251,7 @@ Query --> Ollama Embed: nomic-embed-text (768-dim)
      +------+------+
      |             |
   pgvector      tsvector
-  cosine        BM25
+  cosine        ts_rank
   (HNSW)        (GIN)
   top 20        top 20
      |             |
@@ -447,6 +451,7 @@ Configurable via `LLM_PARSER__MODEL`, `LLM_AGENT__TEMPERATURE`, etc.
 | **RAG** | `EMBEDDING_MODEL` | `nomic-embed-text` |
 | | `EMBEDDING_DIMS` | 768 |
 | | `RRF_K` | 60 |
+| | `RAG_MIN_VECTOR_SIMILARITY` | 0.53 (calibrated, see constants.py) |
 | **Memory** | `MEMORY_CACHE_THRESHOLD` | 0.95 |
 | | `MEMORY_CONTEXT_THRESHOLD` | 0.75 |
 | | `MEMORY_SIMILAR_THRESHOLD` | 0.60 |
@@ -462,9 +467,25 @@ Three-phase verdict extraction prevents LLM number comparison errors:
 2. **Verdict LLM**: Separate structured call (skips agent's final reasoning to prevent anchoring)
 3. **Python override**: Deterministic comparison with tolerance thresholds
 
-### Hybrid RAG (pgvector + tsvector + RRF)
+### Hybrid retrieval (pgvector similarity + Postgres full-text, fused with RRF)
 
-Combines semantic similarity with keyword matching. Prevents pure-semantic false positives on financial terms (e.g., "revenue" matching "cost of revenue").
+Combines semantic similarity with keyword matching. Prevents pure-semantic false positives
+on financial terms (e.g. "revenue" matching "cost of revenue").
+
+Three properties matter beyond the fusion itself:
+
+- **Period scope.** Retrieval is filtered to the resolved period, injected out of band
+  exactly as the XBRL path does. A chunk from the wrong fiscal year is the wrong
+  evidence, not weak evidence, and nothing downstream can tell.
+- **Relevance floor.** pgvector always returns a nearest neighbour, so a query about a
+  disclosure that does not exist would otherwise come back with the closest passages.
+  `RAG_MIN_VECTOR_SIMILARITY` was measured, not chosen: 30 positive and 30 negative
+  query/ticker pairs over the corpus put positives at min 0.5469 and negatives at max
+  0.5168, and 0.53 sits in that gap. Below it, `search_filing_text` returns
+  `success=True, chunks=[], reason="no_relevant_evidence"` -- an answer, not a failure.
+- **Untrusted by construction.** Excerpts reach the model wrapped in `<filing_excerpt>`
+  delimiters, and the SEC prompt states that text inside them is evidence to weigh and
+  never an instruction to follow.
 
 ### HITL Checkpoint with MemorySaver
 
@@ -472,7 +493,12 @@ LangGraph `interrupt_before` pauses graph. State persisted. API returns `pending
 
 ### Provenance for Audit Compliance
 
-The SEC agent captures full untruncated RAG results and the News agent its delegation result. These flow through as `rag_chunks_retrieved` and `corroboration_result` into response metadata and audit DB `data_sources` JSONB.
+The SEC agent captures full untruncated RAG results and the News agent its delegation
+result. These flow through as `rag_chunks_retrieved` and `corroboration_result` into
+response metadata and the audit DB's `data_sources` JSONB. Each retrieved passage keeps
+its identity -- chunk id, filing, period, section, the query that found it, both raw arm
+scores, and a SHA-256 of the text -- because counts and section names cannot reconstruct
+what the model actually read.
 
 ### Non-Critical Memory and Similar Claims
 
