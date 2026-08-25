@@ -238,17 +238,23 @@ class TestBothRoutesOpenIdentically:
     /verify put a timestamp on input_received.
     """
 
-    MEMORY = {"request_id": "req_prior", "similarity": 0.97,
-              "verdict": "SUPPORTS", "summary": "prior run"}
+    PRIOR_ID = "req_0123456789ab"
+    PRIOR = {"request_id": PRIOR_ID, "claim": "a prior claim",
+             "verdict": "SUPPORTS", "confidence": 0.9, "summary": "prior run"}
 
     def _events(self, monkeypatch, audit, streaming):
+        # The client sends an id; the server reads the episode. Nothing the
+        # caller wrote reaches the prompt.
+        memory = MagicMock()
+        memory.get_claim.return_value = self.PRIOR
+        monkeypatch.setattr(verify_route.deps, "claim_memory", memory)
         _set_graph(monkeypatch, _Graph(
             updates=[{"response_generator": {"agent_type": "sec",
                                              "final_response": _final_response()}}],
             invoke_result={"agent_type": "sec",
                            "final_response": _final_response()}))
         request = VerifyClaimRequest(claim="TEST revenue was $150 billion",
-                                     memory_context=self.MEMORY)
+                                     memory_context_request_id=self.PRIOR_ID)
         if streaming:
             _drain(verify_route.verify_claim_stream(request))
         else:

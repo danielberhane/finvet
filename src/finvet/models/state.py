@@ -18,15 +18,15 @@ Pipeline flow (which node writes which fields):
                           execution_start_time, audit_trail, total_tokens_used,
                           memory_context
     Node 1 (input_guardrails)   → claim_normalized, guardrails_passed/failed,
-                                   guard_result_input, audit_events
-    Node 2 (claim_parser)       → parsed_claim, parser_used, total_tokens_used
+                                   guard_result_input
+    Node 2 (claim_parser)       → parsed_claim, total_tokens_used
     Node 3 (period_resolver)    → canonical_period
     Node 4 (domain_agent)       → agent_type, agent_evidence,
                                    rag_chunks_retrieved, corroboration_result
     Node 5 (consensus)          → verdict, confidence, confidence_label,
                                    consensus_reasons, confidence_adjustments
     Node 6 (output_guardrails)  → hitl_required, hitl_triggers,
-                                   guard_result_output, audit_events
+                                   guard_result_output
     Node 7 (hitl_checkpoint)    → hitl_checkpoint_passed
     Node 8 (apply_hitl_decision)→ hitl_applied, verdict (override),
                                    confidence (override), disposition
@@ -65,7 +65,7 @@ class AgentEvidence(TypedDict):
     # NOT_ENOUGH_INFO = couldn't find enough data to decide.
     # May be overridden by the Python deterministic check in base.py
     # (e.g., LLM says SUPPORTS but numbers don't match → REFUTES).
-    verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]
+    verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO", "REJECTED"]
 
     # Agent's confidence in the verdict, 0.0 to 1.0.
     # Comes from the verdict extraction LLM call, then may be adjusted
@@ -110,6 +110,17 @@ class AgentEvidence(TypedDict):
     # are truncated, so what they contain depends on where a string was cut.
     # Written to PostgreSQL full_trace for complete auditability.
     tool_calls_detail: list[dict[str, Any]]
+
+    # Full, untruncated results for the tools named in the agent's
+    # _provenance_tool_names. Read by run_sec_agent (RAG chunks) and
+    # run_news_agent (the delegation result).
+    provenance: list[dict[str, Any]]
+
+    # The deterministic layer's decision, kept alongside the model's own so a
+    # reader can see both. override_applied is the headline claim's evidence:
+    # without it, "Python overrode the model" is unfalsifiable.
+    override_applied: bool
+    llm_original_verdict: Optional[str]
 
     # Whether the agent ran to completion, and why not when it did not.
     # A crashed agent and an authoritative source that genuinely says nothing
@@ -229,9 +240,7 @@ class VerificationState(TypedDict, total=False):
     #          base.py (verdict override), helpers.py (build_preliminary_analysis).
     parsed_claim: ParsedClaim
 
-    # Which LLM parsed the claim. Currently always "deepseek".
-    # Exists for future flexibility (e.g., fallback to a different parser).
-    parser_used: Literal["deepseek"]
+
 
     # ===================================================================
     # NODE 3: PERIOD RESOLVER
@@ -280,7 +289,7 @@ class VerificationState(TypedDict, total=False):
     # agent_evidence.verdict. For multi-agent (future), could differ
     # if agents disagree and voting resolves the conflict.
     # Can be overwritten by apply_hitl_decision if human overrides.
-    verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]
+    verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO", "REJECTED"]
 
     # The FINAL confidence after adjustments. Starts from agent_evidence.confidence,
     # then consensus applies:
@@ -459,12 +468,6 @@ class VerificationState(TypedDict, total=False):
     # AUDIT FIELDS — Accumulated throughout the pipeline
     # Multiple nodes append to these. Written to PostgreSQL at the end.
     # ===================================================================
-
-    # Events accumulated specifically by guardrail nodes.
-    # Each guardrail node appends its audit event to this list:
-    #   state.get("audit_events", []) + [new_event]
-    # Read by: audit commit at the end of the pipeline.
-    audit_events: list[dict[str, Any]]
 
     # Complete chronological log of all events across all nodes.
     # Initialized as [] by /verify route. Nodes append events throughout.
