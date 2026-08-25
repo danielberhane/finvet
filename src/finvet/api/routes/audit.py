@@ -5,6 +5,11 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from ...audit import get_audit_logger
+from ...audit.integrity import (
+    CHECKSUM_ALGORITHM,
+    CHECKSUM_SCOPE,
+    verify_execution_checksum,
+)
 from ..models import VerifyClaimRequest
 
 router = APIRouter()
@@ -50,6 +55,35 @@ async def get_audit_trail(request_id: str):
         "execution": execution,
         "events": events,
         "total_events": len(events),
+        "integrity": _integrity_for(execution),
+    }
+
+
+def _integrity_for(execution: dict) -> dict:
+    """Recompute the stored checksum and report the result.
+
+    Verification happens here, once, server side. The UI used to decide an
+    execution was "Verified" because the hash column was non-empty, which is
+    not a check -- it reported the presence of a string.
+
+    `scope` is returned so the claim is legible rather than implied: this
+    covers the stored snapshot only, and it cannot resist a privileged writer
+    who updates the data and the checksum together.
+    """
+    envelope = execution.get("full_trace")
+    stored = execution.get("execution_hash")
+
+    if not isinstance(envelope, dict) or not stored:
+        status = "unavailable"
+    elif verify_execution_checksum(envelope, stored):
+        status = "verified"
+    else:
+        status = "failed"
+
+    return {
+        "algorithm": CHECKSUM_ALGORITHM,
+        "status": status,
+        "scope": CHECKSUM_SCOPE,
     }
 
 

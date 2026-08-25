@@ -1,19 +1,27 @@
 """PostgreSQL database for audit trail storage using SQLAlchemy."""
 
 import hashlib
-import json
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy.exc import IntegrityError
 from ..config.database import get_db_session
 from ..utils.logging import get_logger
+from .integrity import (
+    build_execution_envelope,
+    compute_execution_checksum,
+)
 from .models import AuditEvent, AuditExecution
 
 logger = get_logger(__name__)
 
 
 class AuditDatabase:
-    """Manages PostgreSQL database for immutable audit trail."""
+    """PostgreSQL persistence for the audit trail.
+
+    Append-only by convention, not by enforcement: nothing in the schema
+    prevents an UPDATE. The execution checksum detects a row altered
+    without recomputation; it does not prevent the alteration.
+    """
 
     def __init__(self):
         """Initialize audit database. PostgreSQL connection is managed by get_db_session()."""
@@ -63,6 +71,42 @@ class AuditDatabase:
             logger.error(f"Failed to log audit event {event_id}: {e}")
             return False
 
+    @staticmethod
+    def _insert_missing_events(session, request_id: str, events: list) -> None:
+        """Insert buffered events the event table is missing, same transaction.
+
+        log_event writes each event to the database as it happens, but that
+        write is best effort -- a transient failure there used to leave the
+        envelope describing events that no row records, so the execution and
+        its queryable timeline disagreed. Reconciling inside the execution's
+        own transaction makes them converge or fail together.
+        """
+        if not events:
+            return
+
+        buffered_ids = [e.get("event_id") for e in events if e.get("event_id")]
+        if not buffered_ids:
+            return
+
+        existing = {
+            row[0] for row in session.query(AuditEvent.event_id)
+            .filter(AuditEvent.event_id.in_(buffered_ids)).all()
+        }
+
+        for event in events:
+            event_id = event.get("event_id")
+            if not event_id or event_id in existing:
+                continue
+            session.add(AuditEvent(
+                event_id=event_id,
+                request_id=event.get("request_id", request_id),
+                parent_event_id=event.get("parent_event_id"),
+                event_type=event.get("event_type", "unknown"),
+                timestamp=event.get("timestamp", datetime.utcnow().isoformat()),
+                agent=event.get("agent"),
+                data=event.get("data") or {},
+            ))
+
     def commit_execution(
         self,
         request_id: str,
@@ -94,23 +138,22 @@ class AuditDatabase:
         timestamp = datetime.utcnow().isoformat()
         claim_hash = hashlib.sha256(claim_text.encode()).hexdigest()
 
-        # Generate execution hash for tamper detection
-        trace_str = json.dumps(events, sort_keys=True)
-        execution_hash = hashlib.sha256(trace_str.encode()).hexdigest()
-
-        full_trace = {
-            "events": events,
-            "timestamp": timestamp,
-            "claim": claim_text,
-            "verdict": verdict,
-            "confidence": confidence,
-        }
-        if final_response:
-            full_trace["final_response"] = final_response
-        if terminal_status:
-            # How the run ended, as its own field: verdict alone cannot
-            # distinguish a released answer from one blocked at a guardrail.
-            full_trace["terminal_status"] = terminal_status
+        # Hash exactly what gets stored. The previous scheme hashed the event
+        # list while the row also held the claim, verdict, confidence, final
+        # response and data sources -- so any of those could change without
+        # disturbing the digest.
+        envelope = build_execution_envelope(
+            request_id=request_id,
+            claim_text=claim_text,
+            terminal_status=terminal_status,
+            verdict=verdict,
+            confidence=confidence,
+            agents_run=agents_run,
+            events=events,
+            final_response=final_response,
+            data_sources=data_sources,
+        )
+        execution_hash = compute_execution_checksum(envelope)
 
         try:
             with get_db_session() as session:
@@ -125,10 +168,13 @@ class AuditDatabase:
                     total_events=len(events),
                     execution_time_ms=execution_time_ms,
                     execution_hash=execution_hash,
-                    full_trace=full_trace,  # SQLAlchemy handles JSONB
+                    # Stored verbatim: this is the object that was hashed, so
+                    # verification can recompute from what it reads back.
+                    full_trace=envelope,
                     data_sources=data_sources,
                 )
                 session.add(execution)
+                self._insert_missing_events(session, request_id, events)
                 # Session auto-commits on successful context exit
             return True
         except IntegrityError:

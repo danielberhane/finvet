@@ -1,4 +1,4 @@
-"""Audit detail view — pipeline timeline + evidence + tamper hash for one execution."""
+"""Audit detail view — pipeline timeline, evidence, and integrity checksum."""
 
 from datetime import datetime
 
@@ -94,6 +94,7 @@ def render_audit_detail():
     agents_run = execution.get("agents_run") or []
     data_sources = execution.get("data_sources") or {}
     execution_hash = execution.get("execution_hash", "")
+    integrity = data.get("integrity") or {}
     full_trace = execution.get("full_trace") or {}
     final_response = full_trace.get("final_response") or {}
 
@@ -197,13 +198,25 @@ def render_audit_detail():
         hitl_parts.append("</div>")
         st.markdown("\n".join(hitl_parts), unsafe_allow_html=True)
 
-    # ── Tamper Detection ──────────────────────────────────────────
+    # ── Integrity checksum ────────────────────────────────────────
+    # The API recomputes the checksum over the stored envelope and returns the
+    # result. This renders that result; it must never infer a verified state
+    # from the presence of a hash string, which is what it used to do.
     if execution_hash:
+        status = (integrity.get("status") or "unavailable").lower()
+        label, css = {
+            "verified": ("Integrity verified for the stored snapshot",
+                         "hash-verified"),
+            "failed": ("Checksum does not match the stored record",
+                       "hash-failed"),
+        }.get(status, ("Not verifiable — no checksum on record",
+                       "hash-unknown"))
+
         hash_parts = [
             '<div class="hash-row">',
-            '<span class="hash-label">Execution Hash</span>',
+            '<span class="hash-label">Integrity Checksum</span>',
             f'<span class="hash-value">{_escape(execution_hash)}</span>',
-            '<span class="hash-verified">✓ Verified</span>',
+            f'<span class="{css}">{_escape(label)}</span>',
             "</div>",
         ]
         st.markdown("\n".join(hash_parts), unsafe_allow_html=True)
