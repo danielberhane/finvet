@@ -15,7 +15,7 @@ LangGraph Pipeline (12-node DAG + HITL checkpoint)
   ^    |                                            |
   |    +---------> RAG (pgvector + tsvector + RRF) <+
   |                                                 |
-  | A2A: corroborate_with_filing                    |
+  | delegation: corroborate_with_filing             |
   |                                                 |
   News Agent -----> Tavily News Search              |
                                                     |
@@ -162,7 +162,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 | `magnitude_difference_percent` | `float or null` |
 | `tools_called` | `list[str]` |
 | `tool_calls_detail` | `list[dict]` |
-| `provenance` | `list[dict]` (full results for RAG/A2A) |
+| `provenance` | `list[dict]` (full results for RAG and delegation) |
 | `reasoning` | `str` |
 | `execution_time_ms` | `int` |
 
@@ -202,7 +202,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 |-------|------|-------|-------------|------------|
 | **SECAgent** | `agents/sec_agent/react_agent.py` | `get_company_info`, `get_recent_filings`, `get_income_statement`, `get_balance_sheet`, `get_cash_flow`, `search_filing_text` | SEC EDGAR (XBRL), RAG | `{"search_filing_text"}` |
 | **MarketAgent** | `agents/market_agent/react_agent.py` | `get_stock_quote`, `get_daily_prices`, `get_company_overview`, `get_earnings` | Finnhub | (none) |
-| **NewsAgent** | `agents/news_agent/react_agent.py` | `search_financial_news`, `verify_news_source`, `corroborate_with_filing` | Tavily, A2A | `{"corroborate_with_filing"}` |
+| **NewsAgent** | `agents/news_agent/react_agent.py` | `search_financial_news`, `verify_news_source`, `corroborate_with_filing` | Tavily, SEC delegation | `{"corroborate_with_filing"}` |
 
 System prompts: git-tracked text files in `src/finvet/agents/prompts/`.
 
@@ -263,7 +263,13 @@ Query --> Ollama Embed: nomic-embed-text (768-dim)
 
 **Chunking**: tiktoken cl100k_base, max 500 tokens, 100 token overlap.
 
-#### A2A (Agent-to-Agent Corroboration)
+#### Bounded agent delegation (News -> SEC)
+
+One-hop, in-process delegation. Not a network agent-to-agent protocol, and no
+interoperability with external agents is implied — the SEC agent holds no
+delegation tool, which is what makes the call terminate by construction rather
+than by a guard someone could forget. `A2AResult` keeps its name in code; the
+published description is "bounded agent delegation".
 
 **Files**: `src/finvet/tools/corroborate_sec.py`, `src/finvet/models/a2a.py`
 
@@ -286,7 +292,7 @@ News Agent ReAct loop
        |    -> NOT_APPLICABLE_YET, no nested run
        +-- Builds a real ParsedClaim carrying claimed_value, so _apply_override runs
        +-- run_sec_agent_scoped(state, max_iterations=3)  <- same period targeting
-       +-- Returns A2AResult.model_dump(): status, verdict, retrieved_value, sources
+       +-- Returns the delegation result: status, verdict, retrieved_value, sources
   +-- run_news_agent writes it to corroboration_result
 ```
 
@@ -466,7 +472,7 @@ LangGraph `interrupt_before` pauses graph. State persisted. API returns `pending
 
 ### Provenance for Audit Compliance
 
-The SEC agent captures full untruncated RAG results and the News agent its A2A result. These flow through as `rag_chunks_retrieved` and `corroboration_result` into response metadata and audit DB `data_sources` JSONB.
+The SEC agent captures full untruncated RAG results and the News agent its delegation result. These flow through as `rag_chunks_retrieved` and `corroboration_result` into response metadata and audit DB `data_sources` JSONB.
 
 ### Non-Critical Memory and Similar Claims
 
@@ -599,7 +605,7 @@ main.py            <-- api/routes, graph/workflow, config
 ## 8. UI Output (Brief)
 
 The Streamlit UI at port 8501 renders:
-- **Verify page**: Claim input, example claims, pipeline progress, verdict cards (white bg + colored left border), evidence panel, data comparison strip, tool call details, source badges (XBRL/RAG/A2A), raw API expander
+- **Verify page**: Claim input, example claims, pipeline progress, verdict cards (white bg + colored left border), evidence panel, data comparison strip, tool call details, source badges (XBRL / RAG / delegation), raw API expander
 - **Memory match card**: Similar verification found (>=0.95), Use/Fresh/Context buttons
 - **Pending Reviews page**: HITL-queued claims list
 - **Review Detail page**: Preliminary analysis + approve/override/reject submission

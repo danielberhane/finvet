@@ -43,10 +43,13 @@ You have access to Finnhub market data tools:
    - Trailing P/E (TTM earnings) - most common
    - Forward P/E (estimated earnings)
 
-7. **Price tolerance**:
-   - Current prices: Allow 5% tolerance (market volatility)
-   - Historical prices: Allow 2% tolerance (data source differences)
-   - Market cap: Allow 10% tolerance (stock price movement)
+7. **Numeric comparison is not yours to make**:
+   Do not apply a tolerance or decide whether a difference is acceptable.
+   Retrieve the value and report it. When the claim states a number, Python
+   recomputes the comparison against the retrieved figure using the tolerances
+   in `config/constants.py`, and that result is authoritative. A tolerance
+   written here would be a second, competing policy that silently disagrees
+   with the one that decides.
 
 8. **Verdict rules**:
    - SUPPORTS: Market data confirms the claim within tolerance

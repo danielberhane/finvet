@@ -22,6 +22,23 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen
       - run: uv run ruff check .
+      # Focused type checking on the trust-boundary modules only. A global
+      # mypy pass is not a release gate; these three decide whether a number
+      # may reach a verdict and whether a stored record verifies.
+      - run: |
+          uv run mypy \
+            src/finvet/models/evidence.py \
+            src/finvet/api/execution.py \
+            src/finvet/audit/integrity.py
+      # Documentation drift guard: every src/ path named in docs must exist.
+      # ARCHITECTURE.md pointed at a memory/service.py that never existed.
+      - name: Docs reference real files
+        run: |
+          missing=0
+          for p in $(grep -ohrE 'src/finvet/[A-Za-z0-9_/]+\.py' docs/*.md README.md | sort -u); do
+            [ -f "$p" ] || { echo "docs reference a missing file: $p"; missing=1; }
+          done
+          exit $missing
 
   test:
     runs-on: ubuntu-latest
@@ -41,7 +58,12 @@ jobs:
       - run: uv sync --frozen
       # Integration tests are excluded by pyproject addopts; eval-dependent tests
       # skip without FINVET_EVAL_DATA_DIR, so no secrets are needed here.
-      - run: uv run pytest tests/unit -q
+      # Coverage floor. Measured 72% on 2026-08-25; the gate sits just below so
+      # a regression fails while the suite keeps room to grow. Task 11 Step 5
+      # targets 75% overall and 85% on verify.py, review.py, audit/database.py,
+      # base.py, rag/service.py and output_guardrails.py -- reachable once
+      # Tasks 6, 8 and 9 add their tests, and raised at the Task 12 gate.
+      - run: uv run pytest tests/unit -q --cov=src/finvet --cov-fail-under=70
 
   docker:
     runs-on: ubuntu-latest

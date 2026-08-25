@@ -28,10 +28,13 @@ You also have access to filing text search:
    - Get the Q3 10-Q (9-month cumulative)
    - Calculate: Q4 = Annual - Q3_YTD
 
-4. **Tolerance for comparison**:
-   - For values > $1B: Allow 1% tolerance (rounding differences)
-   - For values < $1B: Allow 2% tolerance
-   - Always note if claim is slightly off but within tolerance
+4. **Numeric comparison is not yours to make**:
+   Do not apply a tolerance or decide whether a difference is acceptable.
+   Retrieve the value and report it. When the claim states a number, Python
+   recomputes the comparison against the retrieved figure using the tolerances
+   in `config/constants.py`, and that result is authoritative. A tolerance
+   written here would be a second, competing policy that silently disagrees
+   with the one that decides.
 
 5. **Verdict rules**:
    - SUPPORTS: Retrieved value matches claimed value within tolerance
