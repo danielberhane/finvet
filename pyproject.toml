@@ -6,7 +6,6 @@ requires-python = ">=3.11"
 dependencies = [
     "langchain>=0.3.0",
     "langgraph>=0.2.0",
-    "langchain-deepseek>=0.1.0",
     "langchain-openai>=1.1.0",   # llm/factory.py — the OpenAI-*compatible*
                                  # client used for DeepSeek/Ollama/vLLM/LiteLLM
     "tiktoken>=0.12.0",          # rag/parser.py — chunk token counting
@@ -18,13 +17,9 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     "sqlalchemy>=2.0.0",
     "psycopg2-binary>=2.9.0",
-    "scikit-learn>=1.3.0",
-    "numpy>=1.24.0",
     "tavily-python>=0.5.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.27.0",
-    "httpx-sse>=0.4.0",
-    "pyyaml>=6.0.0",
     "langgraph-checkpoint-postgres>=3.0.4",
     "psycopg[binary]>=3.1.0",
     "pgvector>=0.4.2",

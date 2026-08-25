@@ -84,7 +84,6 @@ class Settings(BaseSettings):
 
     # Application Settings
     log_level: str = "INFO"
-    max_tool_calls_per_agent: int = 10
     confidence_threshold_hitl: float = 0.70
 
     # Feature Flags
