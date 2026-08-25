@@ -113,7 +113,7 @@ def _corroborate(
         direction="news_to_sec", source_agent="news", target_agent="sec",
         claimed_value=claimed_value, finding=finding, trigger_mode=trigger_mode,
         metric=metric or "",
-        temporal_scope="checked" if event_date else "unknown",
+        temporal_scope="event_date" if event_date else "unknown",
     )
     try:
         # Imported here, not at module scope: agents import tools, so a top-level
@@ -154,6 +154,18 @@ def _corroborate(
             state.update(period_resolver(state))
         except Exception as e:  # a claim with no period still deserves an attempt
             logger.info(f"A2A period resolution skipped: {e}")
+
+        # Only the SEC route runs period_resolver (workflow.py:94), so a news
+        # claim reaches here with no canonical period and the caller has no
+        # date to pass. Derive one from the period this delegation just
+        # resolved: its start is the earliest moment the event could have
+        # occurred, which is the right question for "could this filing have
+        # carried it".
+        if not event_date:
+            derived = _claim_period_start(state)
+            if derived:
+                event_date = derived
+                base["temporal_scope"] = "claim_period"
 
         if not _filing_could_cover(event_date, _latest_period_end(state)):
             return A2AResult(
@@ -232,6 +244,24 @@ def _corroborate(
         return A2AResult(
             success=False, status=A2A_FAILED, error=str(e), **base
         )
+
+
+def _claim_period_start(state: Dict[str, Any]) -> Optional[str]:
+    """Start of the resolved period: the earliest the claimed event could be.
+
+    Only for period types that name a real reporting window. "current" and
+    "event_relative" carry today's date as a placeholder, and treating that as
+    the event's date would date every undated claim to now -- which would then
+    read as "a filing covering this period exists and is silent" and escalate
+    claims nobody dated. sec_tools excludes the same types from XBRL targeting
+    for the same reason.
+    """
+    from .sec_tools import _DATABLE_PERIOD_TYPES
+
+    cp = state.get("canonical_period")
+    if cp is None or getattr(cp, "period_type", None) not in _DATABLE_PERIOD_TYPES:
+        return None
+    return getattr(cp, "start_date", None)
 
 
 def _latest_period_end(state: Dict[str, Any]) -> Optional[str]:

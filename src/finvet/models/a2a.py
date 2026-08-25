@@ -112,11 +112,18 @@ class A2AResult(BaseModel):
     # still needs to record what kind of assertion was being checked.
     metric: str = Field("", description="Metric of the claim under review")
 
-    # Whether the event date was known well enough to apply the temporal gate.
-    # "unknown" means the filing's silence was not weighed against the event's
-    # timing, so NO_MATCHING_DISCLOSURE from this run is weaker than it looks.
-    temporal_scope: Literal["checked", "unknown"] = Field(
-        "unknown", description="Whether the event date could be compared to the filing"
+    # How the temporal gate was applied, which decides whether the filing's
+    # silence means anything.
+    #   "event_date"   - the caller supplied a real date for the event
+    #   "claim_period" - inferred from the claim's resolved period (its start,
+    #                    the earliest moment the event could have occurred)
+    #   "unknown"      - no date at all; silence was never weighed against
+    #                    timing, so it is weaker evidence than it looks
+    # Recorded rather than collapsed to a boolean because an escalation sends
+    # work to a person, and they should know whether the date was stated or
+    # inferred.
+    temporal_scope: Literal["event_date", "claim_period", "unknown"] = Field(
+        "unknown", description="How the event date was established"
     )
     error: Optional[str] = Field(None)
 
@@ -161,7 +168,7 @@ def reclassify_corroboration(
     if (status == A2A_NO_MATCHING_DISCLOSURE
             and updated.get("metric") in CORROBORATION_METRICS
             and updated.get("claimed_value") is not None
-            and updated.get("temporal_scope") == "checked"):
+            and updated.get("temporal_scope") != "unknown"):
         status = A2A_UNDISCLOSED_MATERIAL_CLAIM
 
     updated["status"] = status
