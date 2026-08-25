@@ -5,8 +5,8 @@ into the LangGraph workflow. Each agent uses DeepSeek to reason about
 which tools to call and returns structured evidence.
 """
 
-from typing import Dict, Type
-from ...config.constants import AGENT_MAX_ITERATIONS
+from typing import Dict, Optional, Type
+from ...config.constants import AGENT_MAX_ITERATIONS, CORROBORATION_METRICS
 from ...models.state import VerificationState
 from ...agents import SECAgent, MarketAgent, NewsAgent
 from ...agents.base import BaseVerificationAgent, compose_failure_reasoning
@@ -40,17 +40,22 @@ def _run_agent(
     agent_type: str,
     source_desc: str,
     state: VerificationState,
+    **agent_kwargs,
 ) -> Dict:
     """Common agent execution wrapper.
 
     Creates the agent, runs it, logs the result, and returns
     the evidence dict. Falls back to error evidence on failure.
+
+    agent_kwargs reach the agent constructor — used by the A2A path to build a
+    SEC agent with allow_a2a=False and a reduced iteration budget.
     """
     request_id = state.get("request_id", "unknown")
     logger.info(f"Running {agent_type.upper()} agent (request: {request_id})")
 
     try:
-        agent = agent_cls(max_iterations=AGENT_MAX_ITERATIONS)
+        agent_kwargs.setdefault("max_iterations", AGENT_MAX_ITERATIONS)
+        agent = agent_cls(**agent_kwargs)
         evidence = agent.execute(state)
 
         logger.info(
@@ -78,8 +83,101 @@ def run_market_agent(state: VerificationState) -> Dict:
 
 
 def run_news_agent(state: VerificationState) -> Dict:
-    """Run the News ReAct agent for news/event claims."""
-    return _run_agent(NewsAgent, "news", "Financial News", state)
+    """Run the News ReAct agent, corroborating material events against filings.
+
+    Two ways the delegation happens, and they are not the same mechanism:
+
+    - "agent": the model called corroborate_with_filing itself, so the result is
+      already in the ReAct provenance and is lifted out below.
+    - "policy": the model did not, but the claim is one an issuer's filing can
+      settle. The tool is invoked here, after the loop — which means the result
+      is NOT in the message history and must be attached explicitly. Provenance
+      is built from AIMessage/ToolMessage pairs (base.py:198), and a call made
+      out here never appears there.
+    """
+    result = _run_agent(NewsAgent, "news", "Financial News", state)
+    evidence = result.get("agent_evidence", {})
+
+    corroboration = None
+    for prov in evidence.get("provenance", []):
+        prov_result = prov.get("result", {})
+        if not isinstance(prov_result, dict) or not prov_result.get("success"):
+            continue
+        if prov["tool"] == "corroborate_with_filing":
+            corroboration = prov_result
+            corroboration.setdefault("finding", prov.get("args", {}).get("finding", ""))
+
+    if corroboration is None and _policy_wants_corroboration(state, evidence):
+        corroboration = _corroborate_by_policy(state, evidence)
+
+    if corroboration:
+        result["corroboration_result"] = corroboration
+
+    return result
+
+
+def _policy_wants_corroboration(state: VerificationState, evidence: Dict) -> bool:
+    """Should the node delegate even though the model did not ask to?
+
+    Narrow on purpose: a metric an issuer must disclose, a company to look it up
+    against, and an actual news verdict to check. Without all three the nested
+    run costs latency and returns nothing meaningful.
+    """
+    parsed = state.get("parsed_claim")
+    if parsed is None or getattr(parsed, "metric", None) not in CORROBORATION_METRICS:
+        return False
+    if not getattr(parsed, "ticker", None):
+        return False
+    return bool(evidence.get("verdict"))
+
+
+def _corroborate_by_policy(state: VerificationState, evidence: Dict) -> Optional[Dict]:
+    """Invoke the SEC delegation from the node and return its result dict."""
+    from ...tools.corroborate_sec import _corroborate
+
+    parsed = state.get("parsed_claim")
+    logger.info(
+        f"A2A policy trigger: metric={getattr(parsed, 'metric', None)} "
+        f"ticker={getattr(parsed, 'ticker', None)}"
+    )
+    try:
+        return _corroborate(
+            finding=state.get("claim_raw", ""),
+            ticker=getattr(parsed, "ticker", "") or "",
+            metric=getattr(parsed, "metric", "") or "",
+            claimed_value=getattr(parsed, "value", None),
+            operator=getattr(parsed, "operator", None) or "eq",
+            period=getattr(parsed, "period", "") or "",
+            trigger_mode="policy",
+            claim_verdict=evidence.get("verdict", ""),
+        ).model_dump()
+    except Exception as e:
+        logger.error(f"A2A policy corroboration failed: {e}")
+        return None
+
+
+def run_sec_agent_scoped(
+    state: VerificationState,
+    *,
+    allow_a2a: bool = True,
+    max_iterations: Optional[int] = None,
+) -> Dict:
+    """Run the SEC agent with the resolved period applied to every tool call.
+
+    Shared by the normal SEC route and by the News -> SEC A2A delegation. The
+    delegation must not reimplement this: calling SECAgent.execute directly
+    skips use_period_target, and a nested agent reading a different fiscal
+    period than the parent is the kind of inconsistency that surfaces later as
+    an unexplainable disagreement between two of your own agents.
+    """
+    target = period_target_for(state.get("canonical_period"))
+    if target:
+        logger.info(f"SEC retrieval targeting period {target[0]} ({target[1]})")
+    kwargs = {"allow_a2a": allow_a2a}
+    if max_iterations is not None:
+        kwargs["max_iterations"] = max_iterations
+    with use_period_target(*(target or (None, None))):
+        return _run_agent(SECAgent, "sec", "SEC EDGAR", state, **kwargs)
 
 
 def run_sec_agent(state: VerificationState) -> Dict:
@@ -90,11 +188,7 @@ def run_sec_agent(state: VerificationState) -> Dict:
     already determined it, so routing it through the model would only create a
     chance for it to arrive wrong.
     """
-    target = period_target_for(state.get("canonical_period"))
-    if target:
-        logger.info(f"SEC retrieval targeting period {target[0]} ({target[1]})")
-    with use_period_target(*(target or (None, None))):
-        result = _run_agent(SECAgent, "sec", "SEC EDGAR", state)
+    result = run_sec_agent_scoped(state)
 
     # SEC-specific: extract RAG and A2A provenance into dedicated state fields
     evidence = result.get("agent_evidence", {})

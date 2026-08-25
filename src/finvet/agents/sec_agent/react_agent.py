@@ -31,11 +31,24 @@ class SECAgent(BaseVerificationAgent):
     # Track full results from RAG and A2A tools for provenance auditing
     _provenance_tool_names = {"search_filing_text", "corroborate_with_news"}
 
-    def __init__(self, max_iterations: int = AGENT_MAX_ITERATIONS):
-        """Initialize the SEC Agent with SEC + RAG + A2A tools."""
+    def __init__(
+        self,
+        max_iterations: int = AGENT_MAX_ITERATIONS,
+        allow_a2a: bool = True,
+    ):
+        """Initialize the SEC Agent with SEC + RAG + A2A tools.
+
+        allow_a2a=False omits corroborate_with_news. The News agent can now
+        delegate to this agent, so leaving that tool in place would let
+        News -> SEC -> News recurse without bound. Removing the capability is
+        stronger than a depth counter: a future caller cannot forget to pass it.
+        """
+        tools = SEC_TOOLS + [search_filing_text, search_past_verifications]
+        if allow_a2a:
+            tools = tools + [corroborate_with_news]
         super().__init__(
             agent_type="sec",
-            tools=SEC_TOOLS + [search_filing_text, corroborate_with_news, search_past_verifications],
+            tools=tools,
             system_prompt=SEC_SYSTEM_PROMPT,
             max_iterations=max_iterations,
         )
