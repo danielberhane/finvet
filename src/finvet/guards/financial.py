@@ -1,7 +1,7 @@
 """Financial output guard — regex patterns for investment advice / regulatory red flags.
 
 Output-only guard. Catches responses that cross the line from factual
-verification into personalized financial advice (S6 / SR 11-7 concern).
+verification into personalized financial advice (S6 / SR 26-2 concern).
 """
 
 import re

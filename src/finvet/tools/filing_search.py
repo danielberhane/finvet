@@ -72,7 +72,7 @@ def search_filing_text(
         if not rag.available:
             return FilingSearchResult(
                 success=False,
-                error="RAG service not available (OpenAI API key not configured)",
+                error="RAG service not available (check Postgres and the Ollama embedder)",
             ).model_dump()
 
         results = rag.search(
