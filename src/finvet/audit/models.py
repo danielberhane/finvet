@@ -7,7 +7,7 @@ from ..config.database import Base
 
 
 class AuditEvent(Base):
-    """Audit event model (immutable append-only)."""
+    """Audit event model (append-only by convention; not enforced by the schema)."""
 
     __tablename__ = "audit_events"
 

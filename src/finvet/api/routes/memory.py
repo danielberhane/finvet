@@ -1,6 +1,6 @@
 """Memory check and accept endpoints."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from ...audit import get_audit_logger
 from ...config.constants import MEMORY_CACHE_THRESHOLD
@@ -34,7 +34,10 @@ def memory_check(request: MemoryCheckRequest):
 def memory_accept(request: MemoryAcceptRequest):
     """Log that the user accepted a cached verification result."""
     audit = get_audit_logger()
-    audit.log_event(
+    # buffer_for_execution=False: this happens after the original run was
+    # finalized and reuses its request_id, so buffering it would accumulate
+    # events under a request nothing will commit again.
+    persisted = audit.log_event_persisted(
         event_type="memory_cache_accepted",
         request_id=request.original_request_id,
         data={
@@ -42,5 +45,15 @@ def memory_accept(request: MemoryAcceptRequest):
             "similarity": request.similarity,
             "user_decision": "accept",
         },
+        buffer_for_execution=False,
     )
+
+    if not persisted:
+        # Nothing downstream reconciles a post-hoc event, so a failed write
+        # means it was not recorded. Say so rather than reporting "logged".
+        raise HTTPException(
+            status_code=503,
+            detail="Could not record the cache-acceptance decision.",
+        )
+
     return {"status": "logged", "original_request_id": request.original_request_id}
