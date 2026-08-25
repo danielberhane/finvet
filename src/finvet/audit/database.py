@@ -74,6 +74,7 @@ class AuditDatabase:
         execution_time_ms: int,
         final_response: Optional[Dict[str, Any]] = None,
         data_sources: Optional[Dict[str, Any]] = None,
+        terminal_status: Optional[str] = None,
     ) -> bool:
         """Commit full execution trace (append-only).
 
@@ -106,6 +107,10 @@ class AuditDatabase:
         }
         if final_response:
             full_trace["final_response"] = final_response
+        if terminal_status:
+            # How the run ended, as its own field: verdict alone cannot
+            # distinguish a released answer from one blocked at a guardrail.
+            full_trace["terminal_status"] = terminal_status
 
         try:
             with get_db_session() as session:

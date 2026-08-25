@@ -16,7 +16,12 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ...audit import AuditCallbackHandler, get_audit_logger
-from ...utils.exceptions import GuardrailViolation
+from ...utils.exceptions import AuditPersistenceError, GuardrailViolation
+from ..execution import (
+    ExecutionFinalizer,
+    build_pending_response,
+    store_completed_claim,
+)
 from ...utils.helpers import build_preliminary_analysis
 from ...utils.logging import get_logger
 from .. import deps
@@ -58,6 +63,13 @@ def verify_claim(request: VerifyClaimRequest):
             "user_id": user_id,
             "timestamp": start_time.isoformat(),
         },
+    )
+
+    finalizer = ExecutionFinalizer(
+        audit=audit,
+        request_id=request_id,
+        claim_text=request.claim,
+        started_at=start_time,
     )
 
     try:
@@ -104,7 +116,7 @@ def verify_claim(request: VerifyClaimRequest):
         # The graph stopped at the hitl_checkpoint node. Return a "pending_review"
         # response so a human reviewer can make the final call.
         if result.get("hitl_required") and not result.get("hitl_checkpoint_passed"):
-            return _handle_hitl_interrupt(request_id, request.claim, result, start_time, audit)
+            return _handle_hitl_interrupt(request_id, request.claim, result, finalizer)
 
         # --- Normal completion: pipeline finished with a verdict ---
         final_response = result.get("final_response")
@@ -116,27 +128,12 @@ def verify_claim(request: VerifyClaimRequest):
                 detail="Verification completed but no response was generated"
             )
 
-        end_time = datetime.utcnow()
-        execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
-
-        # Map agent_type key ("sec"/"news"/"market") to display name for audit
-        agents_run = []
-        agent_type = result.get("agent_type")
-        if agent_type:
-            agents_run.append({"sec": "SEC", "news": "News", "market": "Market"}.get(agent_type, agent_type))
-
-        # Save the completed execution to PostgreSQL audit trail.
-        # This creates the audit_executions row with verdict, confidence,
-        # execution time, and the SHA-256 execution_hash for tamper detection.
-        audit.commit_execution(
-            request_id=request_id,
-            claim_text=request.claim,
-            verdict=final_response.get("verdict"),
-            confidence=final_response.get("confidence", 0.0),
-            agents_run=agents_run,
-            execution_time_ms=execution_time_ms,
+        # Record the run before returning it. Shared with /verify-stream so
+        # both routes end a request identically.
+        finalizer.finish(
+            status="success",
+            state=result,
             final_response=final_response,
-            data_sources=final_response.get("metadata", {}).get("data_sources"),
         )
 
         logger.info(
@@ -183,6 +180,14 @@ def verify_claim(request: VerifyClaimRequest):
             },
         )
         raise
+    except AuditPersistenceError as ape:
+        # The verdict exists but could not be recorded. Serving it would break
+        # the guarantee that every released verdict is auditable.
+        logger.error(f"Audit persistence failed (request: {request_id}): {ape}")
+        raise HTTPException(
+            status_code=503,
+            detail="Verification could not be recorded; no verdict was issued.",
+        )
     except HTTPException:  # matches: main try around graph.invoke()
         # Already a proper HTTP error (e.g., the 500 above). Just re-raise.
         raise
@@ -211,14 +216,17 @@ def verify_claim(request: VerifyClaimRequest):
             status_code=500,
             detail=f"Verification failed: {str(e)}"
         )
+    finally:
+        # Guardrail rejections and errors never commit, so nothing else
+        # releases their buffered events.
+        finalizer.release()
 
 
 def _handle_hitl_interrupt(
     request_id: str,
     claim_text: str,
     result: dict,
-    start_time: datetime,
-    audit,
+    finalizer: ExecutionFinalizer,
 ) -> dict:
     """
     Called when the graph pauses at the HITL checkpoint (confidence < 0.70).
@@ -230,49 +238,19 @@ def _handle_hitl_interrupt(
     agent_evidence = result.get("agent_evidence", {})
     hitl_triggers = result.get("hitl_triggers", [])  # e.g., ["confidence_below_threshold"]
 
-    agent_type = agent_evidence.get("agent", "unknown")
-    preliminary_analysis = build_preliminary_analysis(result, agent_evidence)
+    pending_response = build_pending_response(
+        request_id,
+        claim_text,
+        result,
+        preliminary_analysis=build_preliminary_analysis(result, agent_evidence),
+    )
 
-    # Build the response sent back to the user/UI showing the claim needs review
-    pending_response = {
-        "status": "pending_review",
-        "request_id": request_id,
-        "claim": claim_text,
-        "verdict": "PENDING",
-        "confidence": 0.0,
-        "confidence_label": "PENDING",
-        "summary": "This claim requires human review before a verdict can be provided.",
-        "explanation": agent_evidence.get("reasoning", ""),
-        "sources": [],
-        "disclosures": ["Human review required for this claim"],
-        "hitl_triggers": hitl_triggers,
-        "preliminary_analysis": preliminary_analysis,
-        "metadata": {
-            "hitl_required": True,
-            "hitl_triggers": hitl_triggers,
-            "agent": agent_type,
-            "tools_called": agent_evidence.get("tools_called", []),
-        },
-    }
-
-    end_time = datetime.utcnow()
-    execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
-
-    # Map agent key to display name for audit record
-    agents_run = []
-    if agent_type and agent_type != "unknown":
-        agents_run.append({"sec": "SEC", "news": "News", "market": "Market"}.get(agent_type, agent_type))
-
-    # Save as PENDING in audit trail — this claim is waiting for human review
-    audit.commit_execution(
-        request_id=request_id,
-        claim_text=claim_text,
-        verdict="PENDING",
-        confidence=0.0,
-        agents_run=agents_run,
-        execution_time_ms=execution_time_ms,
+    # Same finalizer as every other terminal path — this record is PENDING, not
+    # absent, so a reviewer can find the claim waiting for them.
+    finalizer.finish(
+        status="pending_review",
+        state=result,
         final_response=pending_response,
-        data_sources=pending_response.get("metadata", {}).get("data_sources"),
     )
 
     logger.info(
@@ -313,6 +291,13 @@ def verify_claim_stream(request: VerifyClaimRequest):
         "callbacks": [AuditCallbackHandler(audit, request_id)],
     }
 
+    finalizer = ExecutionFinalizer(
+        audit=audit,
+        request_id=request_id,
+        claim_text=request.claim,
+        started_at=start_time,
+    )
+
     def event_generator():
         try:
             final_result = {}
@@ -325,65 +310,45 @@ def verify_claim_stream(request: VerifyClaimRequest):
 
             final_response = final_result.get("final_response")
             if final_response:
-                # Store in episodic memory (non-critical)
-                if deps.claim_memory:
-                    try:
-                        parsed_claim = final_result.get("parsed_claim")
-                        agent_evidence = final_result.get("agent_evidence", {})
-                        deps.claim_memory.store_claim(
-                            request_id=request_id,
-                            claim_text=request.claim,
-                            verdict=final_response.get("verdict", ""),
-                            confidence=final_response.get("confidence", 0),
-                            ticker=parsed_claim.ticker if parsed_claim else None,
-                            metric=getattr(parsed_claim, "metric", None) if parsed_claim else None,
-                            agent_type=agent_evidence.get("agent"),
-                        )
-                    except Exception:
-                        pass
-
+                # Commit before emitting the verdict. A client that has seen
+                # "complete" believes the run is on record; if the write fails
+                # it must see an error instead, not a verdict with no audit row.
+                finalizer.finish(
+                    status="success",
+                    state=final_result,
+                    final_response=final_response,
+                )
+                store_completed_claim(
+                    deps.claim_memory,
+                    request_id=request_id,
+                    claim_text=request.claim,
+                    final_response=final_response,
+                    state=final_result,
+                )
                 yield f"data: {json.dumps({'type': 'complete', 'response': final_response})}\n\n"
 
             elif final_result.get("hitl_required"):
                 # HITL interrupt — graph paused before hitl_checkpoint.
                 # Build a pending_review response so the UI can redirect.
                 agent_evidence = final_result.get("agent_evidence", {})
-                hitl_triggers = final_result.get("hitl_triggers", [])
-                pending_response = {
-                    "status": "pending_review",
-                    "request_id": request_id,
-                    "claim": request.claim,
-                    "verdict": "PENDING",
-                    "confidence": 0.0,
-                    "summary": "This claim requires human review.",
-                    "explanation": agent_evidence.get("reasoning", ""),
-                    "hitl_triggers": hitl_triggers,
-                    "preliminary_analysis": build_preliminary_analysis(final_result, agent_evidence),
-                    "metadata": {
-                        "hitl_required": True,
-                        "hitl_triggers": hitl_triggers,
-                        "agent": agent_evidence.get("agent"),
-                        "tools_called": agent_evidence.get("tools_called", []),
-                    },
-                }
-                end_time = datetime.utcnow()
-                execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
-                agents_run = []
-                agent_type = agent_evidence.get("agent")
-                if agent_type:
-                    agents_run.append({"sec": "SEC", "news": "News", "market": "Market"}.get(agent_type, agent_type))
-                audit.commit_execution(
-                    request_id=request_id,
-                    claim_text=request.claim,
-                    verdict="PENDING",
-                    confidence=0.0,
-                    agents_run=agents_run,
-                    execution_time_ms=execution_time_ms,
+                pending_response = build_pending_response(
+                    request_id,
+                    request.claim,
+                    final_result,
+                    preliminary_analysis=build_preliminary_analysis(
+                        final_result, agent_evidence),
+                )
+                finalizer.finish(
+                    status="pending_review",
+                    state=final_result,
                     final_response=pending_response,
                 )
                 yield f"data: {json.dumps({'type': 'complete', 'response': pending_response})}\n\n"
 
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except AuditPersistenceError as ape:
+            logger.error(f"Audit persistence failed (request: {request_id}): {ape}")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Verification could not be recorded; no verdict was issued.'})}\n\n"
         except GuardrailViolation as gv:
             audit.log_event(
                 event_type="guardrail_violation",
@@ -406,6 +371,10 @@ def verify_claim_stream(request: VerifyClaimRequest):
                 cause = cause.__cause__
             logger.error(f"Streaming failed (request: {request_id}): {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            # Guardrail rejections and errors never commit, so nothing else
+            # releases their buffered events.
+            finalizer.release()
 
     return StreamingResponse(
         event_generator(),
