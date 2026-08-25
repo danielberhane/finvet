@@ -62,7 +62,6 @@ Installed from PyPI, not redistributed here. Licenses as declared in package met
 | numpy | 2.4.2 | numerics | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 |
 | pandas | 3.0.5 | UI tables | BSD-3-Clause |
 | tavily-python | 0.7.21 | news search SDK | MIT |
-| openai | 2.16.0 | embeddings client | Apache-2.0 |
 | httpx / httpx-sse | 0.28.1 / 0.4.3 | HTTP + SSE | BSD-3-Clause / MIT |
 | beautifulsoup4 | 4.14.3 | filing HTML parsing | MIT |
 | streamlit | 1.62.0 | UI | Apache-2.0 |
@@ -86,7 +85,6 @@ to this repository. Each is governed by its own terms, which you accept by confi
 | Finnhub | quotes, company overview, earnings | `FINNHUB_API_KEY` |
 | Tavily | news search | `TAVILY_API_KEY` |
 | DeepSeek | claim parsing, agent reasoning, verdicts | `DEEPSEEK_API_KEY` |
-| OpenAI | embeddings (RAG + claim memory) | `OPENAI_API_KEY` |
 
 SEC filings retrieved into `data/filings/` are US government works and are not committed to
 this repository.

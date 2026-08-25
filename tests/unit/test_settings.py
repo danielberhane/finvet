@@ -14,15 +14,18 @@ class TestLLMConfig:
         assert config.structured_output_method == "json_mode"
 
     def test_custom_values(self):
+        """Arbitrary values, using a local endpoint since that is what FinVet
+        actually points at — the factory speaks the OpenAI-compatible protocol,
+        not any particular vendor."""
         config = LLMConfig(
-            model="gpt-4o",
-            base_url="https://api.openai.com/v1",
-            api_key_env="OPENAI_API_KEY",
+            model="qwen2.5:14b",
+            base_url="http://localhost:11434/v1",
+            api_key_env="LOCAL_LLM_API_KEY",
             temperature=0.7,
             structured_output_method="json_schema",
         )
-        assert config.model == "gpt-4o"
-        assert config.base_url == "https://api.openai.com/v1"
+        assert config.model == "qwen2.5:14b"
+        assert config.base_url == "http://localhost:11434/v1"
 
 
 class TestSettingsLLMFields:

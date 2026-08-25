@@ -143,8 +143,9 @@ the same container but stays off unless you set `ENABLE_LLAMA_GUARD=true` and pu
 | *(none)* | FRED macro, SEC XBRL | free public endpoints |
 
 The LLM is pluggable ([`llm/factory.py`](src/finvet/llm/factory.py)) — point any
-OpenAI-compatible endpoint (self-hosted via vLLM/LiteLLM, or another vendor) at it via env
-var, no code change.
+endpoint speaking the OpenAI-compatible chat-completions protocol — Ollama, vLLM, LiteLLM, or
+a hosted vendor — at it via env var, no code change. That protocol name is the wire format,
+not a dependency on any provider.
 
 </details>
 

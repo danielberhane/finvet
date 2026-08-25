@@ -242,7 +242,7 @@ SDK wrapper in `src/finvet/tools/tavily_search.py`. Source credibility tiers:
 For narrative filing text NOT in structured XBRL (segment revenue, risk factors, MD&A, footnotes).
 
 ```
-Query --> OpenAI Embed (1536-dim)
+Query --> Ollama Embed: nomic-embed-text (768-dim)
             |
      +------+------+
      |             |
@@ -345,7 +345,7 @@ point-in-time document.
 | `confidence` | `FLOAT` | |
 | `retrieved_value` | `FLOAT` | |
 | `summary` | `TEXT` | |
-| `embedding` | `JSONB` | 1536 floats (OpenAI) |
+| `embedding` | `JSONB` | 768 floats (`nomic-embed-text`, served by Ollama) |
 
 #### `filing_chunks` (RAG Store)
 
@@ -359,16 +359,19 @@ point-in-time document.
 | `section` | `VARCHAR(50)` | Indexed |
 | `chunk_text` | `TEXT` | |
 | `token_count` | `INTEGER` | |
-| `embedding` | `Vector(1536)` | HNSW index (m=16, ef=64) |
+| `embedding` | `Vector(768)` | HNSW index (m=16, ef=64) |
 | `tsv` | `tsvector` GENERATED | GIN indexed |
 
 ---
 
 ### 2.7 Memory System (Episodic Claim Store)
 
-**File**: `src/finvet/memory/service.py`
+**File**: `src/finvet/memory/store_service.py`
 
-Embeddings: OpenAI `text-embedding-3-small` (1536 dims). Similarity: NumPy cosine.
+Embeddings: `nomic-embed-text` (768 dims), the same local Ollama embedder the RAG
+layer uses — `main.py` passes `rag.service._embed_texts` straight into the
+LangGraph `PostgresStore`, so there is one embedding path, not two. Similarity is
+computed in Postgres by pgvector.
 
 | Mode | Threshold | Use Case |
 |------|-----------|----------|
@@ -435,8 +438,8 @@ Configurable via `LLM_PARSER__MODEL`, `LLM_AGENT__TEMPERATURE`, etc.
 | | `AGENT_MAX_RESULT_CHARS` | 50,000 |
 | **Confidence** | `CONFIDENCE_HIGH_THRESHOLD` | 0.85 |
 | | `CONFIDENCE_MODERATE_THRESHOLD` | 0.70 |
-| **RAG** | `EMBEDDING_MODEL` | text-embedding-3-small |
-| | `EMBEDDING_DIMS` | 1536 |
+| **RAG** | `EMBEDDING_MODEL` | `nomic-embed-text` |
+| | `EMBEDDING_DIMS` | 768 |
 | | `RRF_K` | 60 |
 | **Memory** | `MEMORY_CACHE_THRESHOLD` | 0.95 |
 | | `MEMORY_CONTEXT_THRESHOLD` | 0.75 |
@@ -582,7 +585,6 @@ main.py            <-- api/routes, graph/workflow, config
 | `TAVILY_API_KEY` | Yes | -- | Tavily API key for news search |
 | `POSTGRES_PASSWORD` | Yes | -- | PostgreSQL password |
 | `FINNHUB_API_KEY` | No | -- | Finnhub API key (mock mode if absent) |
-| `OPENAI_API_KEY` | No | -- | OpenAI key for embeddings (RAG + memory) |
 | `FINNHUB_MOCK_MODE` | No | false | Use mock market data |
 | `ENABLE_LLAMA_GUARD` | No | false | Enable Llama Guard semantic safety |
 | `ENABLE_CLAIM_MEMORY` | No | true | Enable claim memory |

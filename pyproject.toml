@@ -7,6 +7,9 @@ dependencies = [
     "langchain>=0.3.0",
     "langgraph>=0.2.0",
     "langchain-deepseek>=0.1.0",
+    "langchain-openai>=1.1.0",   # llm/factory.py — the OpenAI-*compatible*
+                                 # client used for DeepSeek/Ollama/vLLM/LiteLLM
+    "tiktoken>=0.12.0",          # rag/parser.py — chunk token counting
     # "langchain-anthropic>=0.2.0",
     # "anthropic>=0.39.0",
     "fastapi>=0.115.0",
@@ -26,7 +29,6 @@ dependencies = [
     "psycopg[binary]>=3.1.0",
     "pgvector>=0.4.2",
     "beautifulsoup4>=4.14.3",
-    "openai>=2.16.0",
     # UI (ui/app.py)
     "streamlit>=1.40.0",
     "pandas>=2.0.0",
