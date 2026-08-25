@@ -1,15 +1,22 @@
-"""One contract for agent-to-agent corroboration, both directions.
+"""The contract for one-hop bounded agent delegation.
 
-FinVet has two delegations: the SEC agent asking News to confirm a filing
-disclosure, and the News agent asking SEC whether the issuer's own filing
-corroborates a reported event. They previously returned different shapes
-(`news_verdict` vs a filing equivalent), which forced every consumer —
-guardrails, audit trail, UI, evals — to know which direction it was reading.
+FinVet has exactly one delegation: the News agent asks the SEC agent whether an
+issuer's own filing corroborates a reported fine or settlement. It runs in that
+direction only, in-process, one hop deep. This is **not** a network A2A
+protocol and no interoperability with external agents is implied — the SEC
+agent simply holds no delegation tool, which is what makes the call terminate
+by construction rather than by a guard someone could forget.
 
-One shape instead. `direction` says who asked whom; `status` is the audit-facing
-outcome and is deliberately richer than the raw verdict, because "the filing does
-not mention this" and "no filing could yet cover this event" are different facts
-and only one of them is evidence of anything.
+`status` is the audit-facing outcome and is deliberately richer than the raw
+verdict, because "the filing does not mention this", "no filing could yet cover
+this event", and "the nested agent failed" are three different facts and none
+of them is a contradiction.
+
+Classification is **not** performed here. A status describes the relationship
+between the parent claim's verdict and the target's, and the tool runs before
+the parent verdict exists — comparing the target's verdict with itself is what
+recorded contradictions as agreement. `reclassify_corroboration` below is the
+only place status is decided, and `run_news_agent` is its only caller.
 """
 
 from typing import Any, Dict, List, Literal, Optional
@@ -87,7 +94,49 @@ class A2AResult(BaseModel):
     # metrics and ParsedClaim rejects them on a sec-typed claim. The audit trail
     # still needs to record what kind of assertion was being checked.
     metric: str = Field("", description="Metric of the claim under review")
+
+    # Whether the event date was known well enough to apply the temporal gate.
+    # "unknown" means the filing's silence was not weighed against the event's
+    # timing, so NO_MATCHING_DISCLOSURE from this run is weaker than it looks.
+    temporal_scope: Literal["checked", "unknown"] = Field(
+        "unknown", description="Whether the event date could be compared to the filing"
+    )
     error: Optional[str] = Field(None)
+
+
+def reclassify_corroboration(
+    parent_verdict: str,
+    result: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Decide the delegation's status now that the parent verdict exists.
+
+    The tool cannot do this. It runs inside the News agent's ReAct loop, before
+    that agent has reached a verdict, so it has only the target's answer. Left
+    to classify, it compared the SEC verdict with itself -- which is agreement
+    for any decisive verdict -- and a filing that flatly contradicted the news
+    was recorded as CORROBORATES, suppressing the escalation this contract
+    exists to trigger.
+
+    Applied to both trigger paths so the model-invoked and policy-invoked
+    results cannot diverge again.
+    """
+    updated = dict(result)
+
+    # A delegation that did not complete has no opinion to compare against.
+    if not updated.get("success"):
+        updated["status"] = A2A_FAILED
+        return updated
+
+    # A filing that could not yet cover the event stays out of scope; that is a
+    # fact about the calendar, not about the claim.
+    if updated.get("status") == A2A_NOT_APPLICABLE_YET:
+        return updated
+
+    updated["status"] = classify_status(
+        parent_verdict,
+        updated.get("verdict", "NOT_ENOUGH_INFO"),
+    )
+    return updated
 
 
 def classify_status(

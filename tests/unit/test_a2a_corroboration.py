@@ -19,10 +19,12 @@ from finvet.graph.nodes import domain_agents
 from finvet.models.a2a import (
     A2A_CONTRADICTS,
     A2A_CORROBORATES,
+    A2A_FAILED,
     A2A_NOT_APPLICABLE_YET,
     A2A_NO_MATCHING_DISCLOSURE,
     A2AResult,
     classify_status,
+    reclassify_corroboration,
 )
 from finvet.models.claim import ParsedClaim
 from finvet.tools import corroborate_sec
@@ -125,8 +127,7 @@ class TestDelegationCarriesTheClaimedValue:
 
         with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped", fake_scoped):
             out = corroborate_sec._corroborate(
-                finding="x", ticker="AAPL", claimed_value=500_000_000.0,
-                claim_verdict="SUPPORTS")
+                finding="x", ticker="AAPL", claimed_value=500_000_000.0)
 
         assert out.claimed_value == 500_000_000.0
         assert out.retrieved_value == 400_000_000.0
@@ -355,3 +356,189 @@ class TestParentChildClassification:
             out = domain_agents.run_news_agent(self._news_state())
 
         assert out["corroboration_result"]["status"] == A2A_NO_MATCHING_DISCLOSURE
+
+
+class TestNestedFailureIsNotSilence:
+    """A crashed SEC agent and a filing that says nothing are different facts.
+
+    run_sec_agent_scoped catches its own failures and returns NOT_ENOUGH_INFO
+    evidence, so the delegation used to record an outage as
+    NO_MATCHING_DISCLOSURE -- an authoritative "the filing does not mention
+    this" -- when nothing had actually been checked.
+    """
+
+    def test_failed_nested_agent_reports_failure(self):
+        def failing_scoped(state, **kwargs):
+            return {"agent_evidence": {
+                "verdict": "NOT_ENOUGH_INFO", "confidence": 0.2,
+                "execution_status": "failed", "error": "MCP server unreachable"}}
+
+        with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   failing_scoped):
+            out = corroborate_sec._corroborate(finding="x", ticker="AAPL")
+
+        assert out.success is False
+        assert out.status == A2A_FAILED
+        assert "MCP server unreachable" in (out.error or "")
+
+    def test_completed_nested_agent_is_not_a_failure(self):
+        def ok_scoped(state, **kwargs):
+            return {"agent_evidence": {
+                "verdict": "NOT_ENOUGH_INFO", "confidence": 0.3,
+                "execution_status": "completed", "error": None}}
+
+        with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   ok_scoped):
+            out = corroborate_sec._corroborate(finding="x", ticker="AAPL")
+
+        assert out.success is True
+        assert out.status != A2A_FAILED
+
+    def test_reclassify_leaves_a_failure_as_failed(self):
+        failed = A2AResult(
+            success=False, source_agent="news", target_agent="sec",
+            status=A2A_NO_MATCHING_DISCLOSURE, verdict="NOT_ENOUGH_INFO",
+            error="boom",
+        ).model_dump()
+        assert reclassify_corroboration("SUPPORTS", failed)["status"] == A2A_FAILED
+
+
+class TestTemporalScopeIsRecorded:
+    """Silence from a filing that closed before the event is not evidence."""
+
+    def test_event_after_the_filing_is_not_applicable(self):
+        def fake_scoped(state, **kwargs):  # pragma: no cover - must not run
+            raise AssertionError("nested agent ran despite an ineligible filing")
+
+        class _Period:
+            end_date = "2024-12-31"
+
+        with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   fake_scoped), \
+             patch("finvet.graph.nodes.period_resolver.period_resolver",
+                   lambda s: {"canonical_period": _Period()}):
+            out = corroborate_sec._corroborate(
+                finding="fined in April 2025", ticker="AAPL",
+                event_date="2025-04-23")
+
+        assert out.status == A2A_NOT_APPLICABLE_YET
+        assert out.temporal_scope == "checked"
+
+    def test_not_applicable_survives_reclassification(self):
+        """A calendar fact does not become a contradiction because the parent
+        agent happened to reach a decisive verdict."""
+        pending = A2AResult(
+            success=True, source_agent="news", target_agent="sec",
+            status=A2A_NOT_APPLICABLE_YET, verdict="NOT_ENOUGH_INFO",
+        ).model_dump()
+        out = reclassify_corroboration("REFUTES", pending)
+        assert out["status"] == A2A_NOT_APPLICABLE_YET
+
+    def test_missing_event_date_is_recorded_as_unknown(self):
+        def fake_scoped(state, **kwargs):
+            return {"agent_evidence": {"verdict": "SUPPORTS", "confidence": 0.9,
+                                       "execution_status": "completed"}}
+
+        with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   fake_scoped):
+            out = corroborate_sec._corroborate(finding="x", ticker="AAPL")
+
+        assert out.temporal_scope == "unknown"
+
+
+class TestTriggerParity:
+    """Both triggers must reach the same status for the same verdict pair.
+
+    The divergence is what let one path be correct while the other was not:
+    the policy path passed a real parent verdict, the model path passed none.
+    """
+
+    @pytest.mark.parametrize("parent,target,expected", [
+        ("SUPPORTS", "REFUTES", A2A_CONTRADICTS),
+        ("REFUTES", "SUPPORTS", A2A_CONTRADICTS),
+        ("SUPPORTS", "SUPPORTS", A2A_CORROBORATES),
+        ("REFUTES", "REFUTES", A2A_CORROBORATES),
+        # target NEI: the filing is silent, which is not disagreement
+        ("SUPPORTS", "NOT_ENOUGH_INFO", A2A_NO_MATCHING_DISCLOSURE),
+        # parent NEI: the news agent reached no verdict, so the filing has
+        # nothing to agree or disagree with -- also not a contradiction
+        ("NOT_ENOUGH_INFO", "SUPPORTS", A2A_NO_MATCHING_DISCLOSURE),
+        ("NOT_ENOUGH_INFO", "REFUTES", A2A_NO_MATCHING_DISCLOSURE),
+        ("NOT_ENOUGH_INFO", "NOT_ENOUGH_INFO", A2A_NO_MATCHING_DISCLOSURE),
+    ])
+    def test_status_matches_across_triggers(self, parent, target, expected):
+        results = []
+        for mode in ("agent", "policy"):
+            payload = A2AResult(
+                success=True, source_agent="news", target_agent="sec",
+                status=A2A_NO_MATCHING_DISCLOSURE, verdict=target,
+                trigger_mode=mode,
+            ).model_dump()
+            results.append(reclassify_corroboration(parent, payload)["status"])
+
+        assert results == [expected, expected]
+
+
+class TestOnlyContradictionEscalates:
+
+    @pytest.mark.parametrize("status,should_escalate", [
+        (A2A_CONTRADICTS, True),
+        (A2A_CORROBORATES, False),
+        (A2A_NO_MATCHING_DISCLOSURE, False),
+        (A2A_NOT_APPLICABLE_YET, False),
+        (A2A_FAILED, False),
+    ])
+    def test_hitl_trigger(self, status, should_escalate):
+        from finvet.graph.nodes.output_guardrails import output_guardrails
+
+        state = {
+            "request_id": "t",
+            "agent_evidence": {"verdict": "SUPPORTS", "confidence": 0.95,
+                               "reasoning": "ok"},
+            "verdict": "SUPPORTS",
+            "confidence": 0.95,
+            "corroboration_result": {"status": status, "verdict": "REFUTES",
+                                     "source_agent": "news",
+                                     "target_agent": "sec"},
+        }
+        out = output_guardrails(state)
+        triggers = out.get("hitl_triggers", [])
+        assert ("source_disagreement" in triggers) is should_escalate
+
+
+class TestFailedDelegationIsRecorded:
+    """A delegation that failed must leave a trace.
+
+    The provenance loop used to skip any result whose success flag was falsy,
+    so a failed model-triggered delegation vanished: no corroboration_result,
+    no audit record that SEC had even been asked, and the policy path was then
+    free to run the whole delegation a second time.
+    """
+
+    def _state(self):
+        return {"request_id": "t", "claim_raw": "Issuer was fined",
+                "parsed_claim": _parsed()}
+
+    def test_failed_model_triggered_delegation_reaches_state(self):
+        failed = A2AResult(
+            success=False, source_agent="news", target_agent="sec",
+            status=A2A_NO_MATCHING_DISCLOSURE, verdict="NOT_ENOUGH_INFO",
+            trigger_mode="agent", error="MCP server unreachable",
+        ).model_dump()
+        evidence = {
+            "verdict": "SUPPORTS", "confidence": 0.9,
+            "tools_called": ["corroborate_with_filing"],
+            "provenance": [{"tool": "corroborate_with_filing",
+                            "args": {"finding": "f"}, "result": failed}],
+        }
+        calls = []
+        with patch.object(domain_agents, "_run_agent",
+                          lambda c, a, d, s, **k: {"agent_evidence": evidence,
+                                                   "agent_type": "news"}), \
+             patch.object(corroborate_sec, "_corroborate",
+                          lambda **kw: calls.append(kw)):
+            out = domain_agents.run_news_agent(self._state())
+
+        assert out["corroboration_result"]["status"] == A2A_FAILED
+        assert "MCP server unreachable" in out["corroboration_result"]["error"]
+        assert calls == [], "policy path re-ran a delegation that already failed"
