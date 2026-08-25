@@ -227,7 +227,7 @@ class TestFailClosedScopeIsRecorded:
         silent = A2AResult(
             success=True, source_agent="news", target_agent="sec",
             status=A2A_NO_MATCHING_DISCLOSURE, verdict="NOT_ENOUGH_INFO",
-            metric="fine_amount", claimed_value=5e8, temporal_scope="checked",
+            metric="fine_amount", claimed_value=5e8, temporal_scope="claim_period",
         ).model_dump()
         assert reclassify_corroboration("NOT_ENOUGH_INFO", silent)["status"] \
             == A2A_UNDISCLOSED_MATERIAL_CLAIM

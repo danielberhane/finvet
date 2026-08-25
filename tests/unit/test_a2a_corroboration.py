@@ -423,7 +423,7 @@ class TestTemporalScopeIsRecorded:
                 event_date="2025-04-23")
 
         assert out.status == A2A_NOT_APPLICABLE_YET
-        assert out.temporal_scope == "checked"
+        assert out.temporal_scope == "event_date"
 
     def test_not_applicable_survives_reclassification(self):
         """A calendar fact does not become a contradiction because the parent
@@ -435,7 +435,13 @@ class TestTemporalScopeIsRecorded:
         out = reclassify_corroboration("REFUTES", pending)
         assert out["status"] == A2A_NOT_APPLICABLE_YET
 
-    def test_missing_event_date_is_recorded_as_unknown(self):
+    def test_undatable_period_is_recorded_as_unknown(self):
+        """No explicit date and nothing datable to infer from.
+
+        period_resolver defaults an undated claim to period_type="current",
+        whose start is today -- a placeholder, not the event's date. Inferring
+        from it would date every undated claim to now.
+        """
         def fake_scoped(state, **kwargs):
             return {"agent_evidence": {"verdict": "SUPPORTS", "confidence": 0.9,
                                        "execution_status": "completed"}}
@@ -558,7 +564,8 @@ class TestUnsupportedMaterialClaimEscalates:
     """
 
     def _result(self, *, metric="fine_amount", claimed_value=5e8,
-                temporal_scope="checked", verdict="NOT_ENOUGH_INFO"):
+                temporal_scope="claim_period", verdict="NOT_ENOUGH_INFO"):
+        """A delegation result as _corroborate produces it."""
         return A2AResult(
             success=True, source_agent="news", target_agent="sec",
             status=A2A_NO_MATCHING_DISCLOSURE, verdict=verdict,
@@ -576,6 +583,12 @@ class TestUnsupportedMaterialClaimEscalates:
         for parent in ("NOT_ENOUGH_INFO", "SUPPORTS", "REFUTES"):
             out = reclassify_corroboration(parent, self._result())
             assert out["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
+
+    @pytest.mark.parametrize("scope", ["event_date", "claim_period"])
+    def test_either_way_of_dating_the_event_escalates(self, scope):
+        out = reclassify_corroboration(
+            "NOT_ENOUGH_INFO", self._result(temporal_scope=scope))
+        assert out["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
 
     def test_unknown_event_timing_does_not_escalate(self):
         """Without a date the temporal gate never ran, so the filing's silence
@@ -605,7 +618,7 @@ class TestUnsupportedMaterialClaimEscalates:
         pending = A2AResult(
             success=True, source_agent="news", target_agent="sec",
             status=A2A_NOT_APPLICABLE_YET, verdict="NOT_ENOUGH_INFO",
-            metric="fine_amount", claimed_value=5e8, temporal_scope="checked",
+            metric="fine_amount", claimed_value=5e8, temporal_scope="claim_period",
         ).model_dump()
         assert reclassify_corroboration("NOT_ENOUGH_INFO", pending)["status"] \
             == A2A_NOT_APPLICABLE_YET
@@ -627,3 +640,72 @@ class TestUnsupportedMaterialClaimEscalates:
         out = output_guardrails(state)
         assert "unsupported_material_claim" in out.get("hitl_triggers", [])
         assert out.get("hitl_required") is True
+
+
+class TestEscalationIsReachableFromTheRealNewsRoute:
+    """The check the first version of this feature did not survive.
+
+    Only the SEC route runs period_resolver (workflow.py:94), so a news claim
+    arrives with no canonical_period and the policy path has no event date to
+    pass. The promotion required a date, so it could never fire on the one path
+    that actually produces these results -- while unit tests that hand-built
+    temporal_scope passed happily. This drives run_news_agent instead.
+    """
+
+    def _news_state(self, period="2024"):
+        return {
+            "request_id": "t",
+            "claim_raw": "Apple was fined EUR 500 million in 2024",
+            "parsed_claim": ParsedClaim(
+                claim_type="news", ticker="AAPL", metric="fine_amount",
+                operator="eq", value=5e8, period=period, reject_reason=None),
+        }
+
+    def _run(self, state, sec_verdict="NOT_ENOUGH_INFO"):
+        news_ev = {"verdict": "NOT_ENOUGH_INFO", "confidence": 0.4,
+                   "tools_called": ["search_financial_news"], "provenance": [],
+                   "execution_status": "completed"}
+
+        def fake_scoped(s, **kw):
+            return {"agent_evidence": {
+                "verdict": sec_verdict, "confidence": 0.3, "provenance": [],
+                "tools_called": ["search_filing_text"],
+                "execution_status": "completed"}}
+
+        with patch.object(domain_agents, "_run_agent",
+                          lambda c, a, d, s, **k: {"agent_evidence": news_ev,
+                                                   "agent_type": "news"}), \
+             patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   fake_scoped):
+            return domain_agents.run_news_agent(state)
+
+    def test_news_route_has_no_canonical_period(self):
+        """The precondition that broke it, pinned so it stays visible."""
+        assert "canonical_period" not in self._news_state()
+        assert domain_agents._event_date_for(self._news_state()) == ""
+
+    def test_policy_path_escalates_end_to_end(self):
+        out = self._run(self._news_state())
+        result = out["corroboration_result"]
+        assert result["temporal_scope"] == "claim_period"
+        assert result["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
+
+    def test_hitl_fires_on_that_result(self):
+        from finvet.graph.nodes.output_guardrails import output_guardrails
+
+        out = self._run(self._news_state())
+        guard = output_guardrails({
+            "request_id": "t",
+            "agent_evidence": {"verdict": "NOT_ENOUGH_INFO", "confidence": 0.9,
+                               "reasoning": "could not verify the amount"},
+            "verdict": "NOT_ENOUGH_INFO", "confidence": 0.9,
+            "corroboration_result": out["corroboration_result"],
+        })
+        assert "unsupported_material_claim" in guard.get("hitl_triggers", [])
+
+    def test_claim_with_no_period_stays_unknown(self):
+        """Nothing to infer a date from: silence keeps its weaker meaning."""
+        out = self._run(self._news_state(period=None))
+        result = out["corroboration_result"]
+        assert result["temporal_scope"] == "unknown"
+        assert result["status"] == A2A_NO_MATCHING_DISCLOSURE
