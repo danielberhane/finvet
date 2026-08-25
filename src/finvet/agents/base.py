@@ -29,6 +29,11 @@ from ..config.constants import (
 )
 from ..config.settings import settings
 from ..llm import create_llm
+from ..models.evidence import (
+    ToolExecutionRecord,
+    TrustedObservation,
+    resolve_trusted_observation,
+)
 from ..models.state import VerificationState
 from ..utils.logging import get_logger
 
@@ -132,7 +137,8 @@ class BaseVerificationAgent(ABC):
             return self._error_evidence(str(e), execution_time_ms)
 
         # Extract tools called and provenance from messages
-        tools_called, tool_calls_detail, provenance = self._extract_tool_info(messages)
+        tools_called, tool_calls_detail, provenance, tool_records = \
+            self._extract_tool_info(messages)
 
         # Extract verdict (separate LLM call — anti-anchoring)
         try:
@@ -144,11 +150,21 @@ class BaseVerificationAgent(ABC):
                 str(e), execution_time_ms, tools_called, tool_calls_detail
             )
 
+        # The one number the deterministic layer is allowed to compare. Bound
+        # to the resolved period so a correct figure from the wrong fiscal year
+        # cannot satisfy the claim -- the comparator has no way to notice.
+        canonical_period = state.get("canonical_period")
+        observation = resolve_trusted_observation(
+            state.get("parsed_claim"),
+            tool_records,
+            expected_period_end=getattr(canonical_period, "end_date", None),
+        )
+
         # Python-based verdict override (deterministic number comparison)
         original_verdict = verdict_output.verdict
         try:
             verdict, confidence, magnitude_diff = self._apply_override(
-                verdict_output, state, tool_calls_detail
+                verdict_output, state, observation
             )
         except Exception as e:
             logger.error(
@@ -186,14 +202,20 @@ class BaseVerificationAgent(ABC):
         }
 
     def _extract_tool_info(self, messages) -> tuple:
-        """Extract tool call details and provenance from agent messages.
+        """Extract tool call details, provenance, and evidence records.
 
         Also truncates oversized ToolMessages in-place to control token spend
         on subsequent LLM calls (verdict extraction).
+
+        Returns (tools_called, tool_calls_detail, provenance, tool_records).
+        The records carry the parsed payload and both notions of success; the
+        detail dicts keep their existing shape because the API and UI read
+        them.
         """
         tools_called = []
         tool_calls_detail = []
         provenance = []
+        tool_records = []
 
         # Map tool_call_id -> call info for pairing with ToolMessages
         pending_calls = {}
@@ -216,22 +238,41 @@ class BaseVerificationAgent(ABC):
 
                 # Capture structured provenance for tracked tools BEFORE truncation
                 if tool_name in self._provenance_tool_names:
-                    # Try to parse as structured data for richer audit trail
-                    prov_data = self._parse_provenance(content)
                     provenance.append({
                         "tool": tool_name,
                         "args": call_info.get("args", {}),
-                        "result": prov_data,
+                        "result": self._parse_provenance(content),
                     })
+
+                # Two different questions, previously conflated. LangChain's
+                # status says whether the call completed; the tool's own
+                # success field says whether it retrieved anything. Every SEC
+                # and Market tool catches its exceptions and returns an error
+                # payload, so a failed retrieval is a transport success -- and
+                # was recorded as a successful call.
+                payload = self._parse_provenance(content)
+                transport_success = getattr(msg, "status", "success") != "error"
+                application_success = payload.get("success")
+                if not isinstance(application_success, bool):
+                    application_success = None
+
+                record = ToolExecutionRecord(
+                    tool=tool_name,
+                    args=call_info.get("args", {}),
+                    payload=payload,
+                    transport_success=transport_success,
+                    application_success=application_success,
+                    result_preview=content[:TOOL_RESULT_PREVIEW_CHARS],
+                )
+                tool_records.append(record)
 
                 tool_calls_detail.append({
                     "tool": tool_name,
-                    "args": call_info.get("args", {}),
-                    "result": content[:TOOL_RESULT_PREVIEW_CHARS],
-                    # Read the tool's own status: a failed call recorded as a
-                    # success both corrupts the audit trail and lets
-                    # _extract_retrieved_value scrape a number out of an error.
-                    "success": getattr(msg, "status", "success") != "error",
+                    "args": record.args,
+                    "result": record.result_preview,
+                    # Display/audit flag, not the evidence gate: a tool that
+                    # returns a plain string has not failed.
+                    "success": record.call_succeeded,
                 })
 
                 # Truncate oversized tool results to control token spend
@@ -243,7 +284,7 @@ class BaseVerificationAgent(ABC):
                     )
                     msg.content = content[:AGENT_MAX_RESULT_CHARS] + "\n... [TRUNCATED]"
 
-        return tools_called, tool_calls_detail, provenance
+        return tools_called, tool_calls_detail, provenance, tool_records
 
     @staticmethod
     def _parse_provenance(content: str) -> Dict[str, Any]:
@@ -338,30 +379,38 @@ class BaseVerificationAgent(ABC):
         self,
         verdict_output: VerdictOutput,
         state: VerificationState,
-        tool_calls_detail: List[Dict[str, Any]],
+        observation: Optional[TrustedObservation],
     ) -> tuple:
-        """Python-based verdict override — deterministic number comparison.
+        """Deterministic comparison against a trusted observation.
 
-        LLMs are unreliable at number comparison (e.g., "0.98% > 1%").
-        When we have both values, compute the verdict deterministically.
+        LLMs are unreliable at number comparison ("0.98% > 1%"), which is why
+        Python recomputes it. That only helps if the number Python receives is
+        itself trustworthy: the model used to supply it, and a value it read
+        out of narrative prose -- or out of an error string -- was compared
+        with the same confidence as a figure lifted from an XBRL fact.
+
+        So the observation is the only numeric input. A claim that names a
+        value but produced no trusted observation fails closed: the honest
+        answer is that nothing was verified, not that the model's reading
+        passed a tolerance check.
         """
         verdict = verdict_output.verdict
         confidence = verdict_output.confidence
-        retrieved_value = verdict_output.retrieved_value
 
         parsed_claim = state.get("parsed_claim")
         claimed_val = parsed_claim.value if parsed_claim else None
 
-        # Fallback: if verdict LLM didn't extract retrieved_value, try programmatically
-        if retrieved_value is None:
-            retrieved_value = self._extract_retrieved_value(
-                tool_calls_detail, parsed_claim
+        if claimed_val is not None and observation is None:
+            logger.info(
+                f"{self.agent_type} no trusted observation for a numeric claim; "
+                f"failing closed to NOT_ENOUGH_INFO"
             )
-            if retrieved_value is not None:
-                verdict_output.retrieved_value = retrieved_value
-                logger.info(
-                    f"{self.agent_type} fallback retrieved_value: {retrieved_value:,.0f}"
-                )
+            return "NOT_ENOUGH_INFO", min(confidence, 0.5), None
+
+        retrieved_value = observation.value if observation else None
+        # What the response shows must be what Python compared, not what the
+        # model reported finding.
+        verdict_output.retrieved_value = retrieved_value
 
         # Calculate magnitude difference
         magnitude_diff = None
@@ -552,43 +601,6 @@ class BaseVerificationAgent(ABC):
         elif self.agent_type == "news":
             return TOLERANCE_NEWS
         return TOLERANCE_DEFAULT
-
-    @staticmethod
-    def _extract_retrieved_value(
-        tool_calls_detail: List[Dict[str, Any]],
-        parsed_claim: Any,
-    ) -> Optional[float]:
-        """Fallback when the verdict LLM leaves retrieved_value empty.
-
-        Metric-guided since stage 07c. The previous version picked the tool-
-        result number CLOSEST to the claimed value — selecting whichever
-        figure best agreed with the claim being checked, a confirmation bias
-        sitting directly under the deterministic override. Now the claim's
-        metric selects by XBRL concept; with no metric to guide it, this
-        declines, and NOT_ENOUGH_INFO is the honest downstream answer.
-        """
-        import re
-
-        from ..config.metrics import METRIC_TO_CONCEPTS
-
-        metric = getattr(parsed_claim, "metric", None) if parsed_claim else None
-        concepts = METRIC_TO_CONCEPTS.get(metric) if metric else None
-        if not concepts:
-            return None
-
-        pattern = re.compile(
-            r"'line_item':\s*'(\w+)'[^{}]*?'value':\s*([\d.eE+\-]+)"
-        )
-        for tc in tool_calls_detail:
-            if not tc.get("success"):
-                continue
-            for concept, raw in pattern.findall(tc.get("result", "")):
-                if concept in concepts:
-                    try:
-                        return float(raw)
-                    except ValueError:
-                        continue
-        return None
 
     @abstractmethod
     def _get_source_description(self) -> str:

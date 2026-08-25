@@ -12,6 +12,21 @@ from finvet.config.constants import (
 )
 
 
+
+def _observation(value, metric="revenue", period_end=None):
+    """A trusted observation standing in for a resolved tool result.
+
+    The override no longer accepts a number the verdict model reported; it
+    compares only what resolve_trusted_observation produced from a successful
+    tool call. These tests exercise the tolerance arithmetic, so they supply
+    that observation directly.
+    """
+    from finvet.models.evidence import TrustedObservation
+    return TrustedObservation(
+        tool="get_income_statement", metric=metric, value=value,
+        units="USD", period_end=period_end, concept="Revenues",
+    )
+
 class ConcreteAgent(BaseVerificationAgent):
     """Minimal concrete agent for testing base class methods."""
 
@@ -140,7 +155,7 @@ class TestEqToleranceCoversRealRoundingSpread:
             reasoning="test", retrieved_value=retrieved,
         )
         verdict, confidence, diff = agent._apply_override(
-            verdict_output, {"parsed_claim": parsed}, []
+            verdict_output, {"parsed_claim": parsed}, _observation(retrieved)
         )
         return verdict, diff
 
@@ -182,7 +197,8 @@ class TestOverrideReadsOperator:
             verdict="NOT_ENOUGH_INFO", confidence=0.5,
             reasoning="test", retrieved_value=retrieved,
         )
-        return agent._apply_override(verdict_output, {"parsed_claim": parsed}, [])
+        return agent._apply_override(
+            verdict_output, {"parsed_claim": parsed}, _observation(retrieved))
 
     def test_operator_only_construction_still_drives_the_override(self):
         verdict, _, _ = self._override(100e9, 120e9, operator="gt")
@@ -224,7 +240,7 @@ class TestOverrideReadsOperator:
             reasoning="test", retrieved_value=100e9,
         )
         verdict, confidence, _ = agent._apply_override(
-            verdict_output, {"parsed_claim": parsed}, []
+            verdict_output, {"parsed_claim": parsed}, _observation(100e9)
         )
         assert verdict == "NOT_ENOUGH_INFO"
         assert confidence <= 0.5
@@ -264,29 +280,46 @@ class TestBuildContextCarriesTheContract:
 
 
 class TestRetrievedValueFallbackIsMetricGuided:
-    """Stage 07c. The fallback used to pick the tool-result number CLOSEST to
-    the claim — selecting whichever figure best agreed with what it was
-    checking, a confirmation bias directly under the deterministic override.
-    Now: the claim's metric selects by XBRL concept, and with no metric to
-    guide it the fallback returns None — NOT_ENOUGH_INFO is the honest
-    answer, not the friendliest number in the pile."""
+    """Resolution is metric-guided and structural.
 
-    RESULT = ("success=True statement_type='income' items=[{'line_item': "
-              "'RevenueFromContractWithCustomerExcludingAssessedTax', "
-              "'value': 391035000000.0, 'period': '2024-09-28'}, "
-              "{'line_item': 'CostOfGoodsAndServicesSold', "
-              "'value': 210352000000.0, 'period': '2024-09-28'}, "
-              "{'line_item': 'NetIncomeLoss', 'value': 93736000000.0, "
-              "'period': '2024-09-28'}]")
+    An older version picked the tool-result number CLOSEST to the claim --
+    selecting whichever figure best agreed with what it was checking, a
+    confirmation bias directly under the deterministic override. Its successor
+    regex-matched the serialized result, so the answer depended on where a
+    3000-character preview was cut. Resolution now reads structured fields
+    selected by XBRL concept, and with no metric to guide it it declines:
+    NOT_ENOUGH_INFO is the honest answer, not the friendliest number in the
+    pile."""
+
+    PAYLOAD = {
+        "success": True,
+        "statement_type": "income",
+        "filing_accession": "0000320193-24-000123",
+        "period_end": "2024-09-28",
+        "items": [
+            {"line_item": "RevenueFromContractWithCustomerExcludingAssessedTax",
+             "value": 391035000000.0, "units": "USD", "period_end": "2024-09-28"},
+            {"line_item": "CostOfGoodsAndServicesSold",
+             "value": 210352000000.0, "units": "USD", "period_end": "2024-09-28"},
+            {"line_item": "NetIncomeLoss",
+             "value": 93736000000.0, "units": "USD", "period_end": "2024-09-28"},
+        ],
+    }
 
     def _extract(self, metric, claimed):
-        from finvet.agents.base import BaseVerificationAgent
+        """Resolve through the structured record, as the agent now does."""
         from finvet.models.claim import ParsedClaim
+        from finvet.models.evidence import (
+            ToolExecutionRecord,
+            resolve_trusted_observation,
+        )
         parsed = ParsedClaim(claim_type="sec", ticker="AAPL", metric=metric,
                              value=claimed, operator="eq")
-        detail = [{"tool": "get_income_statement", "success": True,
-                   "result": self.RESULT}]
-        return BaseVerificationAgent._extract_retrieved_value(detail, parsed)
+        record = ToolExecutionRecord(
+            tool="get_income_statement", payload=self.PAYLOAD,
+            transport_success=True, application_success=True)
+        observation = resolve_trusted_observation(parsed, [record])
+        return observation.value if observation else None
 
     def test_metric_selects_by_concept_not_by_agreement(self):
         """Claimed $210B — the old code would return CostOfGoodsSold
@@ -307,37 +340,12 @@ class TestRetrievedValueFallbackIsMetricGuided:
         assert self._extract("capex", 15e9) is None
 
 
-class TestToolResultPreviewCoversTheStatement:
-    """Real-data finding from stage-07 verification: the 1000-char result
-    preview cut a 14-item income statement before NetIncomeLoss (9th item),
-    so the metric-guided fallback could see revenue but not net income in the
-    SAME persisted output. Fail-closed made that a None, never a wrong
-    number — but the window must cover a full statement."""
-
-    def _detail_for(self, n_items=14):
-        from langchain_core.messages import AIMessage, ToolMessage
-        agent = ConcreteAgent()
-        items = ", ".join(
-            "{'line_item': 'Filler%dConcept', 'value': %d.0, "
-            "'period': '2024-09-28'}" % (i, 10**9 + i) for i in range(n_items - 1))
-        content = ("success=True statement_type='income' items=[" + items +
-                   ", {'line_item': 'NetIncomeLoss', 'value': 93736000000.0, "
-                   "'period': '2024-09-28'}]")
-        assert len(content) > 1000   # the old window must genuinely cut it
-        msgs = [AIMessage(content="", tool_calls=[
-                    {"name": "get_income_statement", "args": {}, "id": "t1"}]),
-                ToolMessage(content=content, tool_call_id="t1")]
-        _, detail, _ = agent._extract_tool_info(msgs)
-        return detail
-
-    def test_late_listed_concept_survives_the_preview(self):
-        from finvet.agents.base import BaseVerificationAgent
-        from finvet.models.claim import ParsedClaim
-        parsed = ParsedClaim(claim_type="sec", ticker="AXP",
-                             metric="net_income", value=9e10, operator="eq")
-        got = BaseVerificationAgent._extract_retrieved_value(
-            self._detail_for(), parsed)
-        assert got == 93_736_000_000.0
+# TestToolResultPreviewCoversTheStatement was removed with Task 2. It pinned
+# that TOOL_RESULT_PREVIEW_CHARS stayed wide enough for the regex fallback to
+# find a late-listed concept in the *serialized* result. Resolution now reads
+# structured payload fields, so the preview's width no longer affects any
+# verdict. The stronger property -- a value past the preview still resolves --
+# is asserted in test_tool_evidence_boundary.py::TestEvidenceSurvivesTruncation.
 
 
 class TestEvidenceContract:
@@ -372,7 +380,7 @@ class TestToolFailureIsRecorded:
                 {"name": "get_income_statement", "args": {}, "id": "t1"}]),
             ToolMessage(content="upstream 500", tool_call_id="t1", status="error"),
         ]
-        _, detail, _ = agent._extract_tool_info(msgs)
+        _, detail, _, _ = agent._extract_tool_info(msgs)
         assert detail[0]["success"] is False
 
     def test_successful_tool_message_still_marked_successful(self):
@@ -384,7 +392,7 @@ class TestToolFailureIsRecorded:
                 {"name": "get_income_statement", "args": {}, "id": "t1"}]),
             ToolMessage(content="ok", tool_call_id="t1"),
         ]
-        _, detail, _ = agent._extract_tool_info(msgs)
+        _, detail, _, _ = agent._extract_tool_info(msgs)
         assert detail[0]["success"] is True
 
 
@@ -415,7 +423,7 @@ class TestRangeClaimsPreserveTheirBounds:
             reasoning="test", retrieved_value=retrieved,
         )
         verdict, _, _ = agent._apply_override(
-            verdict_output, {"parsed_claim": parsed}, [])
+            verdict_output, {"parsed_claim": parsed}, _observation(retrieved))
         return verdict
 
     def test_value_inside_a_wide_range_is_supported(self):

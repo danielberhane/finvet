@@ -105,8 +105,9 @@ class AgentEvidence(TypedDict):
     # Full input/output of every tool call for audit trail.
     # Each entry: {"tool": "get_income_statement", "input": {...},
     #              "result": "...", "success": True/False}
-    # Used by base.py _extract_retrieved_value() fallback when the verdict
-    # LLM doesn't populate retrieved_value.
+    # Display and audit only. The deterministic comparison reads structured
+    # ToolExecutionRecords (models/evidence.py), never these previews -- which
+    # are truncated, so what they contain depends on where a string was cut.
     # Written to PostgreSQL full_trace for complete auditability.
     tool_calls_detail: list[dict[str, Any]]
 
