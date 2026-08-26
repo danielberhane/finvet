@@ -137,13 +137,30 @@ def run_news_agent(state: VerificationState) -> Dict:
         corroboration = _corroborate_by_policy(state, evidence)
 
     if corroboration:
+        # SEC is authoritative for what an issuer disclosed. When the
+        # delegation settled the number deterministically, the news verdict
+        # follows it -- otherwise the answer reads NOT_ENOUGH_INFO beside a
+        # filing that plainly answered the question, which is what sent a
+        # $1 trillion fine claim to a human next to a filed EUR 500 million.
+        #
+        # `retrieved_value` is the licence, and it is a narrow one: since the
+        # fail-closed fix it is non-None *only* when Python compared a trusted
+        # observation. A model's reading of prose leaves it None, so this can
+        # never adopt a number the model supplied.
+        # Classification runs FIRST, against the news agent's *own* verdict.
+        # Adopting before comparing would make the two sides agree by
+        # construction and destroy the disagreement signal -- the parent would
+        # be compared with a copy of the target, which is the same defect
+        # reclassify_corroboration was written to fix, arriving from the other
+        # direction.
+        #
         # The single classification point. The tool cannot do this -- it runs
         # inside the ReAct loop, before this agent has a verdict to compare
-        # against -- and when it tried, it compared the SEC verdict with itself
-        # and recorded contradictions as agreement.
+        # against.
         corroboration = reclassify_corroboration(
             evidence.get("verdict", ""), corroboration
         )
+        _adopt_filing_verdict(evidence, corroboration)
         logger.info(
             f"A2A status: news={evidence.get('verdict')} "
             f"sec={corroboration.get('verdict')} -> {corroboration.get('status')} "
@@ -152,6 +169,40 @@ def run_news_agent(state: VerificationState) -> Dict:
         result["corroboration_result"] = corroboration
 
     return result
+
+
+_DECISIVE = frozenset({"SUPPORTS", "REFUTES"})
+
+
+def _adopt_filing_verdict(evidence: Dict, corroboration: Dict) -> Dict:
+    """Let a deterministically settled filing decide the news claim.
+
+    Mutates and returns `evidence` so the caller's dict is the adopted one.
+
+    Two conditions, both required. The delegation reached a decisive verdict,
+    and it carries a `retrieved_value` -- which is non-None only when Python
+    compared a trusted observation, never when a model read a number out of
+    prose. Without both, nothing changes and the existing fail-closed answer
+    stands.
+    """
+    verdict = corroboration.get("verdict")
+    retrieved = corroboration.get("retrieved_value")
+    if verdict not in _DECISIVE or retrieved is None:
+        return evidence
+
+    logger.info(
+        f"Filing settled the claim: news={evidence.get('verdict')} -> {verdict} "
+        f"(filed value {retrieved})"
+    )
+    evidence["verdict"] = verdict
+    evidence["confidence"] = corroboration.get("confidence") or evidence.get("confidence")
+    evidence["retrieved_value"] = retrieved
+    # The filing answered it, so the decline no longer applies. Left in place
+    # it would suppress review reasoning for a verdict that now stands on a
+    # trusted number.
+    evidence["limitation"] = None
+    evidence["verdict_source"] = "delegated_filing"
+    return evidence
 
 
 def _policy_wants_corroboration(state: VerificationState, evidence: Dict) -> bool:

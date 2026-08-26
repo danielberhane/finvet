@@ -147,6 +147,10 @@ def _corroborate(
             "request_id": "a2a-filing-corroboration",
             "user_id": "a2a",
             "parsed_claim": parsed,
+            # The metric the nested ParsedClaim had to drop. It is what
+            # licenses reading a filed penalty amount out of the disclosure,
+            # so it travels beside the claim instead of inside it.
+            "a2a_metric": metric or "",
         }
         # Resolve the period the same way the normal SEC route does, so the
         # nested agent targets the same filing the parent would have.

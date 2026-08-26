@@ -24,6 +24,7 @@ from typing import Any, Dict, Optional, Sequence
 
 from pydantic import BaseModel, Field
 
+from ..config.constants import CORROBORATION_METRICS
 from ..config.metrics import METRIC_TO_CONCEPTS
 
 # Market and macro tools return flat result models rather than line items, so
@@ -392,11 +393,72 @@ def qualitative_decline_reason(
     return None
 
 
+# No exchange rate between major currencies spans an order of magnitude, so a
+# gap that wide is decidable without knowing one. `ParsedClaim` carries no
+# currency, so anything narrower than this against a non-USD filing figure
+# would be comparing two different units and calling it a verdict.
+FX_SAFE_MAGNITUDE_RATIO = 10.0
+
+
+def _penalty_observation(
+    parsed_claim: Any,
+    records: Sequence[ToolExecutionRecord],
+    metric: str,
+    claim_text: Optional[str] = None,
+) -> Optional[TrustedObservation]:
+    """A fine or settlement Python lifted from the filing that discloses it.
+
+    One observation or none. Several passages may quote the same penalty --
+    the disclosure repeats verbatim across a 10-K and its 10-Qs -- so equal
+    values are one fact, while genuinely different values are the case where
+    choosing between them would decide a verdict by coin toss.
+    """
+    from ..tools.filing_amounts import currency_in_text, extract_amount
+
+    found = []
+    for record in records:
+        if record.tool not in RETRIEVAL_COUNT_FIELDS or not record.trusted_success:
+            continue
+        for chunk in record.payload.get("chunks") or []:
+            amount = extract_amount(chunk)
+            if amount is not None:
+                found.append(amount)
+
+    if not found:
+        return None
+    if len({a.value for a in found}) != 1 or len({a.currency for a in found}) != 1:
+        return None
+
+    amount = found[0]
+    claimed = getattr(parsed_claim, "value", None)
+    # The claim states its own currency more often than not -- "fined 500
+    # million euros" -- and reading it is cheaper and more honest than
+    # assuming one. When it matches the filing there is no rate to guess.
+    if claimed and currency_in_text(claim_text) != amount.currency:
+        ratio = max(abs(claimed), amount.value) / max(min(abs(claimed), amount.value), 1e-9)
+        if ratio < FX_SAFE_MAGNITUDE_RATIO:
+            # Close enough that the answer would turn on an exchange rate this
+            # release does not have. Declining is the honest outcome.
+            return None
+
+    return TrustedObservation(
+        tool="search_filing_text",
+        metric=metric,
+        value=amount.value,
+        units=amount.currency,
+        period_end=None,
+        concept=None,
+        source_id=amount.evidence_id,
+    )
+
+
 def resolve_trusted_observation(
     parsed_claim: Any,
     records: Sequence[ToolExecutionRecord],
     expected_period_end: Optional[str] = None,
     expected_period_start: Optional[str] = None,
+    narrative_metric: Optional[str] = None,
+    claim_text: Optional[str] = None,
 ) -> Optional[TrustedObservation]:
     """The one number a numeric verdict may rest on, or None.
 
@@ -406,6 +468,17 @@ def resolve_trusted_observation(
     That last check matters: a correct figure from the wrong fiscal year is not
     weak evidence, it is the wrong evidence, and the comparator cannot tell.
     """
+    # Penalties have no XBRL concept -- a fine is not a financial-statement
+    # line item -- so the loop below can never resolve one, and every such
+    # claim failed closed no matter what the filing said. The filing is the
+    # authoritative record of the disclosure; what could not be trusted was a
+    # *model* reading a number out of it. `extract_amount` has Python read it
+    # instead, and declines wherever that would be a guess.
+    penalty_metric = narrative_metric or getattr(parsed_claim, "metric", None)
+    if penalty_metric in CORROBORATION_METRICS:
+        return _penalty_observation(parsed_claim, records, penalty_metric,
+                                    claim_text)
+
     metric = getattr(parsed_claim, "metric", None)
     if not metric:
         # A claim with no canonical metric (narrative claims parse this way)
