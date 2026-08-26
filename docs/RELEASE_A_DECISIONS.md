@@ -373,3 +373,81 @@ directory at *import* time, so whether it ran depended on which conftest had
 already loaded `.env`: `pytest tests/unit` skipped it and `pytest tests` ran it.
 The failure was invisible to every unit-only run and to CI. The directory is now
 resolved per test, and both bounds are in the round-trip field list.
+
+---
+
+## D17 — A disclosure is scoped forward from its event, not onto a period
+
+**Decision.** `search_filing_text` passes the resolved period as `period_start`
+— a lower bound on which filings could carry the disclosure — rather than as an
+exact `period_end`. Numeric retrieval through `sec_tools` is unchanged and keeps
+exact matching.
+
+**This partially reverses D-era commit `5b86cff`** ("reject unscoped or
+irrelevant filing evidence"), which introduced the scoping. That commit's
+reasoning was:
+
+> Retrieval ignored the resolved period, so a FY2024 query could fill its
+> candidate set with chunks from other years — wrong evidence, not weak
+> evidence, and nothing downstream could tell.
+
+That is correct, and the example it reaches for says what it was aimed at: a
+*numeric* query, where a FY2023 figure satisfying a FY2024 claim is genuinely
+the wrong evidence. The mistake was applying it to narrative text as well.
+
+**Why the two differ.** A number belongs to exactly one period. A disclosure
+describes an *event*, and appears in whichever filings were current while the
+matter was live — often across several, often years later. Apple's March 2024
+European Commission investigation is disclosed in the **FY2025** 10-K and
+carried across three filings. Measured against the live corpus:
+
+| scope | chunks |
+|---|---|
+| `period_end = 2024-12-31` (what the resolver produces) | 0 |
+| `period_end = 2024-09-28` (even with the fiscal mapping corrected) | 0 |
+| `period_start = 2024-01-01` | 4 |
+
+Note the second row: this was not the fiscal-vs-calendar bug wearing a
+disguise. Exact matching fails on a correct fiscal date too.
+
+**What it cost while it stood.** The News → SEC delegation failed 100% of the
+time. The nested agent searched, got nothing, reworded, got nothing, and died at
+its recursion limit of 7 — reported honestly as `FAILED`, with no provenance at
+all. A/B against the real delegation:
+
+```
+A  exact period_end   : success=False  status=FAILED   provenance=0  (recursion limit)
+B  forward range      : success=True   status=…        provenance=2  (found=3 each)
+```
+
+End to end after the change, the same claim returns `status=NO_MATCHING_
+DISCLOSURE`, `retrieved_value=500,000,000` against a claimed 500,000,000, and 6
+filing sources. The status is not `CORROBORATES` because the nested agent still
+declines to assert a number read from prose — the trust boundary holding, which
+is the point.
+
+**Why relaxing this is safe.** `search_filing_text` is in
+`SUPPORTING_EVIDENCE_TOOLS`, so filing prose can never become a trusted
+observation and no numeric verdict can rest on it. "Wrong-period narrative text"
+and "wrong-period figure" are therefore not the same hazard, which is exactly
+why the constraint was misplaced here. The ticker filter — the one that actually
+prevents cross-company evidence — is untouched.
+
+**The imprecision this accepts, stated rather than discovered later.** A claim
+naming a specific filing will also match later filings that carry the same
+disclosure forward. There is no signal distinguishing "the period of the filing"
+from "when the event happened"; the parsed `period` field means both. Each chunk
+carries its own `period_end`, `filing_type` and `evidence_id` in the response, so
+the attribution stays visible to a reader. Bounded, visible imprecision was
+preferred over a feature that returned nothing.
+
+**Diagnostic note.** Two theories were investigated and disproved before this
+one: that the nested agent's toolbox was too wide, and that
+`A2A_MAX_ITERATIONS = 3` was too small. Under forward-range scoping the agent
+still calls the same "wasteful" preamble tools and still finishes inside three
+iterations, because the first search succeeds and the retry loop never starts.
+Both were symptoms.
+
+**To lift it.** A parsed claim that distinguishes an event date from a filing
+period would allow exact scoping where a filing is named and forward scoping
+where an event is. That is a parser change, and it is Release B.

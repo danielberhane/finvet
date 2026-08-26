@@ -650,6 +650,18 @@ class TestPeriodIsInjectedNotAsked:
         assert {"period_end", "period_start", "period_end_max"} <= set(params)
 
     def test_tool_passes_the_scoped_period(self, monkeypatch):
+        """The period reaches the search out of band, as a lower bound.
+
+        This asserted `period_end` — an exact match — and that was the defect,
+        not the contract. A disclosure appears in whichever filings were
+        current while the matter was live, so exact matching returned zero
+        chunks for events disclosed in a later filing and the News -> SEC
+        delegation failed every time. See
+        tests/unit/test_narrative_retrieval_scope.py.
+
+        What this test is actually for is unchanged and still asserted: the
+        date comes from the resolved period, never from the model.
+        """
         from finvet.tools import filing_search
         from finvet.tools.sec_tools import use_period_target
 
@@ -662,4 +674,6 @@ class TestPeriodIsInjectedNotAsked:
             filing_search.search_filing_text.invoke(
                 {"query": "q", "ticker": "AAPL"})
 
-        assert fake.search.call_args.kwargs["period_end"] == "2024-09-28"
+        kwargs = fake.search.call_args.kwargs
+        assert kwargs["period_start"] == "2024-09-28"
+        assert not kwargs.get("period_end")
