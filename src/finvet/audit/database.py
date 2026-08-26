@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.exc import IntegrityError
 from ..config.database import get_db_session
+from ..llm.factory import active_llm_config
 from ..utils.logging import get_logger
 from .integrity import (
     build_execution_envelope,
@@ -158,6 +159,10 @@ class AuditDatabase:
         timestamp = datetime.utcnow().isoformat()
         claim_hash = hashlib.sha256(claim_text.encode()).hexdigest()
 
+        # Read once and used for both the envelope and the column, so the two
+        # cannot disagree even if the settings were somehow changed mid-run.
+        llm_config = active_llm_config()
+
         # Hash exactly what gets stored. The previous scheme hashed the event
         # list while the row also held the claim, verdict, confidence, final
         # response and data sources -- so any of those could change without
@@ -172,6 +177,7 @@ class AuditDatabase:
             events=events,
             final_response=final_response,
             data_sources=data_sources,
+            llm_config=llm_config,
         )
         execution_hash = compute_execution_checksum(envelope)
 
@@ -192,6 +198,7 @@ class AuditDatabase:
                     # verification can recompute from what it reads back.
                     full_trace=envelope,
                     data_sources=data_sources,
+                    llm_config=llm_config,
                 )
                 session.add(execution)
                 self._insert_missing_events(session, request_id, events)
@@ -221,6 +228,7 @@ class AuditDatabase:
             "execution_hash": execution.execution_hash,
             "full_trace": execution.full_trace,
             "data_sources": execution.data_sources,
+            "llm_config": execution.llm_config,
             "created_at": execution.created_at,
         }
 

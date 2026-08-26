@@ -17,6 +17,30 @@ from langchain_openai import ChatOpenAI
 from ..config.settings import settings
 
 
+LLM_ROLES = ("parser", "agent", "verdict")
+
+
+def active_llm_config() -> dict:
+    """Which model stands behind each role, for the audit record.
+
+    A stored result that does not say what produced it cannot be compared
+    against a result from another model. `base_url` is included because a model
+    name alone is ambiguous across providers -- the same name can be served by
+    a hosted API and by a local Ollama endpoint, and they are not the same run.
+    No API key is included.
+    """
+    return {
+        role: {
+            "model": getattr(settings, f"llm_{role}").model,
+            "base_url": getattr(settings, f"llm_{role}").base_url,
+            "temperature": getattr(settings, f"llm_{role}").temperature,
+            "structured_output_method":
+                getattr(settings, f"llm_{role}").structured_output_method,
+        }
+        for role in LLM_ROLES
+    }
+
+
 def create_llm(purpose: Literal["parser", "agent", "verdict"]) -> BaseChatModel:
     """Create an LLM instance for the given purpose.
 
