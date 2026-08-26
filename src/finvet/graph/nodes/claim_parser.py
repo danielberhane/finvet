@@ -293,28 +293,37 @@ def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
             data["operator"] = None
             operator_decision = "dropped_operator_without_value"
 
-    # Range bounds. A model that omits them leaves None -- the band is not
-    # reconstructable from a midpoint, and guessing one would silently answer
-    # a claim nobody stated. A range without both bounds is downgraded to
-    # approx, which is honest about having only a point estimate; bounds on a
-    # non-range operator are dropped rather than allowed to imply an interval.
+    # Range bounds. A band that cannot be read as stated is declined, not
+    # repaired: both repairs this code used to perform answered a question
+    # nobody asked. Swapping inverted bounds picks one of two readings of
+    # "between $100B and $50B" and then returns a decisive verdict on the
+    # guess. Downgrading a bandless range to approx turns a membership
+    # question into a point comparison, so a filed value squarely inside the
+    # intended band can come back REFUTES. Stray bounds on a non-range
+    # operator are different -- nothing was asserted about an interval, so
+    # dropping them removes noise rather than changing the claim.
     range_decision = "none"
     if data.get("claim_type") != "reject":
         has_bounds = (data.get("range_min") is not None
                       and data.get("range_max") is not None)
+        rejection = None
         if data.get("operator") == "range" and not has_bounds:
-            data["operator"] = "approx"
-            data["range_min"] = data["range_max"] = None
-            range_decision = "range_without_bounds_downgraded_to_approx"
+            rejection = ("range_without_bounds_rejected",
+                         "the stated range is missing one or both bounds")
         elif data.get("operator") != "range" and (
                 data.get("range_min") is not None
                 or data.get("range_max") is not None):
             data["range_min"] = data["range_max"] = None
             range_decision = "dropped_bounds_without_range"
         elif has_bounds and data["range_min"] > data["range_max"]:
-            data["range_min"], data["range_max"] = (
-                data["range_max"], data["range_min"])
-            range_decision = "swapped_inverted_bounds"
+            rejection = ("inverted_bounds_rejected",
+                         "the stated range's lower bound exceeds its upper bound")
+
+        if rejection:
+            range_decision, reason = rejection
+            logger.info(f"Declining claim: {reason}")
+            # A reject carries nothing but its reason.
+            data = {"claim_type": "reject", "reject_reason": reason}
 
     return data, {"reject": reject_decision, "metric": metric_decision,
                   "operator": operator_decision, "range": range_decision}

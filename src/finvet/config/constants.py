@@ -72,18 +72,27 @@ RRF_K = 60  # Reciprocal Rank Fusion constant
 # back with the closest passages and the tool reports success. Calibrated
 # against a labelled set rather than chosen: see
 # tests/accuracy/rag_relevance_cases.json and the header of test_rag.py.
-# Measured 2026-08-25 against 988 chunks from 15 filings (5 tickers), using
-# 30 positive and 30 negative query/ticker pairs in
-# tests/accuracy/rag_relevance_cases.json:
+# Re-measured 2026-08-26 against 1,398 chunks from 15 filings (5 tickers)
+# after the Release-A re-ingestion, using the same 30 positive and 30 negative
+# query/ticker pairs. The full evidence, per case, is in
+# tests/accuracy/rag_release_a_manifest.json.
 #
-#   positives  n=30  min 0.5469  median 0.6656  max 0.7791
-#   negatives  n=30  max 0.5168  median 0.4544  min 0.3929
+#   positives  n=30  min 0.5752
+#   negatives  n=30  max 0.5307   (off-topic queries)
 #
-# Any threshold in [0.5169, 0.5469) accepts zero negatives at 100% positive
-# recall. 0.53 sits near the middle of that band rather than on its edge, so
-# an unseen negative scoring slightly high, or an unseen positive scoring
-# slightly low, does not immediately cross it.
-RAG_MIN_VECTOR_SIMILARITY = 0.53
+# The separating band is therefore (0.5307, 0.5752), and 0.55 sits inside it
+# with margin on both sides: 0.0193 above the worst negative, 0.0252 below the
+# weakest positive.
+#
+# It was 0.53, calibrated against the previous 988-chunk index whose band was
+# (0.5168, 0.5469). Re-ingestion moved both edges up, and 0.53 ended up 0.0007
+# *below* the worst negative -- close enough that an off-topic query ("scuba
+# diving decompression tables", 0.5307 against TSLA filings) would clear the
+# floor and the tool would return filing text for it. The threshold follows
+# the corpus; it is not a constant anyone chose to like.
+#
+# Regenerate with: PYTHONPATH=src .venv/bin/python scripts/build_rag_manifest.py
+RAG_MIN_VECTOR_SIMILARITY = 0.55
 
 # ---------------------------------------------------------------------------
 # Memory thresholds (used in memory/service.py and main.py)

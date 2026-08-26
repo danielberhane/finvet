@@ -2,12 +2,17 @@
 name = "finvet"
 version = "2.0.9"
 description = "Financial claim verification system"
-requires-python = ">=3.11"
+# CI tests 3.11, 3.12 and 3.13. An unbounded floor advertises support for
+# versions nothing has ever run.
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "langchain>=0.3.0",
     "langgraph>=0.2.0",
     "langchain-openai>=1.1.0",   # llm/factory.py — the OpenAI-*compatible*
                                  # client used for DeepSeek/Ollama/vLLM/LiteLLM
+    "langchain-core>=1.2.8",     # imported directly in 12 modules; it
+                                 # arrived transitively before, so a
+                                 # langchain bump could have removed it
     "tiktoken>=0.12.0",          # rag/parser.py — chunk token counting
     # "langchain-anthropic>=0.2.0",
     # "anthropic>=0.39.0",
@@ -20,8 +25,6 @@ dependencies = [
     "tavily-python>=0.5.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.27.0",
-    "langgraph-checkpoint-postgres>=3.0.4",
-    "psycopg[binary]>=3.1.0",
     "pgvector>=0.4.2",
     "beautifulsoup4>=4.14.3",
     # UI (ui/app.py)
@@ -31,6 +34,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Claim memory only. It ships disabled (RELEASE_A_DECISIONS.md, D8), so a
+# default install does not need these -- and main.py imports PostgresStore
+# lazily, inside the feature gate, so the API boots without them.
+#   uv sync --extra memory
+memory = [
+    "langgraph-checkpoint-postgres>=3.0.4",
+    "psycopg[binary]>=3.1.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",

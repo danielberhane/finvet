@@ -15,8 +15,7 @@ On the free tier the endpoint returns 403; that failure is raised rather than
 substituted from another source.
 """
 
-import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -59,7 +58,13 @@ class Quote(BaseModel):
     change: Optional[float] = Field(None, description="Price change")
     change_percent: Optional[str] = Field(None, description="Price change percentage")
     volume: Optional[int] = Field(None, description="Trading volume")
-    latest_trading_day: Optional[str] = Field(None, description="Latest trading day")
+    latest_trading_day: Optional[str] = Field(
+        None,
+        description="Trading day the source timestamped this quote, in UTC. "
+                    "None when the source did not supply one -- never the "
+                    "API server's clock.")
+    source_mode: str = Field(
+        "live", description="'live' or 'mock'; mock data is not an observation")
     previous_close: Optional[float] = Field(None, description="Previous closing price")
     open: Optional[float] = Field(None, description="Opening price")
     high: Optional[float] = Field(None, description="Day's high price")
@@ -170,12 +175,14 @@ class FinnhubClient:
 
         if self.mock_mode:
             mock = self._get_mock_data(symbol)
-            today = datetime.now().strftime("%Y-%m-%d")
             change = round(mock["price"] * 0.012, 2)
             return Quote(
                 symbol=symbol, price=mock["price"], change=change,
                 change_percent=f"{(change / mock['price']) * 100:.2f}%",
-                volume=15000000, latest_trading_day=today,
+                # No observation time and an explicit mode. Mock data stamped
+                # with today's date is indistinguishable from a real quote, and
+                # would reach the comparator as though a source had supplied it.
+                volume=15000000, latest_trading_day=None, source_mode="mock",
                 previous_close=round(mock["price"] - change, 2),
                 open=round(mock["price"] * 0.998, 2),
                 high=round(mock["price"] * 1.01, 2),
@@ -192,13 +199,27 @@ class FinnhubClient:
         change = round(current - prev_close, 2) if prev_close else 0
         change_pct = round((change / prev_close * 100), 2) if prev_close else 0
 
+        # The source's own timestamp or nothing. Substituting the server clock
+        # manufactures an observation time that reads as source-provided and is
+        # not. Converted in UTC because `t` is a UTC epoch: a local conversion
+        # attributes a quote near midnight to whichever day the server is in,
+        # so the same quote carries different provenance in two deployments.
+        raw_ts = data.get("t")
+        observed_day = (
+            datetime.fromtimestamp(raw_ts, tz=timezone.utc).strftime("%Y-%m-%d")
+            if isinstance(raw_ts, (int, float))
+            and not isinstance(raw_ts, bool)
+            and raw_ts > 0
+            else None
+        )
+
         return Quote(
             symbol=symbol,
             price=current,
             change=change,
             change_percent=f"{change_pct:.2f}%",
             volume=None,
-            latest_trading_day=datetime.fromtimestamp(data.get("t", time.time())).strftime("%Y-%m-%d"),
+            latest_trading_day=observed_day,
             previous_close=prev_close,
             open=data.get("o"),
             high=data.get("h"),

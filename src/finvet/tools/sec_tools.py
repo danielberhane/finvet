@@ -92,6 +92,10 @@ def _format_financial_items(financials: list) -> list[dict]:
             "units": f.units,
             "period": f.period,
             "period_end": f.period_end,
+            # Fact-level quality, carried to the trust boundary. A segment or
+            # subsidiary figure is not the entity-wide number a claim asks
+            # about, and dropping this made the two indistinguishable.
+            "consolidated": f.consolidated,
         }
         for f in financials
     ]
@@ -175,8 +179,9 @@ def get_recent_filings(
     - "10-K/A": Amended annual (check if original 10-K was restated)
     - "8-K": Current report (for earnings announcements, material events)
 
-    Important: For Q4 claims, you need BOTH the 10-K (annual) and Q3 10-Q
-    because Q4 = Annual - (Q1+Q2+Q3). Q4 is NOT filed separately.
+    Note: Q4 is not filed separately, and this release does not support
+    deriving it. Q4 numeric claims are declined before an agent runs; do not
+    attempt to assemble one from an annual and a nine-month figure.
 
     Args:
         cik: SEC Central Index Key (10-digit, from get_company_info)

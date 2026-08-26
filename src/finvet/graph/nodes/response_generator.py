@@ -108,7 +108,6 @@ def response_generator(state: VerificationState) -> Dict:
 
     return {
         "final_response": final_response,
-        "execution_end_time": datetime.utcnow().isoformat(),
     }
 
 
@@ -147,7 +146,6 @@ def _generate_hitl_response(state: VerificationState) -> Dict:
 
     return {
         "final_response": final_response,
-        "execution_end_time": datetime.utcnow().isoformat(),
     }
 
 
@@ -195,7 +193,6 @@ def _generate_rejection_response(state: VerificationState) -> Dict:
 
     return {
         "final_response": final_response,
-        "execution_end_time": datetime.utcnow().isoformat(),
     }
 
 
@@ -224,7 +221,6 @@ def _generate_error_response(
 
     return {
         "final_response": final_response,
-        "execution_end_time": datetime.utcnow().isoformat(),
     }
 
 
@@ -349,6 +345,9 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         "timestamp": execution_end,
         "total_tokens_used": state.get("total_tokens_used", 0),
         "retrieved_value": agent_evidence.get("retrieved_value"),
+        # Carried to the audit envelope so a reviewer can locate the number in
+        # the source rather than take the pipeline's word for it.
+        "trusted_observation": agent_evidence.get("trusted_observation"),
         "claimed_value": parsed_claim.value if parsed_claim else None,
         "operator": operator,
         "metric": metric,
@@ -358,6 +357,9 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         # only auditable if the verdict it replaced is visible next to it.
         "override_applied": agent_evidence.get("override_applied", False),
         "llm_original_verdict": agent_evidence.get("llm_original_verdict"),
+        # Machine-readable, so a client can tell "we cannot answer this" from
+        # "we looked and found nothing". None on a normal run.
+        "limitation": agent_evidence.get("limitation"),
     }
 
     # Always build data source provenance breakdown (XBRL vs RAG vs A2A)
@@ -371,6 +373,9 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         data_sources["xbrl"] = {
             "used": True,
             "tools": sorted(tools_used & xbrl_tools),
+            # Named tools alone cannot show what the comparison rested on.
+            # The observation keeps its identity here, as RAG chunks do below.
+            "observation": agent_evidence.get("trusted_observation"),
         }
 
     if rag_chunks:
@@ -385,18 +390,35 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
             "sections": sorted(set(c.get("section", "") for c in rag_chunks)),
             "evidence": [
                 {
-                    "chunk_id": c.get("chunk_id"),
+                    # Identity. evidence_id is content-derived, so a citation
+                    # written today still resolves after the corpus is rebuilt;
+                    # part and item together locate the passage, because a 10-Q
+                    # restarts item numbering in each part.
+                    "evidence_id": c.get("evidence_id"),
                     "ticker": c.get("ticker"),
                     "cik": c.get("cik"),
                     "filing_type": c.get("filing_type"),
+                    "filing_date": c.get("filing_date"),
                     "period_end": c.get("period_end"),
+                    "part": c.get("part"),
+                    "item_number": c.get("item_number"),
                     "section": c.get("section"),
                     "chunk_index": c.get("chunk_index"),
                     "query": c.get("search_query"),
+                    # Both arms' raw signals and their positions. RRF discards
+                    # the strengths when it fuses; keyword_score is the ts_rank
+                    # value and keyword_rank the ordinal, which a single
+                    # mislabelled field used to conflate.
                     "vector_similarity": c.get("vector_similarity"),
+                    "vector_rank": c.get("vector_rank"),
+                    "keyword_score": c.get("keyword_score"),
                     "keyword_rank": c.get("keyword_rank"),
-                    "rrf_score": c.get("score"),
+                    "rrf_score": c.get("rrf_score"),
+                    # The hash covers the stored column, not the wrapped
+                    # excerpt below; the scope says which bytes to rehash.
                     "content_sha256": c.get("content_sha256"),
+                    "hash_scope": c.get("hash_scope"),
+                    "evidence_role": c.get("evidence_role"),
                     "excerpt": c.get("chunk_text"),
                 }
                 for c in rag_chunks

@@ -111,3 +111,85 @@ class TestGoldConstructsExactly:
         claim = ParsedClaim(**gold)
         for field, expected in gold.items():
             assert getattr(claim, field) == expected, field
+
+
+class TestMalformedRangesAreRejectedNotRewritten:
+    """The parser rewrote a malformed band into a different question.
+
+    "between $100B and $50B" had its bounds swapped, and "between ..." with no
+    bounds became `approx` around a midpoint. Both then produced a decisive
+    verdict about an interval the claimant never stated. When the stated band
+    is unusable the honest outcome is to decline the claim, not to guess which
+    band was meant.
+    """
+
+    def _normalize(self, **overrides):
+        from finvet.graph.nodes.claim_parser import normalize_parser_output
+
+        raw = {"claim_type": "sec", "ticker": "AAPL", "metric": "revenue",
+               "operator": "range", "value": 75.0, "period": "FY2024"}
+        raw.update(overrides)
+        return normalize_parser_output(raw, "a claim about a band")
+
+    def test_inverted_bounds_are_rejected(self):
+        data, decisions = self._normalize(range_min=100.0, range_max=50.0)
+        assert data["claim_type"] == "reject", (
+            "an inverted band was silently swapped into a different claim")
+        assert decisions["range"] == "inverted_bounds_rejected"
+
+    def test_a_range_without_bounds_is_rejected(self):
+        data, decisions = self._normalize(range_min=None, range_max=None)
+        assert data["claim_type"] == "reject", (
+            "a bandless range became approx, answering a point question")
+        assert "operator" not in data, "a reject carries nothing but its reason"
+        assert decisions["range"] == "range_without_bounds_rejected"
+
+    def test_a_half_open_range_is_rejected(self):
+        data, _ = self._normalize(range_min=50.0, range_max=None)
+        assert data["claim_type"] == "reject"
+
+    def test_a_well_formed_band_survives(self):
+        data, decisions = self._normalize(range_min=50.0, range_max=100.0)
+        assert data["claim_type"] == "sec"
+        assert (data["range_min"], data["range_max"]) == (50.0, 100.0)
+        assert decisions["range"] == "none"
+
+    def test_bounds_without_a_range_operator_are_still_dropped(self):
+        """Not a malformed band -- a non-range claim that carries stray
+        bounds. Dropping them removes an interval nobody asserted."""
+        data, decisions = self._normalize(operator="eq", range_min=50.0,
+                                          range_max=100.0)
+        assert data["claim_type"] == "sec"
+        assert data["range_min"] is None and data["range_max"] is None
+        assert decisions["range"] == "dropped_bounds_without_range"
+
+    def test_a_rejected_band_reaches_the_claim_as_a_rejection(self):
+        """Through the real node: the rejection must survive construction of
+        the ParsedClaim, not raise a validation error deeper in."""
+        import json
+        from unittest.mock import MagicMock, patch
+
+        # nodes/__init__ re-exports the node function under its module's own
+        # name, so both `from ... import claim_parser` and a dotted import
+        # bind the function. import_module returns the module itself.
+        import importlib
+
+        parser_mod = importlib.import_module(
+            "finvet.graph.nodes.claim_parser")
+
+        raw = {"claim_type": "sec", "ticker": "AAPL", "metric": "revenue",
+               "operator": "range", "value": 75.0, "period": "FY2024",
+               "range_min": 100.0, "range_max": 50.0}
+
+        llm = MagicMock()
+        llm.invoke.return_value = MagicMock(content=json.dumps(raw))
+        with patch.object(parser_mod, "create_llm", return_value=llm), \
+             patch.object(parser_mod, "get_audit_logger", return_value=MagicMock()):
+            result = parser_mod.claim_parser(
+                {"claim_raw": "revenue was between $100B and $50B",
+                 "request_id": "req_000000000003"})
+
+        parsed = result.get("parsed_claim")
+        assert parsed is not None
+        assert parsed.claim_type == "reject", (
+            f"a malformed band produced a verifiable claim: {parsed}")

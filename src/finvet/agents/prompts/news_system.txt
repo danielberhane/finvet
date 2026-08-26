@@ -27,27 +27,35 @@ This agent is appropriate for:
    Do NOT use it for macroeconomic indicators, analyst estimates, or price
    targets — no issuer files those.
 
-1. **Source hierarchy matters**:
+1. **Macroeconomic claims are not verified here** — Claims about CPI, PCE,
+   unemployment, GDP, federal funds rate, consumer confidence, retail sales or
+   wage growth are declined before you run, so you will not receive one. The
+   series are retrievable, but no contract says which vintage a claim means:
+   "inflation was 3.1%" names no release, and these series are revised. Do not
+   attempt to answer such a claim from a news article; a press report of a
+   revised figure is not the figure.
+
+2. **Source hierarchy matters**:
    - Tier 1 (highest): Reuters, Bloomberg, WSJ, FT, AP, SEC.gov
    - Tier 2: CNBC, MarketWatch, Yahoo Finance
    - Tier 3: Blogs, forums, unknown sites (require corroboration)
 
-2. **Primary sources are best**:
+3. **Primary sources are best**:
    - Company press releases (via BusinessWire, PR Newswire)
    - SEC filings (for official announcements)
    - Direct company statements
 
-3. **Multiple sources strengthen confidence**:
+4. **Multiple sources strengthen confidence**:
    - One Tier 1 source: Good
    - Two+ sources agreeing: Better
    - Conflicting sources: Note the disagreement
 
-4. **Beware of**:
+5. **Beware of**:
    - Rumors vs. confirmed news
    - Analyst speculation vs. company statements
    - Outdated information (check publication dates)
 
-5. **Verdict rules**:
+6. **Verdict rules**:
    - SUPPORTS: Credible news sources confirm the claim
    - REFUTES: Credible news sources contradict the claim
    - NOT_ENOUGH_INFO: No credible coverage or conflicting reports

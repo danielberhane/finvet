@@ -127,22 +127,37 @@ class TestApiVerifiesByRecomputation:
 
         logger = MagicMock()
         logger.get_execution.return_value = execution
-        logger.get_events.return_value = []
+        # The event rows the envelope describes. Returning [] here would be a
+        # genuine divergence -- the envelope claiming events no row records --
+        # which integrity is now right to report.
+        logger.get_events.return_value = list(
+            (execution.get("full_trace") or {}).get("events") or [])
         with patch.object(audit_route, "get_audit_logger", lambda: logger):
             return asyncio.run(audit_route.get_audit_trail("req_abc123"))
 
     def _committed(self):
+        """A row as `get_execution` returns it.
+
+        The denormalized columns belong here: integrity now compares them
+        against the envelope, so a fixture carrying only `full_trace` would
+        describe a row that production never produces.
+        """
         envelope = _envelope()
-        return {"request_id": "req_abc123", "full_trace": envelope,
+        return {"request_id": "req_abc123",
+                "claim_text": envelope["claim"],
+                "verdict": envelope["verdict"],
+                "confidence": envelope["confidence"],
+                "agents_run": envelope["agents_run"],
+                "data_sources": envelope["data_sources"],
+                "full_trace": envelope,
                 "execution_hash": compute_execution_checksum(envelope)}
 
     def test_intact_record_verifies(self):
         out = self._route(self._committed())
-        assert out["integrity"] == {
-            "algorithm": "sha256",
-            "status": "verified",
-            "scope": "audit_execution.full_trace",
-        }
+        assert out["integrity"]["status"] == "verified"
+        assert out["integrity"]["algorithm"] == "sha256"
+        assert out["integrity"]["scope"] == "audit_execution.full_trace"
+        assert out["integrity"]["mismatches"] == []
 
     def test_altered_verdict_fails_verification(self):
         """The defect this replaces: the verdict lived beside the hash, not in
@@ -267,15 +282,23 @@ class TestWhatIsWrittenIsWhatVerifies:
 
         logger = MagicMock()
         logger.get_execution.return_value = execution
-        logger.get_events.return_value = []
+        logger.get_events.return_value = list(
+            (execution.get("full_trace") or {}).get("events") or [])
         with patch.object(audit_route, "get_audit_logger", lambda: logger):
             return asyncio.run(
                 audit_route.get_audit_trail("req_live"))["integrity"]["status"]
 
     def _readback(self, row):
-        """What Postgres returns from a JSONB column: a JSON round trip."""
+        """What Postgres returns for a row: a JSONB round trip plus the
+        denormalized columns integrity compares against the envelope."""
         import json
-        return {"full_trace": json.loads(json.dumps(row.full_trace)),
+        return {"request_id": row.request_id,
+                "claim_text": row.claim_text,
+                "verdict": row.verdict,
+                "confidence": row.confidence,
+                "agents_run": row.agents_run,
+                "data_sources": row.data_sources,
+                "full_trace": json.loads(json.dumps(row.full_trace)),
                 "execution_hash": row.execution_hash}
 
     def test_committed_record_verifies_after_a_jsonb_round_trip(self):

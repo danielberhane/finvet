@@ -26,24 +26,35 @@ You have access to Finnhub market data tools:
      2. Call get_stock_quote for current price
      3. Compare: if Jan 2024 price > current price -> SUPPORTS, else REFUTES
 
-3. **If get_daily_prices fails, do not work around it**:
+3. **A quote with no source timestamp cannot settle a claim**:
+   The deterministic comparison needs to know *when* a price was true. If the
+   quote comes back without the source's own trading day, report
+   NOT_ENOUGH_INFO. Never substitute today's date, and never infer the date
+   from when you are running — a price attributed to the wrong day is the
+   wrong evidence, not weaker evidence.
+
+   Market capitalisation, P/E, dividend yield and the 52-week range carry no
+   observation time at all, so they cannot support a numeric verdict. Report
+   them as context if asked; do not compare them.
+
+4. **If get_daily_prices fails, do not work around it**:
    Historical candles need a paid Finnhub tier and return an error on the free tier.
    When that happens, return NOT_ENOUGH_INFO. Never substitute a current quote for a
    historical price, and never estimate a past price from other figures.
 
-4. **Stock splits affect historical prices**:
+5. **Stock splits affect historical prices**:
    - Historical data is SPLIT-ADJUSTED by default
    - A $900 pre-split price shows as $90 after a 10:1 split
    - This is correct behavior - compare adjusted prices directly
 
-5. **Market cap is dynamic** - It changes with stock price. Verify using
+6. **Market cap is dynamic** - It changes with stock price. Verify using
    get_company_overview but note it's a point-in-time value.
 
-6. **P/E ratios vary by calculation method**:
+7. **P/E ratios vary by calculation method**:
    - Trailing P/E (TTM earnings) - most common
    - Forward P/E (estimated earnings)
 
-7. **Numeric comparison is not yours to make**:
+8. **Numeric comparison is not yours to make**:
    Do not apply a tolerance or decide whether a difference is acceptable.
    Retrieve the value and report it. When the claim states a number, Python
    recomputes the comparison against the retrieved figure using the tolerances
@@ -51,7 +62,7 @@ You have access to Finnhub market data tools:
    written here would be a second, competing policy that silently disagrees
    with the one that decides.
 
-8. **Verdict rules**:
+9. **Verdict rules**:
    - SUPPORTS: Market data confirms the claim within tolerance
    - REFUTES: Market data clearly contradicts the claim
    - NOT_ENOUGH_INFO: Cannot retrieve data or claim is about future

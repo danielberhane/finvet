@@ -31,11 +31,21 @@ class TestSeriesMap:
             "gdp_growth", "cpi_inflation", "core_pce",
             "retail_sales_growth", "wage_growth"}
 
-    def test_servable_news_matches_the_map_exactly(self):
-        """SERVABLE means retrievable: only dataset-validated series count.
-        pmi, housing_starts, tariff/tax_rate, trade_deficit stay out until
-        they have gold to validate against — fail closed, as everywhere."""
-        assert SERVABLE_METRICS["news"] == frozenset(FRED_SERIES)
+    def test_no_macro_metric_is_servable_in_release_a(self):
+        """Retrievable is no longer sufficient.
+
+        These eight series are dataset-validated and FRED returns them
+        happily. What is missing is a contract for *which* observation a claim
+        means: "inflation was 3.1%" names no vintage, and CPI is revised, so
+        the same claim is true or false depending on which release you read.
+        A decisive verdict on that rests on an unstated choice, so Release A
+        declines the whole class -- see RELEASE_A_DECISIONS.md, D10.
+
+        The map itself is retained: the retrieval works, and lifting the
+        decision needs a vintage contract, not new plumbing.
+        """
+        assert SERVABLE_METRICS["news"] == frozenset()
+        assert frozenset(FRED_SERIES), "the series map is kept for Release B"
 
     def test_series_ids_are_the_datasets_own(self):
         assert FRED_SERIES["unemployment_rate"][0] == "UNRATE"

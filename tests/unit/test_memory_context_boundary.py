@@ -198,3 +198,89 @@ class TestStateOwnership:
         none, so normalized input, guard outcomes and period assumptions were
         assembled and discarded."""
         assert "audit_events" not in self._declared()
+
+    # -- Task 9: the contract must not carry fields nothing uses ------------
+
+    # Keys the graph framework or an external consumer owns, each named with
+    # its consumer so the allowlist cannot quietly absorb dead fields.
+    _EXTERNALLY_CONSUMED = {
+        "claim_raw": "every node; set by the API",
+        "user_id": "audit input_received event",
+        "request_id": "audit, checkpointer thread_id",
+        "timestamp_received": "audit input_received event",
+        "memory_context": "base.py _build_context (experimental)",
+        "total_tokens_used": "response metadata, cost tracking",
+        "final_response": "the API returns it",
+        "parsed_claim": "read by every downstream node",
+        "canonical_period": "sec route, A2A period targeting",
+        "agent_evidence": "consensus, guardrails, response",
+        "agent_type": "audit agents_run",
+        "verdict": "consensus -> guardrails -> response",
+        "confidence": "consensus -> guardrails -> response",
+        "confidence_label": "response",
+        "hitl_required": "routing after output_guardrails",
+        "hitl_triggers": "response, review queue",
+        "hitl_checkpoint_passed": "terminal status derivation",
+        "hitl_decision": "apply_hitl_decision",
+        "hitl_override_verdict": "apply_hitl_decision",
+        "hitl_reviewer_notes": "finalize_review",
+        "hitl_applied": "response",
+        "disposition": "response metadata",
+        "disposition_detail": "response metadata",
+        "rag_chunks_retrieved": "response data_sources",
+        "corroboration_result": "output_guardrails, response",
+    }
+
+    def test_no_declared_field_is_written_and_never_read(self):
+        """A field the pipeline sets and nothing consults is not state; it is
+        a comment that costs a write. `audit_trail`, `execution_start_time`
+        and `execution_end_time` were exactly that -- and one of them carried
+        a docstring claiming a reader it did not have."""
+        import ast
+        import importlib
+        from pathlib import Path
+
+        declared = self._declared()
+        sources = []
+        for module_name in ("finvet.api.execution", "finvet.graph.nodes"):
+            module = importlib.import_module(module_name)
+            root = Path(module.__file__).parent
+            sources.extend(root.rglob("*.py"))
+        sources.append(Path(importlib.import_module("finvet.agents.base").__file__))
+
+        read, written = set(), set()
+        for path in sources:
+            tree = ast.parse(path.read_text())
+            for node in ast.walk(tree):
+                # state.get("x") / state["x"]
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                        and node.func.attr == "get" and node.args \
+                        and isinstance(node.args[0], ast.Constant):
+                    read.add(node.args[0].value)
+                elif isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant):
+                    read.add(node.slice.value)
+                elif isinstance(node, ast.Dict):
+                    for key in node.keys:
+                        if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                            written.add(key.value)
+
+        orphans = {f for f in declared
+                   if f in written and f not in read
+                   and f not in self._EXTERNALLY_CONSUMED}
+        assert not orphans, f"declared and written but never read: {sorted(orphans)}"
+
+    def test_the_dead_timing_fields_are_gone(self):
+        """Timing comes from `elapsed_ms(started_at)` at the API and from the
+        agent's own measurement in AgentEvidence."""
+        declared = self._declared()
+        for field in ("execution_start_time", "execution_end_time", "audit_trail"):
+            assert field not in declared, f"{field} is still declared"
+
+    def test_company_info_is_gone(self):
+        """It was read in `_build_context` and written by nothing, so the block
+        that formatted it could never run."""
+        from pathlib import Path
+
+        assert "company_info" not in self._declared()
+        source = Path("src/finvet/agents/base.py").read_text()
+        assert 'state.get("company_info")' not in source

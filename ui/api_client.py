@@ -59,6 +59,24 @@ def submit_review(request_id, payload):
         return None, f"Error submitting review: {e}"
 
 
+def reconcile_review(request_id):
+    """Retry the audit write for a review that ran but was never recorded.
+
+    Does not resubmit a decision: the reviewer decided once and the graph ran
+    once. Returns (response, error_msg).
+    """
+    try:
+        resp = requests.post(
+            f"{API_BASE_URL}/review/{request_id}/reconcile",
+            timeout=30
+        )
+        if resp.status_code == 200:
+            return resp.json(), None
+        return None, f"Failed to reconcile review: {resp.text}"
+    except Exception as e:
+        return None, f"Error reconciling review: {e}"
+
+
 def verify_claim(claim_text, memory_context_request_id=None):
     """Run claim verification. Returns (response_obj, error_type).
 

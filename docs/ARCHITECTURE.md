@@ -41,6 +41,7 @@ LangGraph Pipeline (12-node DAG + HITL checkpoint)
 | `POST` | `/verify` | Main claim verification | `input_received`, `commit_execution` |
 | `GET` | `/reviews` | List pending HITL reviews | -- |
 | `POST` | `/review/{id}` | Submit HITL decision | `hitl_{decision}` |
+| `POST` | `/review/{id}/reconcile` | Retry the audit write for a stuck review | -- |
 | `POST` | `/memory-check` | Search similar past verifications | -- |
 | `POST` | `/memory-accept` | Log cache acceptance | `memory_cache_accepted` |
 | `GET` | `/audit/{id}` | Full audit trail for a request | -- |
@@ -67,11 +68,13 @@ LangGraph Pipeline (12-node DAG + HITL checkpoint)
 8. `GuardrailViolation`: return 400 with `error_code`
 
 **HITL Resume** (`POST /review/{id}`):
-1. Validate decision (approve/override/reject)
-2. Audit: log `hitl_{decision}`
-3. Update state: `hitl_decision`, `hitl_override_verdict`, `hitl_reviewer_notes`
-4. Resume: `graph.invoke(None, config)` -- graph continues from checkpoint
-5. Fallback: if resume fails, compute verdict directly from audit DB
+1. Atomically claim the row `PENDING -> REVIEWING` (404 missing / 409 conflict / 503 outage)
+2. Validate decision (approve/override/reject); audit: log `hitl_{decision}`
+3. `update_state(...)` with the decision -- reversible; a failure here releases the claim
+4. `graph.invoke(None, config)` -- **irreversible from the call**; the claim is never released
+5. No fallback verdict. A missing or invalid result, or a failed audit write, moves the row to
+   `REVIEW_FINALIZATION_FAILED`; `POST /review/{id}/reconcile` retries the write from the
+   existing checkpoint without re-running the graph
 
 ---
 
@@ -301,9 +304,29 @@ News Agent ReAct loop
 ```
 
 Recursion is structurally impossible: the SEC agent holds no delegation tool, so News -> SEC
-terminates by construction. `status=CONTRADICTS` adds the `source_disagreement` HITL trigger;
-`NO_MATCHING_DISCLOSURE` and `NOT_APPLICABLE_YET` do not — filing silence is expected from a
-point-in-time document.
+terminates by construction.
+
+`status=CONTRADICTS` adds the `source_disagreement` HITL trigger. **Nothing else does.** The
+other statuses record why the delegation could not contradict anything:
+
+| status | meaning |
+|---|---|
+| `PENDING_CLASSIFICATION` | placeholder before the parent verdict exists |
+| `CORROBORATES` | both sources decisive and agreeing |
+| `CONTRADICTS` | both sources decisive and disagreeing — the only escalation |
+| `NO_MATCHING_DISCLOSURE` | an applicable filing **was searched** and does not mention it |
+| `NOT_APPLICABLE_YET` | the newest filing closed before the event |
+| `SOURCE_UNAVAILABLE` | nothing was successfully searched |
+| `NO_CORPUS` | no filing is indexed for the issuer |
+| `FAILED` | the delegation or its search errored |
+
+`NO_MATCHING_DISCLOSURE` requires a *successful* `search_filing_text` in the nested agent's
+provenance. Without one the result is `SOURCE_UNAVAILABLE`: a claim about what a filing says
+may only be made by something that read one, and calling an unread filing "silent" turns an
+absence of evidence into evidence of absence.
+
+Filing silence never escalates. A periodic report omits most things, and treating that as a
+conflict would route much of the traffic to a reviewer and teach them to ignore the flag.
 
 ---
 
@@ -375,6 +398,13 @@ point-in-time document.
 ---
 
 ### 2.7 Memory System (Episodic Claim Store)
+
+> **Experimental, and off by default** (`ENABLE_CLAIM_MEMORY=false`). This is the one
+> subsystem whose output is prior *model* output rather than a source: reusing a cached
+> verdict, or feeding a past summary back to an agent, moves something the system said into
+> the position of something it found. The implementation stays in the repository; the default
+> does not enable it. With it off, `/memory-check` answers `{"matches": []}` and the UI goes
+> straight to verification. See `RELEASE_A_DECISIONS.md`, D8.
 
 **File**: `src/finvet/memory/store_service.py`
 
@@ -451,7 +481,7 @@ Configurable via `LLM_PARSER__MODEL`, `LLM_AGENT__TEMPERATURE`, etc.
 | **RAG** | `EMBEDDING_MODEL` | `nomic-embed-text` |
 | | `EMBEDDING_DIMS` | 768 |
 | | `RRF_K` | 60 |
-| | `RAG_MIN_VECTOR_SIMILARITY` | 0.53 (calibrated, see constants.py) |
+| | `RAG_MIN_VECTOR_SIMILARITY` | 0.55 (calibrated, see constants.py) |
 | **Memory** | `MEMORY_CACHE_THRESHOLD` | 0.95 |
 | | `MEMORY_CONTEXT_THRESHOLD` | 0.75 |
 | | `MEMORY_SIMILAR_THRESHOLD` | 0.60 |
@@ -480,16 +510,86 @@ Three properties matter beyond the fusion itself:
 - **Relevance floor.** pgvector always returns a nearest neighbour, so a query about a
   disclosure that does not exist would otherwise come back with the closest passages.
   `RAG_MIN_VECTOR_SIMILARITY` was measured, not chosen: 30 positive and 30 negative
-  query/ticker pairs over the corpus put positives at min 0.5469 and negatives at max
-  0.5168, and 0.53 sits in that gap. Below it, `search_filing_text` returns
+  query/ticker pairs over the 1,398-chunk corpus put positives at min 0.5752 and off-topic
+  negatives at max 0.5307, and **0.55** sits in that gap with margin on both sides. It was
+  0.53 against the previous 988-chunk index, whose gap was (0.5168, 0.5469); re-ingestion
+  moved both edges up and left 0.53 marginally *below* the worst negative. The threshold
+  follows the corpus, and `scripts/build_rag_manifest.py` regenerates the evidence.
+
+  Below the floor, `search_filing_text` returns
   `success=True, chunks=[], reason="no_relevant_evidence"` -- an answer, not a failure.
+  When the issuer has no indexed filing at all it returns `reason="no_corpus"` instead:
+  a filing that was read and said nothing, and no filing to read, are opposite facts.
 - **Untrusted by construction.** Excerpts reach the model wrapped in `<filing_excerpt>`
   delimiters, and the SEC prompt states that text inside them is evidence to weigh and
   never an instruction to follow.
 
 ### HITL Checkpoint with MemorySaver
 
-LangGraph `interrupt_before` pauses graph. State persisted. API returns `pending_review`. Human review resumes via `update_state()` + `invoke(None, config)`.
+LangGraph `interrupt_before` pauses the graph. API returns `pending_review`. Human review
+resumes via `update_state()` + `invoke(None, config)`.
+
+The checkpointer is `MemorySaver`, so paused state lives in the API process only: **pending
+reviews do not survive an API restart.** The claim's PENDING execution row remains in
+Postgres and is still listed, but the paused graph it belongs to is gone and cannot be
+resumed. Persistent PostgreSQL checkpointing is out of scope for this release
+(see `RELEASE_A_DECISIONS.md`, D7).
+
+#### Review lifecycle
+
+The `verdict` column doubles as review-lifecycle state, so the transitions are:
+
+```
+PENDING --claim--> REVIEWING --finalize--> <terminal verdict>
+                       |
+                       +-- failure before invoke --> PENDING   (retryable)
+                       |
+                       +-- invoke began, no durable outcome -->
+                                     REVIEW_FINALIZATION_FAILED
+```
+
+**The boundary is the call to `invoke`, not its return.** Before it, nothing of the graph has
+run and the claim may safely go back to `PENDING`. From the call onward the checkpoint may
+have advanced, so the claim is never released: releasing it would let a second reviewer
+resume a partially-executed graph. A row with no durable audited outcome moves to
+`REVIEW_FINALIZATION_FAILED` instead, which is explicit, listed in the review queue with
+`review_status: "finalization_failed"`, and retryable.
+
+`POST /review/{request_id}/reconcile` retries the audit write. It reads the outcome the
+checkpoint already holds and never calls `update_state` or `invoke` — the human decided once
+and the graph ran once, so re-entering it would produce a second answer for one decision.
+
+**Reconciliation is same-process recovery only.** It depends on the `MemorySaver` checkpoint,
+so it works only while the API process that ran the review is still alive. After a restart the
+checkpoint is gone and reconcile reports `checkpoint_unavailable`; the claim must be re-run.
+This is not cross-process or restart-durable recovery, and nothing here should be described as
+such.
+
+If the database is unreachable at the moment of failure, the marker cannot be written and the
+row stays in `REVIEWING`. `scripts/report_audit_operations.py` is the read-only report that
+surfaces those, alongside events with no execution row and rows awaiting reconciliation.
+
+#### Integrity and review state
+
+`GET /audit/{request_id}` returns exactly three integrity statuses:
+
+| status | meaning |
+|---|---|
+| `verified` | the checksum recomputes and every displayed field matches the envelope |
+| `failed` | the checksum mismatched, or a row/event diverges from what was hashed |
+| `unavailable` | not checkable — the reason says why |
+
+`unavailable` carries one of three reasons: `no_checksum_recorded` for rows written before
+the scheme existed, `review_in_progress` for a row a reviewer has claimed, and
+`review_finalization_failed` for one awaiting reconciliation.
+
+**Order matters.** The checksum is recomputed **before** any lifecycle reasoning, so a
+corrupted row under review reports `failed`, not "not checked". Only once it passes does a
+row in `REVIEWING` or `REVIEW_FINALIZATION_FAILED` report `unavailable`: its verdict column
+and its review events are written outside the committed envelope by design, so the projection
+comparison cannot speak for it. Lifecycle state excuses the comparison, never the checksum.
+
+A terminal row is then compared field by field against the envelope, events included.
 
 ### Provenance for Audit Compliance
 
@@ -619,7 +719,7 @@ main.py            <-- api/routes, graph/workflow, config
 | `FINNHUB_API_KEY` | No | -- | Finnhub API key (mock mode if absent) |
 | `FINNHUB_MOCK_MODE` | No | false | Use mock market data |
 | `ENABLE_LLAMA_GUARD` | No | false | Enable Llama Guard semantic safety |
-| `ENABLE_CLAIM_MEMORY` | No | true | Enable claim memory |
+| `ENABLE_CLAIM_MEMORY` | No | **false** | Enable claim memory (experimental; see RELEASE_A_DECISIONS.md D8) |
 | `CONFIDENCE_THRESHOLD_HITL` | No | 0.70 | Below this triggers HITL |
 | `LOG_LEVEL` | No | INFO | Logging level |
 | `LLM_PARSER__MODEL` | No | deepseek-chat | Override parser LLM |
