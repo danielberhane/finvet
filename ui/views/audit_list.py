@@ -5,7 +5,7 @@ from datetime import datetime
 import streamlit as st
 
 from api_client import list_audit_executions
-from components.formatting import _escape, verdict_label
+from components.formatting import humanize, _escape, verdict_label
 from components.source_badges import _data_source_badges_html
 
 
@@ -131,7 +131,7 @@ def render_audit_list():
 
         badge_class   = _VERDICT_BADGE.get(verdict, "badge-nei")
         agent_display = "/".join(
-            {"sec": "SEC", "market": "Market", "news": "News"}.get(a, a.upper())
+            {"sec": "SEC", "market": "Market", "news": "News"}.get(a, humanize(a))
             for a in agents_run
         ) or "—"
         exec_s = f"{exec_ms / 1000:.1f}s" if exec_ms else "—"

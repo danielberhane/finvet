@@ -1,13 +1,14 @@
 """Verify Claim page — the main verification form + results."""
 
-import time
 from datetime import datetime
 
 import streamlit as st
 
 from api_client import memory_accept, memory_check, verify_claim_stream
 from components.evidence import render_evidence
-from components.formatting import _escape, verdict_label
+from components.formatting import (humanize, _escape, parsed_claim_rows,
+                                   stage_label, verdict_label)
+from components.progress import progress_html, progress_rows
 from components.source_badges import _data_source_badges_html, _override_badge_html
 
 
@@ -19,8 +20,8 @@ def _render_verification_result(data, from_memory=False, memory_similarity=None)
     summary = data.get("summary", "")
     explanation = data.get("explanation", "")
     metadata = data.get("metadata", {})
-    agent = metadata.get("agent", data.get("agent", "unknown"))
-    agent_display = {"sec": "SEC", "market": "Market", "news": "News"}.get(agent, agent.upper() if agent else "")
+    attribution = stage_label(metadata if metadata.get("agent") or metadata.get("disposition")
+                              else {"agent": data.get("agent")})
     exec_time = metadata.get("execution_time_ms", 0) / 1000
 
     if verdict == "SUPPORTS":
@@ -40,7 +41,11 @@ def _render_verification_result(data, from_memory=False, memory_similarity=None)
     if from_memory:
         source_line = f"From Memory &middot; {memory_similarity:.0%} match"
     else:
-        source_line = f"{agent_display} Agent &middot; {exec_time:.1f}s {badges_html}{override_html}"
+        # No agent runs on a rejected claim, so nothing is captioned as one.
+        pieces = [p for p in (attribution, f"{exec_time:.1f}s" if exec_time else "")
+                  if p]
+        source_line = " &middot; ".join(pieces)
+        source_line = f"{source_line} {badges_html}{override_html}".strip()
 
     parts = [
         f'<div class="{verdict_class}" style="display: flex; align-items: center; justify-content: space-between; text-align: left;">',
@@ -62,6 +67,9 @@ def _render_verification_result(data, from_memory=False, memory_similarity=None)
         tools_called=metadata.get("tools_called", []),
         tool_calls_detail=metadata.get("tool_calls_detail", []),
         data_sources=metadata.get("data_sources"),
+        # Already shown beside the verdict above; repeating them a few
+        # centimetres apart invites the reader to look for a difference.
+        show_badges=False,
     )
 
 
@@ -118,116 +126,89 @@ def _render_guardrail_error(err: dict):
     st.markdown("\n".join(parts), unsafe_allow_html=True)
 
 
-def _infer_claim_type(claim_text):
-    """Infer the likely agent type from claim keywords."""
-    lower = claim_text.lower()
-    market_kw = ["stock price", "market cap", "p/e ratio", "52-week", "trading above",
-                 "trading below", "share price", "pe ratio"]
-    news_kw = ["announced", "acquired", "launched", "replaced", "laid off",
-               "recalled", "released", "joined", "completed its acquisition",
-               "stock split", "buyback"]
-    if any(kw in lower for kw in market_kw):
-        return "market"
-    if any(kw in lower for kw in news_kw):
-        return "news"
-    return "sec"
-
-
-# Shown in the status body when a node finishes
-_NODE_COMPLETED_LABELS = {
-    "input_guardrails": "Safety check passed",
-    "claim_parser": "Claim parsed",
-    "period_resolver": "Time period resolved",
-    "sec_agent": "SEC EDGAR data retrieved",
-    "market_agent": "Market data retrieved",
-    "news_agent": "News data retrieved",
-    "reject_handler": "Claim rejected by parser",
-    "consensus": "Evidence evaluated",
-    "output_guardrails": "Output guardrails applied",
-    "hitl_checkpoint": "HITL checkpoint passed",
-    "apply_hitl_decision": "Review decision applied",
-    "response_generator": "Response generated",
-}
-
-# Shown in the status widget label after a node completes (= what's running next)
-_NEXT_STEP_LABELS = {
-    "input_guardrails": "Parsing claim...",
-    "period_resolver": "Querying SEC EDGAR for filing data...",
-    "sec_agent": "Evaluating evidence...",
-    "market_agent": "Evaluating evidence...",
-    "news_agent": "Evaluating evidence...",
-    "consensus": "Applying output guardrails...",
-    "output_guardrails": "Generating final response...",
-    "hitl_checkpoint": "Applying review decision...",
-    "apply_hitl_decision": "Generating final response...",
-}
-
 
 def _run_verification(claim_text, memory_context_request_id=None):
     """Run the full verification pipeline with SSE streaming progress."""
-    status_placeholder = st.empty()
-    results_placeholder = st.container()
+    # One placeholder holding one element. It used to be an st.status inside a
+    # container inside another placeholder: the status auto-collapsed itself on
+    # completion -- Streamlit does that on state="complete", and expanded=True
+    # does not override it -- so the ledger shut at the moment a reader wanted
+    # it, and the nested placeholders defeated the clear afterwards.
+    progress_slot = st.empty()
+    # An st.empty(), not an st.container(): re-creating a container emits a
+    # block message but no clear for its children, so the *previous* run's
+    # verdict stayed mounted for the whole of the next one -- a stale answer
+    # sitting under a live ledger. It holds one element, so the four result
+    # panels go inside a container within it.
+    results_slot = st.empty()
 
-    start_time = time.time()
+    # Nothing from the last run survives into this one.
+    progress_slot.empty()
+    results_slot.empty()
 
-    with status_placeholder.container():
-        with st.status("Verifying claim", expanded=True) as status_widget:
-            st.caption(claim_text)
+    # Before the stream, so the click is acknowledged immediately rather than
+    # leaving a blank gap until the first node reports.
+    progress_slot.markdown(progress_html([], claim=claim_text),
+                           unsafe_allow_html=True)
 
-            data = None
-            for event in verify_claim_stream(claim_text, memory_context_request_id):
-                event_type = event.get("type")
+    seen_events = []
+    data = None
+    for event in verify_claim_stream(claim_text, memory_context_request_id):
+        event_type = event.get("type")
 
-                if event_type == "progress":
-                    node = event.get("node", "")
-                    # Show what just completed in the body
-                    completed = _NODE_COMPLETED_LABELS.get(node, node)
-                    st.write(completed)
-                    # Update status label to show what's running next
-                    if node == "claim_parser":
-                        claim_type = _infer_claim_type(claim_text)
-                        next_label = {
-                            "sec": "Resolving time period...",
-                            "market": "Fetching live market data...",
-                            "news": "Searching news sources...",
-                        }.get(claim_type, "Processing...")
-                    else:
-                        next_label = _NEXT_STEP_LABELS.get(node)
-                    if next_label:
-                        status_widget.update(label=next_label)
+        if event_type == "progress":
+            # The ledger replaces a rotating caption that named a stage
+            # and said nothing about this claim -- and named it from a
+            # keyword guess at the raw text, which was wrong whenever
+            # the keywords misled. The server now sends what each node
+            # produced, so the reader watches the evidence accumulate.
+            seen_events.append(event)
+            progress_slot.markdown(
+                progress_html(progress_rows(seen_events),
+                              claim=claim_text),
+                unsafe_allow_html=True)
 
-                elif event_type == "complete":
-                    data = event.get("response", {})
-                    elapsed = time.time() - start_time
-                    status_widget.update(
-                        label=f"Verification complete ({elapsed:.1f}s)",
-                        state="complete",
-                    )
+        elif event_type == "complete":
+            data = event.get("response", {})
+            progress_slot.markdown(
+                progress_html(progress_rows(seen_events, finished=True),
+                              claim=claim_text),
+                unsafe_allow_html=True)
 
-                elif event_type == "guardrail":
-                    status_widget.update(label="Claim blocked", state="error")
-                    _render_guardrail_error(event.get("response", {}))
-                    return
+        elif event_type == "guardrail":
+            progress_slot.markdown(
+                progress_html(progress_rows(seen_events, finished=True),
+                              claim=claim_text, stopped=True),
+                unsafe_allow_html=True)
+            _render_guardrail_error(event.get("response", {}))
+            return
 
-                elif event_type == "error":
-                    msg = event.get("message", "Unknown error")
-                    if msg == "timeout":
-                        status_widget.update(label="Request timed out", state="error")
-                        st.error("The verification request timed out. Please try again.")
-                    elif msg == "connection":
-                        status_widget.update(label="Connection failed", state="error")
-                        st.error("Could not connect to FinVet API.")
-                    else:
-                        status_widget.update(label="Verification failed", state="error")
-                        st.error(f"Error: {msg}")
-                    return
+        elif event_type == "error":
+            progress_slot.markdown(
+                progress_html(progress_rows(seen_events, finished=True),
+                              claim=claim_text, stopped=True),
+                unsafe_allow_html=True)
+            msg = event.get("message", "Unknown error")
+            if msg == "timeout":
+                st.error("The verification request timed out. Please try again.")
+            elif msg == "connection":
+                st.error("Could not connect to FinVet API.")
+            else:
+                st.error(f"Error: {msg}")
+            return
 
-            if data is None:
-                status_widget.update(label="No response received", state="error")
-                st.error("Verification completed but no response was received.")
-                return
+    if data is None:
+        progress_slot.markdown(
+            progress_html(progress_rows(seen_events, finished=True),
+                          claim=claim_text, stopped=True),
+            unsafe_allow_html=True)
+        st.error("Verification completed but no response was received.")
+        return
 
-    status_placeholder.empty()
+    # The trail is deliberately NOT cleared here. It stays in the slot it built
+    # up in, and the verdict fills in below it -- clearing it and re-rendering a
+    # copy under the verdict moved content the reader had been watching for
+    # fifteen seconds, which reads as it being yanked away rather than settling.
     resp_status = data.get("status", "success")
     verdict = data.get("verdict", "UNKNOWN")
     request_id = data.get("request_id", "")
@@ -235,7 +216,7 @@ def _run_verification(claim_text, memory_context_request_id=None):
     st.session_state.session_verifications += 1
     st.session_state.last_verdict = verdict
 
-    with results_placeholder:
+    with results_slot.container():
         if resp_status == "pending_review":
             preliminary = data.get("preliminary_analysis", {})
             hitl_triggers = data.get("hitl_triggers", []) or data.get("metadata", {}).get("hitl_triggers", [])
@@ -252,8 +233,25 @@ def _run_verification(claim_text, memory_context_request_id=None):
         else:
             _render_verification_result(data)
             st.caption(f"Request ID: `{request_id}`")
+            _render_parsed_claim(data)
             with st.expander("Raw API Response"):
                 st.json(data)
+
+
+def _render_parsed_claim(data):
+    """How the claim was read, as its own panel.
+
+    Every verdict rests on this interpretation, and it reached the page only as
+    JSON nested inside twenty other metadata keys. A reader debugging a
+    surprising verdict is usually asking a parsing question.
+    """
+    parsed = (data.get("metadata") or {}).get("parsed_claim")
+    rows = parsed_claim_rows(parsed)
+    if not rows:
+        return
+    with st.expander("How the claim was parsed"):
+        st.table({"Field": [label for label, _ in rows],
+                  "Value": [str(value) for _, value in rows]})
 
 
 def render_verify():
@@ -336,7 +334,8 @@ def render_verify():
         match_summary = match.get("summary", "")
         match_time = match.get("verified_at", "")
 
-        agent_display = {"sec": "SEC", "market": "Market", "news": "News"}.get(match_agent, match_agent.upper() if match_agent else "")
+        agent_display = {"sec": "SEC", "market": "Market", "news": "News"}.get(
+            match_agent, humanize(match_agent) if match_agent else "")
 
         if match_verdict == "SUPPORTS":
             verdict_badge_class = "memory-verdict-supports"

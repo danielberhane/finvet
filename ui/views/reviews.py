@@ -4,7 +4,7 @@ from datetime import datetime
 
 import streamlit as st
 
-from components.formatting import verdict_label
+from components.formatting import stage_label, verdict_label
 
 from api_client import get_reviews_detailed
 
@@ -38,7 +38,7 @@ def render_reviews():
         preliminary = review.get("preliminary_analysis", {})
         prelim_verdict = preliminary.get("verdict", "UNKNOWN")
         prelim_confidence = preliminary.get("confidence", 0)
-        agent = preliminary.get("agent", "unknown")
+        agent = preliminary.get("agent")
 
         # Format timestamp
         try:
@@ -67,7 +67,8 @@ def render_reviews():
             conf_label = "LOW"
 
         # Agent display
-        agent_display = {"sec": "SEC", "market": "Market", "news": "News"}.get(agent, agent.upper())
+        # "UNKNOWN" is not a thing that ran; an empty label is honest.
+        agent_display = stage_label({"agent": agent}).replace(" Agent", "") or "—"
 
         # Create clickable card
         with st.container():
