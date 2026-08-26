@@ -50,7 +50,14 @@ class QuoteResult(BaseModel):
     change: Optional[float] = Field(None, description="Price change from previous close")
     change_percent: Optional[str] = Field(None, description="Percentage change")
     volume: Optional[int] = Field(None, description="Trading volume")
-    latest_trading_day: Optional[str] = Field(None, description="Last trading day")
+    latest_trading_day: Optional[str] = Field(
+        None, description="Trading day the source timestamped this quote (UTC)")
+    source_mode: str = Field(
+        "live",
+        description="'live' or 'mock'. Declared so it survives the model_dump "
+                    "splat from Quote -- an undeclared field is dropped "
+                    "silently, and the flag would look set while never "
+                    "reaching anything that displays it.")
     previous_close: Optional[float] = Field(None, description="Previous closing price")
     open: Optional[float] = Field(None, description="Opening price")
     high: Optional[float] = Field(None, description="Day's high")

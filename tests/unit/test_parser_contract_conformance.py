@@ -10,6 +10,7 @@ path, never copied here; skip when absent.
 """
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -18,17 +19,42 @@ from finvet.models.claim import ParsedClaim
 
 from finvet.eval.dataset import eval_data_dir
 
-GOLD_DIR = eval_data_dir() or Path("/nonexistent")
 CONTRACT_FIELDS = ("claim_type", "ticker", "metric", "operator",
-                   "value", "period", "reject_reason")
+                   "value", "range_min", "range_max", "period", "reject_reason")
 
-pytestmark = pytest.mark.skipif(
-    not GOLD_DIR.exists(), reason="eval dataset not present"
-)
+
+def _gold_dir():
+    """Resolved per test, from an environment this function establishes.
+
+    `GOLD_DIR = eval_data_dir()` ran while the module was imported, so whether
+    this file skipped depended on whether something had already loaded .env --
+    which in turn depended on which conftest pytest had reached. `pytest
+    tests/unit` skipped it and `pytest tests` ran it, and the split hid a real
+    contract failure from every unit-only run: 32 rows carried operator="range"
+    with no bounds and could not construct a ParsedClaim at all.
+
+    Loading .env here rather than relying on a sibling conftest makes both
+    invocations agree. The dataset is contamination-sensitive and lives outside
+    this repository, so a genuine absence still skips -- but it now skips
+    because the data is missing, not because of collection order.
+    """
+    if not os.environ.get("FINVET_EVAL_DATA_DIR"):
+        env_file = Path(__file__).resolve().parents[2] / ".env"
+        if env_file.exists():
+            try:
+                from dotenv import load_dotenv
+
+                load_dotenv(env_file, override=False)
+            except ImportError:  # pragma: no cover - declared dependency
+                pass
+    return Path(eval_data_dir() or "/nonexistent")
 
 
 def _rows(name):
-    return [json.loads(line) for line in open(GOLD_DIR / name) if line.strip()]
+    path = _gold_dir() / name
+    if not path.exists():
+        pytest.skip("eval dataset not present")
+    return [json.loads(line) for line in open(path) if line.strip()]
 
 
 @pytest.mark.parametrize("split,expected_total", [

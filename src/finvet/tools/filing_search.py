@@ -99,32 +99,47 @@ def search_filing_text(
 
         logger.info(f"Filing search for '{query}' ({ticker}): {len(results)} results")
 
+        # The typed result becomes a dict only here, at the tool boundary:
+        # LangChain stringifies a tool's return value, and a BaseModel repr is
+        # neither JSON nor a Python literal, so _parse_provenance could not
+        # recover it and the chunks would never reach the audit trail.
+        chunks = [result.model_dump() for result in results]
+
         # Retrieved filing text is data the model reads, not instruction it
         # obeys. Delimiting it makes that boundary explicit: a filing can
         # contain sentences shaped like commands, and the model has no other
         # signal separating the corpus from its own prompt.
-        for chunk in results:
+        #
+        # content_sha256 is computed over the stored column before this wrap,
+        # and hash_scope says so, so a reader can still recompute it from the
+        # database rather than from what the model saw.
+        for chunk in chunks:
             chunk["chunk_text"] = (
                 "<filing_excerpt>\n"
                 + chunk["chunk_text"]
                 + "\n</filing_excerpt>"
             )
 
-        if not results:
+        if not chunks:
             # An empty result is a real answer, and a different one from a
-            # failure. Saying so lets the agent report that the filing does not
-            # discuss this, instead of treating silence as a broken tool.
+            # failure. But there are two of them, and they mean opposite
+            # things: a filing that was searched and says nothing is evidence
+            # of silence, while no indexed filing at all is evidence of
+            # nothing. Collapsing both into "no_relevant_evidence" let the
+            # delegation report an unread corpus as a filing that stayed
+            # silent.
+            indexed = rag.has_filings_for(ticker) if ticker else True
             return FilingSearchResult(
                 success=True,
                 chunks=[],
                 total_found=0,
-                reason="no_relevant_evidence",
+                reason="no_relevant_evidence" if indexed else "no_corpus",
             ).model_dump()
 
         return FilingSearchResult(
             success=True,
-            chunks=results,
-            total_found=len(results),
+            chunks=chunks,
+            total_found=len(chunks),
         ).model_dump()
 
     except Exception as e:

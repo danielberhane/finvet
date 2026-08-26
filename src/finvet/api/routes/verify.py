@@ -21,8 +21,6 @@ from ..execution import (
     ExecutionFinalizer,
     begin_request,
     resolve_memory_context,
-    build_pending_response,
-    store_completed_claim,
 )
 from ...utils.helpers import build_preliminary_analysis
 from ...utils.logging import get_logger
@@ -89,73 +87,35 @@ def verify_claim(request: VerifyClaimRequest):
         logger.info(f"Starting verification graph (request: {request_id})")
         result = deps.verification_graph.invoke(initial_state, config)
 
-        # --- HITL interrupt: graph paused because confidence < 0.70 ---
-        # The graph stopped at the hitl_checkpoint node. Return a "pending_review"
-        # response so a human reviewer can make the final call.
-        if result.get("hitl_required") and not result.get("hitl_checkpoint_passed"):
-            return _handle_hitl_interrupt(request_id, request.claim, result, finalizer)
-
-        # --- Normal completion: pipeline finished with a verdict ---
-        final_response = result.get("final_response")
-
-        if not final_response:
-            logger.error(f"No final response generated (request: {request_id})")
-            raise HTTPException(
-                status_code=500,
-                detail="Verification completed but no response was generated"
-            )
-
-        # Record the run before returning it. Shared with /verify-stream so
-        # both routes end a request identically.
-        finalizer.finish(
-            status="success",
-            state=result,
-            final_response=final_response,
+        # One coordinator decides what happened, records it, and hands back
+        # the body to return. The route no longer labels outcomes itself --
+        # every completed run used to be committed as "success", so a parser
+        # rejection was stored as a successful verification.
+        body = finalizer.finish_pipeline_outcome(
+            result,
+            result.get("final_response"),
+            claim_memory=deps.claim_memory,
+            preliminary_analysis=build_preliminary_analysis(
+                result, result.get("agent_evidence", {})),
         )
 
         logger.info(
-            f"Verification completed (request: {request_id}, "
-            f"verdict: {final_response.get('verdict')}, "
-            f"confidence: {final_response.get('confidence', 0):.2f})"
+            f"Verification terminalized (request: {request_id}, "
+            f"status: {body.get('status')}, verdict: {body.get('verdict')})"
         )
-
-        # --- Store result in episodic memory so agents can learn from past verifications ---
-        # Non-critical: if this fails, the user still gets their verdict.
-        if deps.claim_memory:
-            try:
-                parsed_claim = result.get("parsed_claim")
-                agent_evidence = result.get("agent_evidence", {})
-                deps.claim_memory.store_claim(
-                    request_id=request_id,
-                    claim_text=request.claim,
-                    ticker=parsed_claim.ticker if parsed_claim else None,
-                    metric=getattr(parsed_claim, "metric", None) if parsed_claim else None,
-                    agent_type=agent_evidence.get("agent"),
-                    verdict=final_response.get("verdict", ""),
-                    confidence=final_response.get("confidence", 0),
-                    retrieved_value=agent_evidence.get("retrieved_value"),
-                    summary=final_response.get("summary"),
-                    tools_called=agent_evidence.get("tools_called", []),
-                    key_finding=agent_evidence.get("reasoning", "")[:200],
-                )
-            except Exception as e:
-                logger.warning(f"Claim memory store failed (non-critical): {e}")
-
-        return final_response
+        return body
 
     # --- Exception handling for the main try (the entire pipeline invocation) ---
 
     except GuardrailViolation as gv:  # matches: main try around graph.invoke()
-        # Input guardrail caught something (prompt injection, toxic content).
-        # Log it in audit trail and re-raise — FastAPI returns the error to the user.
+        # A refusal is a terminal outcome and belongs on the record: without
+        # an execution row, the audit trail cannot show what was declined.
         audit.log_event(
             event_type="guardrail_violation",
             request_id=request_id,
-            data={
-                "violation_type": gv.violation_type,
-                "details": gv.details,
-            },
+            data={"violation_type": gv.violation_type, "details": gv.details},
         )
+        finalizer.finish_guardrail(gv.violation_type, str(gv))
         raise
     except AuditPersistenceError as ape:
         # The verdict exists but could not be recorded. Serving it would break
@@ -182,6 +142,7 @@ def verify_claim(request: VerifyClaimRequest):
                         "details": cause.details,
                     },
                 )
+                finalizer.finish_guardrail(cause.violation_type, str(cause))
                 raise cause
             cause = cause.__cause__
         # Truly unexpected error — log full stack trace and return 500
@@ -189,6 +150,12 @@ def verify_claim(request: VerifyClaimRequest):
             f"Verification failed (request: {request_id}): {str(e)}",
             exc_info=True
         )
+        try:
+            finalizer.finish_error(str(e))
+        except AuditPersistenceError:
+            # Auditing an audit failure would recurse. The 500 below still
+            # tells the client the run did not succeed.
+            logger.error(f"Could not record the failure of {request_id}")
         raise HTTPException(
             status_code=500,
             detail=f"Verification failed: {str(e)}"
@@ -197,45 +164,6 @@ def verify_claim(request: VerifyClaimRequest):
         # Guardrail rejections and errors never commit, so nothing else
         # releases their buffered events.
         finalizer.release()
-
-
-def _handle_hitl_interrupt(
-    request_id: str,
-    claim_text: str,
-    result: dict,
-    finalizer: ExecutionFinalizer,
-) -> dict:
-    """
-    Called when the graph pauses at the HITL checkpoint (confidence < 0.70).
-
-    Packages up everything the human reviewer needs (agent reasoning, tools called,
-    why HITL was triggered) and saves a PENDING record in the audit trail.
-    The graph stays paused — a human resumes it via POST /review/{request_id}.
-    """
-    agent_evidence = result.get("agent_evidence", {})
-    hitl_triggers = result.get("hitl_triggers", [])  # e.g., ["confidence_below_threshold"]
-
-    pending_response = build_pending_response(
-        request_id,
-        claim_text,
-        result,
-        preliminary_analysis=build_preliminary_analysis(result, agent_evidence),
-    )
-
-    # Same finalizer as every other terminal path — this record is PENDING, not
-    # absent, so a reviewer can find the claim waiting for them.
-    finalizer.finish(
-        status="pending_review",
-        state=result,
-        final_response=pending_response,
-    )
-
-    logger.info(
-        f"HITL interrupt: claim paused for review (request: {request_id}, "
-        f"triggers: {hitl_triggers})"
-    )
-
-    return pending_response
 
 
 @router.post("/verify-stream")
@@ -278,42 +206,22 @@ def verify_claim_stream(request: VerifyClaimRequest):
                     yield f"data: {json.dumps({'type': 'progress', 'node': node_name, 'request_id': request_id})}\n\n"
                     final_result.update(updates)
 
-            final_response = final_result.get("final_response")
-            if final_response:
-                # Commit before emitting the verdict. A client that has seen
-                # "complete" believes the run is on record; if the write fails
-                # it must see an error instead, not a verdict with no audit row.
-                finalizer.finish(
-                    status="success",
-                    state=final_result,
-                    final_response=final_response,
-                )
-                store_completed_claim(
-                    deps.claim_memory,
-                    request_id=request_id,
-                    claim_text=request.claim,
-                    final_response=final_response,
-                    state=final_result,
-                )
-                yield f"data: {json.dumps({'type': 'complete', 'response': final_response})}\n\n"
+            # Same coordinator as /verify: it derives the status, records
+            # the run, and returns the body to emit. Committing first is what
+            # makes "on record before the client is told" true -- a client
+            # that has seen a terminal event believes the run is stored.
+            body = finalizer.finish_pipeline_outcome(
+                final_result,
+                final_result.get("final_response"),
+                claim_memory=deps.claim_memory,
+                preliminary_analysis=build_preliminary_analysis(
+                    final_result, final_result.get("agent_evidence", {})),
+            )
 
-            elif final_result.get("hitl_required"):
-                # HITL interrupt — graph paused before hitl_checkpoint.
-                # Build a pending_review response so the UI can redirect.
-                agent_evidence = final_result.get("agent_evidence", {})
-                pending_response = build_pending_response(
-                    request_id,
-                    request.claim,
-                    final_result,
-                    preliminary_analysis=build_preliminary_analysis(
-                        final_result, agent_evidence),
-                )
-                finalizer.finish(
-                    status="pending_review",
-                    state=final_result,
-                    final_response=pending_response,
-                )
-                yield f"data: {json.dumps({'type': 'complete', 'response': pending_response})}\n\n"
+            if body.get("status") == "error":
+                yield f"data: {json.dumps({'type': 'error', 'message': body['explanation'], 'response': body})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'complete', 'response': body})}\n\n"
 
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         except AuditPersistenceError as ape:
@@ -325,7 +233,8 @@ def verify_claim_stream(request: VerifyClaimRequest):
                 request_id=request_id,
                 data={"violation_type": gv.violation_type, "details": gv.details},
             )
-            yield f"data: {json.dumps({'type': 'guardrail', 'response': {'error_code': gv.violation_type, 'error_message': str(gv)}})}\n\n"
+            body = finalizer.finish_guardrail(gv.violation_type, str(gv))
+            yield f"data: {json.dumps({'type': 'guardrail', 'response': body})}\n\n"
         except Exception as e:
             # Check if a GuardrailViolation is wrapped inside
             cause = e
@@ -336,11 +245,19 @@ def verify_claim_stream(request: VerifyClaimRequest):
                         request_id=request_id,
                         data={"violation_type": cause.violation_type, "details": cause.details},
                     )
-                    yield f"data: {json.dumps({'type': 'guardrail', 'response': {'error_code': cause.violation_type, 'error_message': str(cause)}})}\n\n"
+                    body = finalizer.finish_guardrail(cause.violation_type,
+                                                      str(cause))
+                    yield f"data: {json.dumps({'type': 'guardrail', 'response': body})}\n\n"
                     return
                 cause = cause.__cause__
             logger.error(f"Streaming failed (request: {request_id}): {e}")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            try:
+                body = finalizer.finish_error(str(e))
+            except AuditPersistenceError:
+                # Auditing an audit failure would recurse.
+                logger.error(f"Could not record the failure of {request_id}")
+                body = {"status": "error", "explanation": str(e)}
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e), 'response': body})}\n\n"
         finally:
             # Guardrail rejections and errors never commit, so nothing else
             # releases their buffered events.

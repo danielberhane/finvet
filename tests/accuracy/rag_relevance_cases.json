@@ -1,366 +1,305 @@
 {
-  "threshold_selected": 0.5169,
-  "positive_recall_at_threshold": 1.0,
+  "_comment": "Labelled input for RAG relevance calibration: queries, tickers and human labels. Measured scores are NOT recorded here -- they belong to a specific corpus and live in rag_release_a_manifest.json, which scripts/build_rag_manifest.py regenerates. Keeping the same measurement in two files is how they came to disagree.",
   "cases": [
     {
       "ticker": "AAPL",
       "query": "risks from supplier concentration and single-source components",
-      "label": "positive",
-      "top_vector_similarity": 0.665607
+      "label": "positive"
     },
     {
       "ticker": "AAPL",
       "query": "iPhone net sales and product revenue",
-      "label": "positive",
-      "top_vector_similarity": 0.720436
+      "label": "positive"
     },
     {
       "ticker": "AAPL",
       "query": "services segment revenue growth",
-      "label": "positive",
-      "top_vector_similarity": 0.626443
+      "label": "positive"
     },
     {
       "ticker": "AAPL",
       "query": "legal proceedings and regulatory investigations",
-      "label": "positive",
-      "top_vector_similarity": 0.547144
+      "label": "positive"
     },
     {
       "ticker": "AAPL",
       "query": "research and development expense",
-      "label": "positive",
-      "top_vector_similarity": 0.603458
+      "label": "positive"
     },
     {
       "ticker": "MSFT",
       "query": "cloud infrastructure and Azure capacity investments",
-      "label": "positive",
-      "top_vector_similarity": 0.701253
+      "label": "positive"
     },
     {
       "ticker": "MSFT",
       "query": "intelligent cloud segment operating income",
-      "label": "positive",
-      "top_vector_similarity": 0.696168
+      "label": "positive"
     },
     {
       "ticker": "MSFT",
       "query": "competition in productivity software",
-      "label": "positive",
-      "top_vector_similarity": 0.630468
+      "label": "positive"
     },
     {
       "ticker": "MSFT",
       "query": "risks relating to cybersecurity incidents",
-      "label": "positive",
-      "top_vector_similarity": 0.745835
+      "label": "positive"
     },
     {
       "ticker": "MSFT",
       "query": "capital expenditures on datacenters",
-      "label": "positive",
-      "top_vector_similarity": 0.614377
+      "label": "positive"
     },
     {
       "ticker": "AMZN",
       "query": "fulfillment network and shipping costs",
-      "label": "positive",
-      "top_vector_similarity": 0.693206
+      "label": "positive"
     },
     {
       "ticker": "AMZN",
       "query": "AWS segment results",
-      "label": "positive",
-      "top_vector_similarity": 0.68917
+      "label": "positive"
     },
     {
       "ticker": "AMZN",
       "query": "risks from foreign exchange rates",
-      "label": "positive",
-      "top_vector_similarity": 0.76889
+      "label": "positive"
     },
     {
       "ticker": "AMZN",
       "query": "advertising services revenue",
-      "label": "positive",
-      "top_vector_similarity": 0.686151
+      "label": "positive"
     },
     {
       "ticker": "AMZN",
       "query": "seasonality of the business",
-      "label": "positive",
-      "top_vector_similarity": 0.604828
+      "label": "positive"
     },
     {
       "ticker": "NVDA",
       "query": "data center revenue and GPU demand",
-      "label": "positive",
-      "top_vector_similarity": 0.644209
+      "label": "positive"
     },
     {
       "ticker": "NVDA",
       "query": "export controls affecting sales to China",
-      "label": "positive",
-      "top_vector_similarity": 0.779095
+      "label": "positive"
     },
     {
       "ticker": "NVDA",
       "query": "supply chain and foundry dependence",
-      "label": "positive",
-      "top_vector_similarity": 0.695211
+      "label": "positive"
     },
     {
       "ticker": "NVDA",
       "query": "gaming segment performance",
-      "label": "positive",
-      "top_vector_similarity": 0.546915
+      "label": "positive"
     },
     {
       "ticker": "NVDA",
       "query": "inventory purchase commitments",
-      "label": "positive",
-      "top_vector_similarity": 0.608727
+      "label": "positive"
     },
     {
       "ticker": "TSLA",
       "query": "vehicle production and delivery volumes",
-      "label": "positive",
-      "top_vector_similarity": 0.65877
+      "label": "positive"
     },
     {
       "ticker": "TSLA",
       "query": "energy generation and storage segment",
-      "label": "positive",
-      "top_vector_similarity": 0.681863
+      "label": "positive"
     },
     {
       "ticker": "TSLA",
       "query": "risks related to product recalls",
-      "label": "positive",
-      "top_vector_similarity": 0.684153
+      "label": "positive"
     },
     {
       "ticker": "TSLA",
       "query": "automotive gross margin",
-      "label": "positive",
-      "top_vector_similarity": 0.65797
+      "label": "positive"
     },
     {
       "ticker": "TSLA",
       "query": "regulatory credits revenue",
-      "label": "positive",
-      "top_vector_similarity": 0.606206
+      "label": "positive"
     },
     {
       "ticker": "AAPL",
       "query": "share repurchase program and dividends",
-      "label": "positive",
-      "top_vector_similarity": 0.634691
+      "label": "positive"
     },
     {
       "ticker": "MSFT",
       "query": "deferred revenue and unearned amounts",
-      "label": "positive",
-      "top_vector_similarity": 0.62774
+      "label": "positive"
     },
     {
       "ticker": "AMZN",
       "query": "third-party seller services",
-      "label": "positive",
-      "top_vector_similarity": 0.725015
+      "label": "positive"
     },
     {
       "ticker": "NVDA",
       "query": "goodwill and intangible assets",
-      "label": "positive",
-      "top_vector_similarity": 0.71259
+      "label": "positive"
     },
     {
       "ticker": "TSLA",
       "query": "supercharger network expansion",
-      "label": "positive",
-      "top_vector_similarity": 0.631408
+      "label": "positive"
     },
     {
       "ticker": "AAPL",
       "query": "recipe for sourdough bread starter",
-      "label": "negative",
-      "top_vector_similarity": 0.442228
+      "label": "negative"
     },
     {
       "ticker": "AAPL",
       "query": "rules of association football offside",
-      "label": "negative",
-      "top_vector_similarity": 0.479108
+      "label": "negative"
     },
     {
       "ticker": "MSFT",
       "query": "care instructions for tropical houseplants",
-      "label": "negative",
-      "top_vector_similarity": 0.484045
+      "label": "negative"
     },
     {
       "ticker": "MSFT",
       "query": "history of baroque chamber music",
-      "label": "negative",
-      "top_vector_similarity": 0.412354
+      "label": "negative"
     },
     {
       "ticker": "AMZN",
       "query": "training schedule for a marathon",
-      "label": "negative",
-      "top_vector_similarity": 0.443806
+      "label": "negative"
     },
     {
       "ticker": "AMZN",
       "query": "identifying migratory songbirds by call",
-      "label": "negative",
-      "top_vector_similarity": 0.444269
+      "label": "negative"
     },
     {
       "ticker": "NVDA",
       "query": "medieval cathedral stained glass techniques",
-      "label": "negative",
-      "top_vector_similarity": 0.482231
+      "label": "negative"
     },
     {
       "ticker": "NVDA",
       "query": "how to prune an apple orchard",
-      "label": "negative",
-      "top_vector_similarity": 0.454362
+      "label": "negative"
     },
     {
       "ticker": "TSLA",
       "query": "beginner watercolour brush techniques",
-      "label": "negative",
-      "top_vector_similarity": 0.395672
+      "label": "negative"
     },
     {
       "ticker": "TSLA",
       "query": "rules of contract bridge bidding",
-      "label": "negative",
-      "top_vector_similarity": 0.512857
+      "label": "negative"
     },
     {
       "ticker": "AAPL",
       "query": "symptoms and treatment of feline diabetes",
-      "label": "negative",
-      "top_vector_similarity": 0.467542
+      "label": "negative"
     },
     {
       "ticker": "MSFT",
       "query": "tectonic activity along the Pacific ring of fire",
-      "label": "negative",
-      "top_vector_similarity": 0.515796
+      "label": "negative"
     },
     {
       "ticker": "AMZN",
       "query": "knitting cable stitch patterns",
-      "label": "negative",
-      "top_vector_similarity": 0.392903
+      "label": "negative"
     },
     {
       "ticker": "NVDA",
       "query": "restoring vintage mechanical watches",
-      "label": "negative",
-      "top_vector_similarity": 0.45323
+      "label": "negative"
     },
     {
       "ticker": "TSLA",
       "query": "scuba diving decompression tables",
-      "label": "negative",
-      "top_vector_similarity": 0.51682
+      "label": "negative"
     },
     {
       "ticker": "AAPL",
       "query": "grammar of classical Latin verbs",
-      "label": "negative",
-      "top_vector_similarity": 0.404664
+      "label": "negative"
     },
     {
       "ticker": "MSFT",
       "query": "beekeeping hive inspection routine",
-      "label": "negative",
-      "top_vector_similarity": 0.474383
+      "label": "negative"
     },
     {
       "ticker": "AMZN",
       "query": "orbital mechanics of comets",
-      "label": "negative",
-      "top_vector_similarity": 0.462749
+      "label": "negative"
     },
     {
       "ticker": "NVDA",
       "query": "fermentation of kimchi at home",
-      "label": "negative",
-      "top_vector_similarity": 0.437367
+      "label": "negative"
     },
     {
       "ticker": "TSLA",
       "query": "rules of Australian rules football",
-      "label": "negative",
-      "top_vector_similarity": 0.488797
+      "label": "negative"
     },
     {
       "ticker": "AAPL",
       "query": "glacier retreat measurement methods",
-      "label": "negative",
-      "top_vector_similarity": 0.489258
+      "label": "negative"
     },
     {
       "ticker": "MSFT",
       "query": "ceramic glaze firing temperatures",
-      "label": "negative",
-      "top_vector_similarity": 0.410873
+      "label": "negative"
     },
     {
       "ticker": "AMZN",
       "query": "chess endgame rook technique",
-      "label": "negative",
-      "top_vector_similarity": 0.443789
+      "label": "negative"
     },
     {
       "ticker": "NVDA",
       "query": "identifying edible woodland mushrooms",
-      "label": "negative",
-      "top_vector_similarity": 0.407455
+      "label": "negative"
     },
     {
       "ticker": "TSLA",
       "query": "sonnet forms in Elizabethan poetry",
-      "label": "negative",
-      "top_vector_similarity": 0.4243
+      "label": "negative"
     },
     {
       "ticker": "AAPL",
       "query": "veterinary care for pet rabbits",
-      "label": "negative",
-      "top_vector_similarity": 0.395736
+      "label": "negative"
     },
     {
       "ticker": "MSFT",
       "query": "traditional Japanese joinery methods",
-      "label": "negative",
-      "top_vector_similarity": 0.453368
+      "label": "negative"
     },
     {
       "ticker": "AMZN",
       "query": "cave formation and speleothems",
-      "label": "negative",
-      "top_vector_similarity": 0.462196
+      "label": "negative"
     },
     {
       "ticker": "NVDA",
       "query": "rules of curling scoring",
-      "label": "negative",
-      "top_vector_similarity": 0.455937
+      "label": "negative"
     },
     {
       "ticker": "TSLA",
       "query": "restoration of antique clocks",
-      "label": "negative",
-      "top_vector_similarity": 0.485681
+      "label": "negative"
     }
   ]
 }

@@ -336,7 +336,9 @@ those filters are doing heavy lifting in FinVet's retrieval quality.
 
 ### Current corpus (measured)
 
-988 chunks · AAPL 111, AMZN 214, MSFT 263, NVDA 194, TSLA 206 · all 2025-vintage filings.
+1,398 chunks · AAPL 158, AMZN 305, MSFT 376, NVDA 266, TSLA 293 · all 2025-vintage
+filings. Each chunk carries its form part and item number and a content-derived
+`evidence_id`, so a citation still resolves after the corpus is rebuilt.
 
 ---
 

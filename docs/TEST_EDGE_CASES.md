@@ -78,30 +78,32 @@ Edge cases discovered during testing that expose limitations, failure modes, or 
 
 ---
 
-## EC-004: Q4 Derivation (No Standalone Q4 Filing)
+## EC-004: Q4 Claims (No Standalone Q4 Filing)
 
 **Claim:** "Apple's Q4 2024 revenue was $94 billion"
 
-**Expected:** Agent derives Q4 = Annual (10-K) minus Q1+Q2+Q3 (from 10-Q filings)
+**Expected:** The claim is declined. Q4 derivation is not supported.
 
-**Actual:** Mixed results. Sometimes the agent correctly fetches the 10-K and subtracts 9-month cumulative figures. Other times it incorrectly uses the annual figure as Q4 or returns NOT_ENOUGH_INFO.
+**Actual:** Matches expected. Earlier releases instructed the agent to derive
+Q4 as annual minus the nine-month cumulative, and results were mixed --
+sometimes the subtraction was performed, sometimes the annual figure was used
+as Q4, sometimes NOT_ENOUGH_INFO.
 
-**Root cause:** Q4 is never filed separately. Companies file 10-Q for Q1, Q2, Q3 and 10-K for the full year. Q4 must be derived: Q4 = FY - (Q1 + Q2 + Q3). This requires the agent to:
-1. Fetch the annual 10-K
-2. Fetch Q3 10-Q (which has 9-month cumulative data)
-3. Subtract: Q4 = annual - 9-month cumulative
+**Root cause:** Q4 is never filed separately. Companies file 10-Q for Q1-Q3 and
+a 10-K for the full year, so Q4 exists only as a difference. The subtraction is
+valid only when both figures come from the same restatement generation, cover
+the same entity scope, and share a fiscal calendar -- none of which was
+checked. A derived number also carries no filing, no accession, and no XBRL
+concept, so it cannot be located in a source or audited afterwards.
 
-This multi-step derivation is error-prone for LLMs.
+**Resolution:** The derivation instructions were removed from the
+verdict-extraction prompt (`agents/base.py`) and the `search_filings` docstring
+(`tools/sec_tools.py`); the docstring now states the limitation. See
+`RELEASE_A_DECISIONS.md`, D1.
 
-**Affected components:**
-- `base.py` — ReAct loop may not execute the multi-step derivation correctly
-- `sec_tools.py` — tool docstrings mention Q4 derivation but the agent must follow through
-- Verdict extraction — LLM may anchor on annual figure instead of derived Q4
-
-**Potential fixes:**
-- Add a dedicated `get_quarterly_data` tool that automatically derives Q4
-- Add explicit Q4 derivation instructions to the SEC agent system prompt
-- Add a Python-level Q4 derivation when the agent returns annual data for a Q4 claim
+**To support it later:** deterministic derivation with restatement-generation
+matching, entity-scope checks, and a provenance record naming both source
+filings -- not a prompt instruction asking the model to subtract.
 
 **Category:** Multi-step reasoning
 

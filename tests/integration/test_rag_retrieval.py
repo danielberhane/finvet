@@ -33,7 +33,7 @@ class TestRelevanceFloorOnRealEmbeddings:
         hits = rag.search(query="risks from supplier concentration",
                           ticker="AAPL", top_k=5)
         assert hits
-        assert all(h["vector_similarity"] > 0 for h in hits)
+        assert all(h.vector_similarity > 0 for h in hits)
 
     def test_an_unrelated_query_returns_nothing(self):
         """The floor's whole purpose: a subject no filing discusses must not
@@ -49,7 +49,14 @@ class TestRelevanceFloorOnRealEmbeddings:
         for query in ("data center revenue", "cybersecurity risk",
                       "segment operating income"):
             for hit in rag.search(query=query, ticker="MSFT", top_k=5):
-                assert hit["vector_similarity"] >= RAG_MIN_VECTOR_SIMILARITY
+                if hit.vector_rank is None:
+                    # A keyword-only hit. The floor guards the dense arm, which
+                    # always returns its nearest neighbour however far away;
+                    # `tsv @@ plainto_tsquery` is already a predicate, so a row
+                    # only appears in the lexical arm if it genuinely matched.
+                    assert hit.vector_similarity == 0.0
+                    continue
+                assert hit.vector_similarity >= RAG_MIN_VECTOR_SIMILARITY
 
 
 class TestPeriodScope:
@@ -64,12 +71,12 @@ class TestPeriodScope:
         any_hit = rag.search(query="revenue", ticker="AAPL", top_k=1)
         if not any_hit:
             pytest.skip("no AAPL evidence above the floor")
-        period = any_hit[0]["period_end"]
+        period = any_hit[0].period_end
 
         scoped = rag.search(query="revenue", ticker="AAPL",
                             period_end=period, top_k=5)
         assert scoped
-        assert {h["period_end"] for h in scoped} == {period}
+        assert {h.period_end for h in scoped} == {period}
 
 
 class TestEvidenceIdentity:
@@ -81,11 +88,14 @@ class TestEvidenceIdentity:
             pytest.skip("no AAPL legal-proceedings evidence above the floor")
 
         for hit in hits:
-            for field in ("chunk_id", "ticker", "cik", "filing_type",
-                          "period_end", "section", "chunk_index",
-                          "vector_similarity", "keyword_rank", "score",
-                          "content_sha256"):
-                assert hit.get(field) is not None, f"missing {field}"
+            # evidence_id replaces chunk_id: the row id changes on every
+            # re-ingestion, so a citation using it stops resolving.
+            for field in ("evidence_id", "ticker", "cik", "filing_type",
+                          "filing_date", "period_end", "item_number",
+                          "section", "chunk_index", "vector_similarity",
+                          "keyword_score", "rrf_score", "content_sha256",
+                          "hash_scope", "evidence_role"):
+                assert getattr(hit, field, None) is not None, f"missing {field}"
 
     def test_content_hash_matches_the_text(self):
         import hashlib
@@ -97,8 +107,8 @@ class TestEvidenceIdentity:
 
         for hit in hits:
             expected = hashlib.sha256(
-                hit["chunk_text"].encode("utf-8")).hexdigest()
-            assert hit["content_sha256"] == expected
+                hit.chunk_text.encode("utf-8")).hexdigest()
+            assert hit.content_sha256 == expected
 
 
 class TestKeywordOnlyDegradation:
@@ -113,4 +123,4 @@ class TestKeywordOnlyDegradation:
             lambda *a, **k: (_ for _ in ()).throw(RuntimeError("ollama down")))
 
         hits = rag.search(query="revenue", ticker="AAPL", top_k=5)
-        assert all(h["vector_similarity"] == 0.0 for h in hits)
+        assert all(h.vector_similarity == 0.0 for h in hits)

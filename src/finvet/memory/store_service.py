@@ -32,6 +32,40 @@ class ClaimMemoryItem(BaseModel):
     verified_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
+class ClaimMemoryUnavailable(Exception):
+    """The memory store could not be reached.
+
+    Distinct from "no such episode": the caller asked for something that may
+    well exist, and telling them it does not would send them to re-run a claim
+    whose answer is sitting in a store that is merely down.
+    """
+
+
+class ClaimMemoryCorrupt(Exception):
+    """A stored episode does not match the schema.
+
+    Also distinct from absence. Something was written that cannot be read back,
+    which is a defect worth surfacing rather than silently treating as a miss.
+    """
+
+
+class ClaimMemoryContext(BaseModel):
+    """One prior episode, read by exact request id.
+
+    Deliberately without `similarity`: an exact lookup did not score anything.
+    Carrying the field invited a caller to render it, and the prompt did --
+    as "Similarity: 0%", telling the model the prior verification was entirely
+    unrelated.
+    """
+
+    request_id: str
+    claim: str
+    verdict: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    summary: str = ""
+    verified_at: Optional[str] = None
+
+
 class ClaimMemoryMatch(BaseModel):
     """Schema for reading verification episodes."""
 
@@ -98,19 +132,25 @@ class ClaimMemoryService:
             logger.warning(f"Memory store failed: {e}")
             return False
 
-    def get_claim(self, request_id: str) -> Optional[dict]:
-        """The stored episode for one request id, validated, or None.
+    def get_claim(self, request_id: str) -> Optional["ClaimMemoryContext"]:
+        """The stored episode for one request id, or None if there is none.
 
         The verify route injects only what this returns. Reading the episode
         here rather than accepting it from the client is the whole point: the
         content is then something this system wrote, not something a caller
         supplied.
+
+        Raises `ClaimMemoryUnavailable` when the store cannot be reached and
+        `ClaimMemoryCorrupt` when the stored record will not validate. These
+        used to return None alongside a genuine miss, so the route answered 404
+        -- telling a caller their episode does not exist -- for a store that
+        was merely down.
         """
         try:
             item = self.store.get(NAMESPACE, key=request_id)
         except Exception as e:
             logger.warning(f"Memory lookup failed for {request_id}: {e}")
-            return None
+            raise ClaimMemoryUnavailable(str(e)) from e
 
         if item is None:
             return None
@@ -119,16 +159,16 @@ class ClaimMemoryService:
             validated = ClaimMemoryItem(**item.value)
         except Exception as e:
             logger.warning(f"Stored memory for {request_id} is malformed: {e}")
-            return None
+            raise ClaimMemoryCorrupt(str(e)) from e
 
-        return {
-            "request_id": request_id,
-            "claim": validated.claim_text,
-            "verdict": validated.verdict,
-            "confidence": validated.confidence,
-            "summary": validated.summary,
-            "verified_at": validated.verified_at,
-        }
+        return ClaimMemoryContext(
+            request_id=request_id,
+            claim=validated.claim_text,
+            verdict=validated.verdict,
+            confidence=validated.confidence,
+            summary=validated.summary or "",
+            verified_at=validated.verified_at,
+        )
 
     def search_similar(
         self,

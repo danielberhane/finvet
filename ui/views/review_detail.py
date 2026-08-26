@@ -4,7 +4,7 @@ import time
 
 import streamlit as st
 
-from api_client import submit_review
+from api_client import reconcile_review, submit_review
 from components.evidence import render_evidence
 from components.formatting import _escape
 
@@ -108,6 +108,14 @@ def render_review_detail():
 
     st.markdown("---")
 
+    # A row whose graph already ran and whose decision was already made needs
+    # its audit write retried, not a second opinion. Offering the decision form
+    # here would invite a reviewer to decide again on a claim that has already
+    # been decided.
+    if review_data.get("review_status") == "finalization_failed":
+        _render_finalization_retry(request_id)
+        return
+
     # Submit Your Review Section
     st.markdown('<div class="section-header">Submit Your Review</div>', unsafe_allow_html=True)
 
@@ -160,4 +168,44 @@ def render_review_detail():
             st.error(error)
 
     # Request ID for reference
+    st.caption(f"Request ID: `{request_id}`")
+
+
+def _render_finalization_retry(request_id):
+    """The action a stuck review actually needs.
+
+    Built with list-append and one join: st.markdown breaks on blank lines
+    inside an HTML block.
+    """
+    panel = [
+        '<div class="hitl-panel">',
+        '<div class="hitl-header">Audit finalization failed</div>',
+        '<p style="color: #92400E; margin: 0; font-size: 0.95rem;">',
+        'This review was submitted and the verification finished, but the '
+        'result could not be written to the audit trail. The decision still '
+        'stands &mdash; retrying records it. No new decision is needed.',
+        '</p>',
+        '</div>',
+    ]
+    st.markdown("\n".join(panel), unsafe_allow_html=True)
+
+    st.caption(
+        "Reviews are held in memory only, so a restart of the API since the "
+        "review was submitted will have discarded the result. In that case "
+        "the retry reports that the checkpoint is gone and the claim must be "
+        "re-run."
+    )
+
+    if st.button("Retry audit finalization", type="primary"):
+        result, error = reconcile_review(request_id)
+        if result:
+            st.success(
+                f"✅ Recorded. Final verdict: **{result.get('verdict')}**")
+            time.sleep(1.5)
+            st.session_state.selected_review_id = None
+            st.session_state.selected_review_data = None
+            st.rerun()
+        else:
+            st.error(error)
+
     st.caption(f"Request ID: `{request_id}`")

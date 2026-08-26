@@ -100,21 +100,32 @@ class TestBuildContext:
         assert "FY2024" in context
 
     def test_context_with_memory(self):
+        """Prior context reaches the prompt, inside an explicit boundary.
+
+        The fixture is the typed `ClaimMemoryContext` the store now returns,
+        not a hand-built dict: it carries no `similarity`, because an exact
+        lookup by request id scored no resemblance.
+        """
+        from finvet.memory.store_service import ClaimMemoryContext
+
         agent = ConcreteAgent()
         state = {
             "claim_raw": "test",
-            "memory_context": {
-                "claim": "prior claim",
-                "verdict": "SUPPORTS",
-                "confidence": 0.90,
-                "similarity": 0.96,
-                "summary": "Previously verified",
-            },
+            "memory_context": ClaimMemoryContext(
+                request_id="req_0123456789ab",
+                claim="prior claim",
+                verdict="SUPPORTS",
+                confidence=0.90,
+                summary="Previously verified",
+            ),
         }
         context = agent._build_context(state)
-        assert "Prior Verification" in context
+
+        assert "<untrusted_historical_context>" in context
         assert "prior claim" in context
-        assert "MUST verify independently" in context
+        assert "not source evidence" in context
+        assert "Verify independently" in context
+        assert "similarity" not in context.lower()
 
     def test_context_with_canonical_period(self):
         from finvet.models.claim import CanonicalPeriod

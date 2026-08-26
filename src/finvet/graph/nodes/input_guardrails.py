@@ -93,9 +93,10 @@ def input_guardrails(state: VerificationState) -> Dict:
         extra={"request_id": request_id, "latency_ms": result.latency_ms},
     )
 
+    # The guard's own result is not returned into state. Nothing read it, and
+    # the outcome that matters -- provider, flags, normalized input -- is
+    # already on the audit trail via the log_event above, which is the path
+    # that persists.
     return {
         "claim_normalized": claim_normalized,
-        "guard_result_input": result.model_dump(),
-        "guardrails_passed": ["composite_guard"],
-        "guardrails_failed": [],
     }

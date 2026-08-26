@@ -153,14 +153,25 @@ class TestNoDirectVerdictFallback:
 
         audit.release_review_claim.assert_called_once_with("req_pending")
 
-    def test_resume_error_also_releases_the_claim(self, audit, graph):
+    def test_resume_error_after_invoke_begins_never_releases_the_claim(
+            self, audit, graph):
+        """This test previously asserted the opposite, and the opposite is
+        unsafe: once invoke has been entered the checkpoint may have advanced,
+        so returning the row to PENDING would let a second reviewer resume a
+        partially-executed graph. The row goes to the recovery state instead.
+
+        The pre-invoke case still releases -- see
+        test_lost_checkpoint_releases_the_claim above, which covers the
+        update_state failure that release_review_claim exists for.
+        """
         graph.invoke.side_effect = RuntimeError("node exploded")
 
         with pytest.raises(HTTPException) as excinfo:
             _submit()
 
-        assert _status(excinfo) == 409
-        audit.release_review_claim.assert_called_once_with("req_pending")
+        assert _status(excinfo) == 503
+        audit.release_review_claim.assert_not_called()
+        audit.mark_review_finalization_failed.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -194,10 +205,13 @@ class TestResumeIsAudited:
         assert kwargs["review_decision"] == "override"
 
     def test_failed_finalization_is_not_reported_as_success(self, audit):
+        """503, not 500: the verdict exists and only the write failed, so the
+        row is recorded for reconciliation rather than lost."""
         audit.finalize_review.return_value = False
         with pytest.raises(HTTPException) as excinfo:
             _submit()
-        assert _status(excinfo) == 500
+        assert _status(excinfo) == 503
+        assert excinfo.value.detail["error"] == "review_finalization_failed"
 
     @pytest.mark.parametrize("decision,verdict", [
         ("approve", None), ("reject", None), ("override", "REFUTES"),

@@ -58,3 +58,6 @@ docs/architecture.svg
 # real paths. Duplicating them in the repo would go stale the first time either
 # side changed.
 RAGagentic/
+
+# Coverage artifact
+.coverage

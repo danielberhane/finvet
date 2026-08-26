@@ -21,8 +21,10 @@ from finvet.models.a2a import (
     A2A_CORROBORATES,
     A2A_FAILED,
     A2A_NOT_APPLICABLE_YET,
+    A2A_NO_CORPUS,
     A2A_NO_MATCHING_DISCLOSURE,
-    A2A_UNDISCLOSED_MATERIAL_CLAIM,
+    A2A_PENDING_CLASSIFICATION,
+    A2A_SOURCE_UNAVAILABLE,
     A2AResult,
     classify_status,
     reclassify_corroboration,
@@ -35,6 +37,18 @@ def _parsed(metric="fine_amount", ticker="AAPL", value=500_000_000.0):
     return ParsedClaim(claim_type="news", ticker=ticker, metric=metric,
                        operator="eq", value=value, period="2025",
                        reject_reason=None)
+
+
+def _searched_and_found_nothing():
+    """Provenance for a filing that was actually read and did not mention it.
+
+    Silence is only reportable when a search succeeded, so a fixture standing
+    for "the filing is silent" has to carry the search that established it.
+    """
+    return [{"tool": "search_filing_text",
+             "args": {"query": "fine", "ticker": "AAPL"},
+             "result": {"success": True, "chunks": [], "total_found": 0,
+                        "reason": "no_relevant_evidence"}}]
 
 
 class TestRecursionIsStructurallyImpossible:
@@ -344,6 +358,7 @@ class TestParentChildClassification:
             success=True, direction="news_to_sec", source_agent="news",
             target_agent="sec", status=A2A_CORROBORATES,
             verdict="NOT_ENOUGH_INFO", confidence=0.2, trigger_mode="agent",
+            provenance=_searched_and_found_nothing(),
         ).model_dump()
         evidence = {
             "verdict": "SUPPORTS", "confidence": 0.9,
@@ -478,8 +493,9 @@ class TestTriggerParity:
         for mode in ("agent", "policy"):
             payload = A2AResult(
                 success=True, source_agent="news", target_agent="sec",
-                status=A2A_NO_MATCHING_DISCLOSURE, verdict=target,
+                status=A2A_PENDING_CLASSIFICATION, verdict=target,
                 trigger_mode=mode,
+                provenance=_searched_and_found_nothing(),
             ).model_dump()
             results.append(reclassify_corroboration(parent, payload)["status"])
 
@@ -551,81 +567,99 @@ class TestFailedDelegationIsRecorded:
         assert calls == [], "policy path re-ran a delegation that already failed"
 
 
-class TestUnsupportedMaterialClaimEscalates:
-    """The reachable escalation, after the trusted-observation boundary.
+class TestSilenceAboutAMaterialAmountIsStillOnlySilence:
+    """The materiality promotion is gone, and this is what replaced it.
 
-    A fine amount is a narrative fact with no XBRL concept, so neither the news
-    claim nor the filing check can produce a decisive verdict -- both resolve to
-    NOT_ENOUGH_INFO. CONTRADICTS needs two decisive verdicts, so it is
-    unreachable for exactly the two metrics the delegation exists to check.
+    A previous release promoted filing silence about a fine or settlement to
+    UNDISCLOSED_MATERIAL_CLAIM and escalated it. Reaching that status meant
+    deciding the issuer *should* have disclosed the amount -- a materiality
+    judgment, made by testing a metric name against a set, with nothing
+    calibrating it and no threshold anyone had measured. Release A declines to
+    make that judgment, so the status does not exist rather than sitting unused.
 
-    What *is* reachable: the claim asserted a material amount, a filing
-    covering the period exists, and it does not mention it. That escalates.
+    What remains is honest and narrower: when an applicable filing was actually
+    searched and said nothing, that is NO_MATCHING_DISCLOSURE, and it does not
+    escalate. A periodic report omits most things.
     """
 
     def _result(self, *, metric="fine_amount", claimed_value=5e8,
-                temporal_scope="claim_period", verdict="NOT_ENOUGH_INFO"):
-        """A delegation result as _corroborate produces it."""
+                temporal_scope="claim_period", verdict="NOT_ENOUGH_INFO",
+                searched=True):
+        """A delegation result as _corroborate produces it.
+
+        `searched` controls the filing-search provenance, which is what now
+        licenses the silence reading.
+        """
+        provenance = []
+        if searched:
+            provenance = [{"tool": "search_filing_text",
+                           "args": {"query": "fine", "ticker": "AAPL"},
+                           "result": {"success": True, "chunks": [],
+                                      "total_found": 0,
+                                      "reason": "no_relevant_evidence"}}]
         return A2AResult(
             success=True, source_agent="news", target_agent="sec",
-            status=A2A_NO_MATCHING_DISCLOSURE, verdict=verdict,
+            status=A2A_PENDING_CLASSIFICATION, verdict=verdict,
             metric=metric, claimed_value=claimed_value,
-            temporal_scope=temporal_scope,
+            temporal_scope=temporal_scope, provenance=provenance,
         ).model_dump()
 
-    def test_silence_on_a_material_amount_is_promoted(self):
+    def test_silence_on_a_material_amount_stays_silence(self):
         out = reclassify_corroboration("NOT_ENOUGH_INFO", self._result())
-        assert out["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
+        assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
 
-    def test_promotion_survives_a_non_decisive_parent(self):
-        """The point of the change: it must fire when the parent is NEI, which
-        after Task 2 is the only thing the parent can be for these metrics."""
-        for parent in ("NOT_ENOUGH_INFO", "SUPPORTS", "REFUTES"):
-            out = reclassify_corroboration(parent, self._result())
-            assert out["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
+    @pytest.mark.parametrize("parent", ["NOT_ENOUGH_INFO", "SUPPORTS", "REFUTES"])
+    def test_no_parent_verdict_promotes_silence(self, parent):
+        out = reclassify_corroboration(parent, self._result())
+        assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
 
-    @pytest.mark.parametrize("scope", ["event_date", "claim_period"])
-    def test_either_way_of_dating_the_event_escalates(self, scope):
+    @pytest.mark.parametrize("scope", ["event_date", "claim_period", "unknown"])
+    def test_dating_the_event_does_not_change_the_status(self, scope):
+        """The date used to be the gate on promotion. With no promotion, it no
+        longer decides anything about the status."""
         out = reclassify_corroboration(
             "NOT_ENOUGH_INFO", self._result(temporal_scope=scope))
-        assert out["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
-
-    def test_unknown_event_timing_does_not_escalate(self):
-        """Without a date the temporal gate never ran, so the filing's silence
-        may simply mean the event postdates it."""
-        out = reclassify_corroboration(
-            "NOT_ENOUGH_INFO", self._result(temporal_scope="unknown"))
         assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
 
-    def test_claim_naming_no_amount_does_not_escalate(self):
-        out = reclassify_corroboration(
-            "NOT_ENOUGH_INFO", self._result(claimed_value=None))
-        assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
-
-    @pytest.mark.parametrize("metric", ["layoffs", "acquisition_value", "revenue"])
-    def test_out_of_scope_metrics_do_not_escalate(self, metric):
+    @pytest.mark.parametrize("metric", ["fine_amount", "settlement_amount",
+                                        "layoffs", "acquisition_value", "revenue"])
+    def test_the_metric_no_longer_selects_a_status(self, metric):
+        """Membership of CORROBORATION_METRICS decided materiality before.
+        Nothing about the metric name should change what the filing said."""
         out = reclassify_corroboration(
             "NOT_ENOUGH_INFO", self._result(metric=metric))
         assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
 
-    def test_a_filing_that_confirms_is_not_promoted(self):
-        """Promotion applies to silence, not to a filing that answered."""
+    def test_a_claim_naming_no_amount_is_unchanged(self):
+        out = reclassify_corroboration(
+            "NOT_ENOUGH_INFO", self._result(claimed_value=None))
+        assert out["status"] == A2A_NO_MATCHING_DISCLOSURE
+
+    def test_a_filing_that_confirms_still_corroborates(self):
         out = reclassify_corroboration("SUPPORTS",
                                        self._result(verdict="SUPPORTS"))
         assert out["status"] == A2A_CORROBORATES
 
-    def test_not_applicable_yet_is_never_promoted(self):
+    def test_not_applicable_yet_survives_reclassification(self):
         pending = A2AResult(
             success=True, source_agent="news", target_agent="sec",
             status=A2A_NOT_APPLICABLE_YET, verdict="NOT_ENOUGH_INFO",
-            metric="fine_amount", claimed_value=5e8, temporal_scope="claim_period",
+            metric="fine_amount", claimed_value=5e8,
+            temporal_scope="claim_period",
         ).model_dump()
         assert reclassify_corroboration("NOT_ENOUGH_INFO", pending)["status"] \
             == A2A_NOT_APPLICABLE_YET
 
-    def test_escalation_reaches_hitl(self):
-        """End to end through the real guardrail node -- the reachability check
-        this whole change exists to satisfy."""
+    def test_silence_without_a_successful_search_is_not_silence_at_all(self):
+        """The distinction that replaced the materiality judgment: a claim
+        about what a filing says requires having read one."""
+        out = reclassify_corroboration(
+            "NOT_ENOUGH_INFO", self._result(searched=False))
+        assert out["status"] == A2A_SOURCE_UNAVAILABLE
+
+    def test_silence_does_not_reach_hitl(self):
+        """End to end through the real guardrail node. This assertion is the
+        inverse of the one it replaces, and deliberately so."""
         from finvet.graph.nodes.output_guardrails import output_guardrails
 
         state = {
@@ -638,18 +672,21 @@ class TestUnsupportedMaterialClaimEscalates:
                 "NOT_ENOUGH_INFO", self._result()),
         }
         out = output_guardrails(state)
-        assert "unsupported_material_claim" in out.get("hitl_triggers", [])
-        assert out.get("hitl_required") is True
+        triggers = out.get("hitl_triggers", []) or []
+        assert "unsupported_material_claim" not in triggers
+        assert "source_disagreement" not in triggers
 
 
-class TestEscalationIsReachableFromTheRealNewsRoute:
-    """The check the first version of this feature did not survive.
+
+class TestThePolicyPathRecordsWhatActuallyHappened:
+    """Driven through run_news_agent, not a hand-built result.
 
     Only the SEC route runs period_resolver (workflow.py:94), so a news claim
     arrives with no canonical_period and the policy path has no event date to
-    pass. The promotion required a date, so it could never fire on the one path
-    that actually produces these results -- while unit tests that hand-built
-    temporal_scope passed happily. This drives run_news_agent instead.
+    pass. An earlier feature depended on that date and could therefore never
+    fire on the one path that produces these results, while unit tests holding
+    hand-built temporal_scope passed happily. The lesson outlived the feature:
+    these drive the real node.
     """
 
     def _news_state(self, period="2024"):
@@ -684,13 +721,24 @@ class TestEscalationIsReachableFromTheRealNewsRoute:
         assert "canonical_period" not in self._news_state()
         assert domain_agents._event_date_for(self._news_state()) == ""
 
-    def test_policy_path_escalates_end_to_end(self):
+    def test_the_date_is_still_derived_from_the_resolved_period(self):
+        """The temporal scope remains recorded even though no status now
+        depends on it: an escalation sends work to a person, and they should
+        be able to see whether the date was stated or inferred."""
+        out = self._run(self._news_state())
+        assert out["corroboration_result"]["temporal_scope"] == "claim_period"
+
+    def test_naming_the_tool_is_not_proof_the_search_succeeded(self):
+        """The nested agent reports `tools_called: ["search_filing_text"]` and
+        empty provenance. A tool name is an intention; provenance is a result,
+        and only a result can license a claim about what the filing says."""
         out = self._run(self._news_state())
         result = out["corroboration_result"]
-        assert result["temporal_scope"] == "claim_period"
-        assert result["status"] == A2A_UNDISCLOSED_MATERIAL_CLAIM
+        assert result["tools_used"] == [] or "search_filing_text" not in (
+            result.get("provenance") or [])
+        assert result["status"] == A2A_SOURCE_UNAVAILABLE
 
-    def test_hitl_fires_on_that_result(self):
+    def test_that_result_does_not_reach_hitl(self):
         from finvet.graph.nodes.output_guardrails import output_guardrails
 
         out = self._run(self._news_state())
@@ -701,11 +749,254 @@ class TestEscalationIsReachableFromTheRealNewsRoute:
             "verdict": "NOT_ENOUGH_INFO", "confidence": 0.9,
             "corroboration_result": out["corroboration_result"],
         })
-        assert "unsupported_material_claim" in guard.get("hitl_triggers", [])
+        triggers = guard.get("hitl_triggers", []) or []
+        assert "unsupported_material_claim" not in triggers
+        assert "source_disagreement" not in triggers
 
     def test_claim_with_no_period_stays_unknown(self):
-        """Nothing to infer a date from: silence keeps its weaker meaning."""
+        """Nothing to infer a date from; the scope says so rather than
+        implying the gate ran."""
         out = self._run(self._news_state(period=None))
-        result = out["corroboration_result"]
-        assert result["temporal_scope"] == "unknown"
-        assert result["status"] == A2A_NO_MATCHING_DISCLOSURE
+        assert out["corroboration_result"]["temporal_scope"] == "unknown"
+
+
+class TestClassificationThroughTheRealTool:
+    """Drives the decorated tool, not a hand-built A2AResult.
+
+    The classification tests above construct the nested result themselves,
+    which asserts the shape the author remembered rather than the shape
+    corroborate_with_filing emits. This invokes the real tool through
+    LangChain, puts its actual return value into ReAct provenance, and runs
+    run_news_agent over it.
+    """
+
+    def _news_state(self):
+        return {"request_id": "t", "claim_raw": "Apple was fined EUR 500 million",
+                "parsed_claim": _parsed()}
+
+    def _tool_result(self, sec_verdict, execution_status="completed"):
+        def fake_scoped(state, **kwargs):
+            return {"agent_evidence": {
+                "verdict": sec_verdict, "confidence": 0.95,
+                "retrieved_value": 4e8, "provenance": [], "tools_called": [],
+                "execution_status": execution_status,
+                "error": None if execution_status == "completed" else "sec down",
+            }}
+
+        with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   fake_scoped):
+            return corroborate_sec.corroborate_with_filing.invoke({
+                "finding": "Apple was fined EUR 500 million",
+                "ticker": "AAPL", "metric": "fine_amount",
+                "claimed_value": 5e8, "operator": "eq", "period": "2025",
+            })
+
+    def _run_news(self, tool_result, parent_verdict):
+        evidence = {
+            "verdict": parent_verdict, "confidence": 0.9,
+            "tools_called": ["corroborate_with_filing"],
+            "provenance": [{"tool": "corroborate_with_filing",
+                            "args": {"finding": "Apple was fined EUR 500 million"},
+                            "result": tool_result}],
+        }
+        with patch.object(domain_agents, "_run_agent",
+                          lambda c, a, d, s, **k: {"agent_evidence": evidence,
+                                                   "agent_type": "news"}):
+            return domain_agents.run_news_agent(self._news_state())
+
+    def test_real_tool_output_is_a_dict_that_survives_provenance(self):
+        """If it were a bare model, _parse_provenance would drop it."""
+        result = self._tool_result("REFUTES")
+        assert isinstance(result, dict)
+        assert result["verdict"] == "REFUTES"
+
+    def test_parent_supports_nested_refutes_is_a_contradiction(self):
+        out = self._run_news(self._tool_result("REFUTES"), "SUPPORTS")
+        assert out["corroboration_result"]["status"] == A2A_CONTRADICTS
+
+    def test_parent_supports_nested_supports_corroborates(self):
+        out = self._run_news(self._tool_result("SUPPORTS"), "SUPPORTS")
+        assert out["corroboration_result"]["status"] == A2A_CORROBORATES
+
+    def test_nested_failure_is_failed_not_silence(self):
+        """Spec invariant 3: a nested-agent failure is FAILED, never
+        NO_MATCHING_DISCLOSURE."""
+        out = self._run_news(
+            self._tool_result("NOT_ENOUGH_INFO", execution_status="failed"),
+            "SUPPORTS")
+        assert out["corroboration_result"]["status"] == A2A_FAILED
+
+    def test_a_completed_nei_delegation_is_not_labelled_undisclosed(self):
+        """Spec invariant 5: filing silence may not be claimed unless an
+        identified, applicable filing was successfully searched. A delegation
+        that merely completed with NEI does not establish that."""
+        out = self._run_news(self._tool_result("NOT_ENOUGH_INFO"), "SUPPORTS")
+        status = out["corroboration_result"]["status"]
+        assert status != "UNDISCLOSED_MATERIAL_CLAIM"
+        assert status == A2A_SOURCE_UNAVAILABLE
+
+
+class TestSourceAvailabilityIsEstablishedBeforeSilenceIsClaimed:
+    """Filing silence may only be reported when a filing was actually read.
+
+    `classify_status` maps any non-decisive pair to NO_MATCHING_DISCLOSURE,
+    which reads as "the issuer's filing does not mention this". That sentence
+    is only true if an applicable filing was identified and successfully
+    searched. A delegation that completed with NOT_ENOUGH_INFO because the RAG
+    service was down, or because nothing was ever searched, establishes nothing
+    about what the filing says -- and reporting it as silence turns an absence
+    of evidence into evidence of absence.
+
+    Drives the real decorated tool, so what is classified is what
+    `corroborate_with_filing` actually emits.
+    """
+
+    def _news_state(self):
+        return {"request_id": "t", "claim_raw": "Apple was fined EUR 500 million",
+                "parsed_claim": _parsed()}
+
+    def _search(self, **overrides):
+        """One `search_filing_text` provenance entry, as the tool records it."""
+        result = {"success": True, "chunks": [], "total_found": 0,
+                  "reason": "no_relevant_evidence", "error": None}
+        result.update(overrides)
+        return {"tool": "search_filing_text",
+                "args": {"query": "fine", "ticker": "AAPL"},
+                "result": result}
+
+    def _tool_result(self, sec_verdict, *, provenance=None,
+                     execution_status="completed"):
+        def fake_scoped(state, **kwargs):
+            return {"agent_evidence": {
+                "verdict": sec_verdict, "confidence": 0.95,
+                "retrieved_value": 4e8,
+                "provenance": provenance if provenance is not None else [],
+                "tools_called": [], "execution_status": execution_status,
+                "error": None if execution_status == "completed" else "sec down",
+            }}
+
+        with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   fake_scoped):
+            return corroborate_sec.corroborate_with_filing.invoke({
+                "finding": "Apple was fined EUR 500 million",
+                "ticker": "AAPL", "metric": "fine_amount",
+                "claimed_value": 5e8, "operator": "eq", "period": "2025",
+            })
+
+    def _status(self, tool_result, parent_verdict="SUPPORTS"):
+        evidence = {
+            "verdict": parent_verdict, "confidence": 0.9,
+            "tools_called": ["corroborate_with_filing"],
+            "provenance": [{"tool": "corroborate_with_filing",
+                            "args": {"finding": "f"}, "result": tool_result}],
+        }
+        with patch.object(domain_agents, "_run_agent",
+                          lambda c, a, d, s, **k: {"agent_evidence": evidence,
+                                                   "agent_type": "news"}):
+            out = domain_agents.run_news_agent(self._news_state())
+        return out["corroboration_result"]["status"]
+
+    # -- the case the standing failure named --------------------------------
+
+    def test_a_completed_nei_with_no_search_is_not_silence(self):
+        """Nothing was searched, so nothing is known about the filing."""
+        status = self._status(self._tool_result("NOT_ENOUGH_INFO"))
+        assert status != A2A_NO_MATCHING_DISCLOSURE
+        assert status == A2A_SOURCE_UNAVAILABLE
+
+    def test_a_successful_search_with_no_hits_is_silence(self):
+        """The contrast case: an applicable filing was read and said nothing."""
+        status = self._status(
+            self._tool_result("NOT_ENOUGH_INFO", provenance=[self._search()]))
+        assert status == A2A_NO_MATCHING_DISCLOSURE
+
+    # -- source availability -------------------------------------------------
+
+    def test_an_unavailable_source_is_reported_as_such(self):
+        status = self._status(self._tool_result(
+            "NOT_ENOUGH_INFO",
+            provenance=[self._search(
+                success=False, reason=None,
+                error="RAG service not available (check Postgres and the "
+                      "Ollama embedder)")]))
+        assert status == A2A_SOURCE_UNAVAILABLE
+
+    def test_a_failed_search_is_failed_not_silence(self):
+        status = self._status(self._tool_result(
+            "NOT_ENOUGH_INFO",
+            provenance=[self._search(success=False, reason=None,
+                                     error="malformed query")]))
+        assert status == A2A_FAILED
+
+    def test_an_empty_corpus_is_reported_as_such(self):
+        """Distinct from silence: there was no filing to be silent."""
+        status = self._status(self._tool_result(
+            "NOT_ENOUGH_INFO",
+            provenance=[self._search(reason="no_corpus")]))
+        assert status == A2A_NO_CORPUS
+
+    def test_one_successful_search_is_enough_to_establish_silence(self):
+        """A failed attempt followed by a successful one still read a filing."""
+        status = self._status(self._tool_result(
+            "NOT_ENOUGH_INFO",
+            provenance=[self._search(success=False, reason=None, error="blip"),
+                        self._search()]))
+        assert status == A2A_NO_MATCHING_DISCLOSURE
+
+    # -- comparison still works ---------------------------------------------
+
+    def test_two_decisive_verdicts_that_disagree_contradict(self):
+        status = self._status(
+            self._tool_result("REFUTES", provenance=[self._search()]),
+            parent_verdict="SUPPORTS")
+        assert status == A2A_CONTRADICTS
+
+    def test_two_decisive_verdicts_that_agree_corroborate(self):
+        status = self._status(
+            self._tool_result("SUPPORTS", provenance=[self._search()]),
+            parent_verdict="SUPPORTS")
+        assert status == A2A_CORROBORATES
+
+    def test_a_decisive_pair_is_compared_even_without_a_filing_search(self):
+        """The gate gowerns the *silence* reading, not the comparison: two
+        decisive verdicts disagree regardless of how each was reached."""
+        status = self._status(self._tool_result("REFUTES"),
+                              parent_verdict="SUPPORTS")
+        assert status == A2A_CONTRADICTS
+
+    def test_a_nested_failure_is_still_failed(self):
+        status = self._status(
+            self._tool_result("NOT_ENOUGH_INFO", execution_status="failed"))
+        assert status == A2A_FAILED
+
+    def test_a_filing_that_predates_the_event_stays_out_of_scope(self):
+        """NOT_APPLICABLE_YET is decided before delegation and must survive."""
+        from finvet.models.a2a import reclassify_corroboration
+
+        result = A2AResult(
+            success=True, source_agent="news", target_agent="sec",
+            status=A2A_NOT_APPLICABLE_YET, verdict="NOT_ENOUGH_INFO",
+        ).model_dump()
+        assert (reclassify_corroboration("SUPPORTS", result)["status"]
+                == A2A_NOT_APPLICABLE_YET)
+
+
+class TestTheToolDoesNotClassify:
+    """The tool runs before the parent verdict exists, so any status it sets is
+    a placeholder. It used to borrow NO_MATCHING_DISCLOSURE for that, which is
+    a real audit-facing outcome -- a result that never reached
+    reclassification would have read as a filing saying nothing."""
+
+    def test_the_placeholder_is_neutral(self):
+        def fake_scoped(state, **kwargs):
+            return {"agent_evidence": {
+                "verdict": "SUPPORTS", "confidence": 0.9, "provenance": [],
+                "tools_called": [], "execution_status": "completed"}}
+
+        with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped",
+                   fake_scoped):
+            result = corroborate_sec.corroborate_with_filing.invoke({
+                "finding": "f", "ticker": "AAPL", "metric": "fine_amount",
+                "claimed_value": 5e8, "operator": "eq", "period": "2025"})
+
+        assert result["status"] == A2A_PENDING_CLASSIFICATION

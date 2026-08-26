@@ -9,7 +9,6 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.store.postgres import PostgresStore
 
 from . import __version__
 from .api import deps
@@ -54,6 +53,16 @@ claim_store = None
 _store_cm = None  # Keep context manager alive for app lifetime
 if settings.enable_claim_memory:
     try:
+        # Imported here, not at module scope. langgraph-checkpoint-postgres is
+        # an optional Release-A dependency (extra: memory), and claim memory
+        # ships disabled -- a top-level import would stop the API booting on a
+        # default install for a feature that install does not use.
+        #
+        # Inside the `try` so that enabling memory *without* the extra degrades
+        # to disabled, which is the documented behaviour, rather than crashing
+        # at startup.
+        from langgraph.store.postgres import PostgresStore
+
         _store_cm = PostgresStore.from_conn_string(
             settings.postgres_url,
             index={
@@ -65,6 +74,12 @@ if settings.enable_claim_memory:
         claim_store = _store_cm.__enter__()
         claim_store.setup()
         logger.info("LangGraph Store initialized for episodic memory")
+    except ImportError as e:
+        logger.warning(
+            f"Claim memory is enabled but its optional dependency is missing "
+            f"({e}); continuing with memory disabled. Install it with: "
+            f"uv sync --extra memory")
+        claim_store = None
     except Exception as e:
         logger.warning(f"Failed to initialize LangGraph Store: {e}")
         claim_store = None
