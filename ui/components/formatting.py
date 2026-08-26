@@ -45,6 +45,35 @@ def verdict_label(verdict):
     return str(verdict).replace("_", " ").title()
 
 
+# Tokens whose casing `.title()` gets wrong.
+_PRESERVE_CASE = {"q1": "Q1", "q2": "Q2", "q3": "Q3", "q4": "Q4",
+                  "sec": "SEC", "xbrl": "XBRL", "rag": "RAG", "a2a": "A2A",
+                  "us": "US", "pe": "P/E", "hitl": "HITL", "api": "API",
+                  "pii": "PII", "id": "ID", "ui": "UI"}
+
+
+def humanize(value):
+    """Turn a machine value into something a person can read.
+
+    Defence in depth for the whole surface, not one field. `Claim rejected:
+    non_financial` reached a user because a serialization format was pasted
+    into display text; the same shape exists in limitations
+    (`unsupported_q4_derivation`), HITL triggers (`output_safety_violation`)
+    and anything added later. Anything rendered goes through here.
+
+    Text already written for a human is returned untouched — it contains
+    spaces, so it is prose, and re-casing it would mangle a real sentence.
+    """
+    if not value:
+        return "--"
+    text = str(value)
+    if " " in text:
+        return text
+    words = [_PRESERVE_CASE.get(w.lower(), w.capitalize())
+             for w in text.split("_") if w]
+    return " ".join(words) if words else "--"
+
+
 def _escape(text):
     """Escape HTML special characters."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

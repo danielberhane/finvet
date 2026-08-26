@@ -18,6 +18,30 @@ _REJECT_REASON_MESSAGES = {
     "advice_seeking": "FinVet verifies factual claims; it does not give investment advice.",
 }
 
+# Short prose titles for the same reasons. `summary` is display text by
+# contract, and it read "Claim rejected: non_financial" -- a serialization
+# format pasted in front of a user. The enum still travels in
+# `metadata.reject_reason`, where a program reads it.
+_REJECT_REASON_LABELS = {
+    "non_financial": "Not a financial claim",
+    "question": "A question, not a claim",
+    "incomplete": "Incomplete claim",
+    "advice_seeking": "Advice request",
+}
+
+
+def _reject_reason_label(reason: str) -> str:
+    """A readable title for a reject reason.
+
+    An unmapped reason degrades to title-cased words rather than leaking the
+    raw token: a reason added to the parser without a label here should read
+    imperfectly, never like code.
+    """
+    known = _REJECT_REASON_LABELS.get(reason)
+    if known:
+        return known
+    return str(reason or "unknown").replace("_", " ").title()
+
 
 def response_generator(state: VerificationState) -> Dict:
     """
@@ -140,6 +164,12 @@ def _generate_hitl_response(state: VerificationState) -> Dict:
             "tools_called": preliminary_analysis["tools_called"],
             "disposition": "pending_review",
             "disposition_detail": ", ".join(hitl_triggers) or None,
+            # What was gathered before the run paused. Omitted here until now,
+            # so a delegation that actually ran -- News -> SEC corroboration
+            # fires on exactly the claims that then escalate -- left no trace
+            # in the response, and the reviewer who most needs the evidence saw
+            # none of it.
+            "data_sources": build_data_sources(state, agent_evidence),
         },
         "preliminary_analysis": preliminary_analysis,
     }
@@ -166,7 +196,7 @@ def _generate_rejection_response(state: VerificationState) -> Dict:
         explanation = detail or "A human reviewer rejected this claim during review."
     else:
         reject_reason = detail or "unknown"
-        summary = f"Claim rejected: {reject_reason}"
+        summary = f"Claim rejected: {_reject_reason_label(reject_reason)}"
         explanation = _REJECT_REASON_MESSAGES.get(
             reject_reason, "Claim could not be processed."
         )
@@ -327,41 +357,15 @@ def _format_sources(
     return sources
 
 
-def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str, Any]:
-    """Format metadata for the response."""
-    execution_end = datetime.utcnow().isoformat()
-    parsed_claim = state.get("parsed_claim")
+def build_data_sources(state, agent_evidence) -> Dict[str, Any]:
+    """Which evidence paths a run actually used: XBRL, RAG, A2A.
 
-    operator = getattr(parsed_claim, "operator", None) if parsed_claim else None
-    metric = getattr(parsed_claim, "metric", None) if parsed_claim else None
-
-    metadata = {
-        "agent": agent_evidence.get("agent"),
-        "disposition": state.get("disposition") or "released",
-        "disposition_detail": state.get("disposition_detail"),
-        "tools_called": agent_evidence.get("tools_called", []),
-        "tool_calls_detail": agent_evidence.get("tool_calls_detail", []),
-        "execution_time_ms": agent_evidence.get("execution_time_ms", 0),
-        "timestamp": execution_end,
-        "total_tokens_used": state.get("total_tokens_used", 0),
-        "retrieved_value": agent_evidence.get("retrieved_value"),
-        # Carried to the audit envelope so a reviewer can locate the number in
-        # the source rather than take the pipeline's word for it.
-        "trusted_observation": agent_evidence.get("trusted_observation"),
-        "claimed_value": parsed_claim.value if parsed_claim else None,
-        "operator": operator,
-        "metric": metric,
-        "magnitude_difference_percent": agent_evidence.get("magnitude_difference_percent"),
-        "source_description": agent_evidence.get("source_description", ""),
-        # Both verdicts travel with the response: the deterministic layer is
-        # only auditable if the verdict it replaced is visible next to it.
-        "override_applied": agent_evidence.get("override_applied", False),
-        "llm_original_verdict": agent_evidence.get("llm_original_verdict"),
-        # Machine-readable, so a client can tell "we cannot answer this" from
-        # "we looked and found nothing". None on a normal run.
-        "limitation": agent_evidence.get("limitation"),
-    }
-
+    One function for every response shape. It lived inside
+    `_format_metadata`, which only the success path calls, so a claim that
+    paused for review reported no provenance at all -- the A2A delegation
+    could run, be recorded in state, and never reach the page. The reviewer
+    who most needs to see what was gathered was shown the least.
+    """
     # Always build data source provenance breakdown (XBRL vs RAG vs A2A)
     xbrl_tools = {"get_income_statement", "get_balance_sheet", "get_cash_flow"}
     tools_used = set(agent_evidence.get("tools_called", []))
@@ -440,7 +444,45 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
             "sources": len(corroboration.get("sources") or []),
         }
 
-    metadata["data_sources"] = data_sources
+    return data_sources
+
+
+def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str, Any]:
+    """Format metadata for the response."""
+    execution_end = datetime.utcnow().isoformat()
+    parsed_claim = state.get("parsed_claim")
+
+    operator = getattr(parsed_claim, "operator", None) if parsed_claim else None
+    metric = getattr(parsed_claim, "metric", None) if parsed_claim else None
+
+    metadata = {
+        "agent": agent_evidence.get("agent"),
+        "disposition": state.get("disposition") or "released",
+        "disposition_detail": state.get("disposition_detail"),
+        "tools_called": agent_evidence.get("tools_called", []),
+        "tool_calls_detail": agent_evidence.get("tool_calls_detail", []),
+        "execution_time_ms": agent_evidence.get("execution_time_ms", 0),
+        "timestamp": execution_end,
+        "total_tokens_used": state.get("total_tokens_used", 0),
+        "retrieved_value": agent_evidence.get("retrieved_value"),
+        # Carried to the audit envelope so a reviewer can locate the number in
+        # the source rather than take the pipeline's word for it.
+        "trusted_observation": agent_evidence.get("trusted_observation"),
+        "claimed_value": parsed_claim.value if parsed_claim else None,
+        "operator": operator,
+        "metric": metric,
+        "magnitude_difference_percent": agent_evidence.get("magnitude_difference_percent"),
+        "source_description": agent_evidence.get("source_description", ""),
+        # Both verdicts travel with the response: the deterministic layer is
+        # only auditable if the verdict it replaced is visible next to it.
+        "override_applied": agent_evidence.get("override_applied", False),
+        "llm_original_verdict": agent_evidence.get("llm_original_verdict"),
+        # Machine-readable, so a client can tell "we cannot answer this" from
+        # "we looked and found nothing". None on a normal run.
+        "limitation": agent_evidence.get("limitation"),
+    }
+
+    metadata["data_sources"] = build_data_sources(state, agent_evidence)
 
     return metadata
 

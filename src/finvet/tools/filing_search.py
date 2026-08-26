@@ -84,16 +84,34 @@ def search_filing_text(
             ).model_dump()
 
         # The resolved period is injected, not taken from the model: it was
-        # already determined upstream, and a chunk from the wrong fiscal year
-        # is the wrong evidence rather than weak evidence.
-        period_end, _ = _current_period_target()
+        # already determined upstream, so the model cannot substitute a date.
+        #
+        # It bounds the search from *below*, not onto a single filing. A number
+        # belongs to one period, and matching it exactly is right for XBRL --
+        # that guard, in sec_tools, is unchanged. A disclosure describes an
+        # event, and appears in whichever filings were current while the matter
+        # was live, often for years: Apple's March 2024 European Commission
+        # investigation is disclosed in the FY2025 10-K and carried across
+        # three filings. Exact matching returned zero chunks for it, and the
+        # News -> SEC delegation failed every time -- the nested agent searched,
+        # found nothing, reworded, found nothing, and died at its recursion
+        # limit. A filing can only describe events that happened before it
+        # closed, so the resolved period is a lower bound on which filings
+        # could possibly carry the disclosure.
+        #
+        # Safe because filing prose can never become a trusted observation
+        # (SUPPORTING_EVIDENCE_TOOLS): no number rests on it, so a wrong-period
+        # passage is not the wrong-evidence hazard a wrong-period figure is.
+        # Each chunk carries its own period_end and filing_type, so a claim
+        # naming one filing that also matches a later one stays attributable.
+        period_start, _ = _current_period_target()
 
         results = rag.search(
             query=query,
             ticker=ticker,
             section=section or None,
             filing_type=filing_type or None,
-            period_end=period_end,
+            period_start=period_start,
             top_k=top_k,
         )
 

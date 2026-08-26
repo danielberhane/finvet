@@ -6,7 +6,7 @@ import streamlit as st
 
 from api_client import reconcile_review, submit_review
 from components.evidence import render_evidence
-from components.formatting import _escape, verdict_label
+from components.formatting import _escape, humanize, verdict_label
 
 
 def render_review_detail():
@@ -61,7 +61,7 @@ def render_review_detail():
         # Why triggered + Preliminary verdict in one banner
         trigger_text = ""
         if hitl_triggers:
-            trigger_text = ", ".join([t.replace("_", " ").title() for t in hitl_triggers])
+            trigger_text = ", ".join(humanize(t) for t in hitl_triggers)
 
         # The deterministic layer's disagreement with the model is decisive
         # context for the reviewer, so it sits in the banner, not the evidence.
