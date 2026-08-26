@@ -55,7 +55,7 @@ this release does not make one.
 
 | Agent | Handles | Sources | Can delegate to |
 |---|---|---|---|
-| **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP; filing-text retrieval is in the toolbox but unused by Release A routing (see below) | — |
+| **SEC** | GAAP financials, and claims about what a filing says | SEC EDGAR (XBRL) via MCP, hybrid RAG over filing text | — |
 | **Market** | Prices, valuation, market cap | Finnhub | — |
 | **News** | Events and announcements | Tavily search | SEC |
 
@@ -79,15 +79,13 @@ Part I and Part II. Retrieval is scoped to the resolved period, and the dense ar
 calibrated against a labelled set rather than chosen — below it, the tool returns no evidence
 instead of the nearest available passage.
 
-**What Release A does not claim.** Retrieval is a tested subsystem, not a route a claim can
-take. `METRIC_WHITELIST["sec"]` holds only numeric GAAP metrics, so a qualitative filing claim
-("Apple discussed supplier concentration risk in its annual report") is rejected by the parser
-as `non_financial` and never reaches an agent; the SEC prompt separately tells the model not to
-call filing search to re-confirm an XBRL number. The result is that **no recorded execution has
-produced filing-text evidence** — 0 of 322 in the audit trail. The retrieval measurements below
-are of the subsystem, driven at the tool boundary. Wiring a qualitative claim type through to it
-is Release B, and `scripts/release_gate_evidence.py` asserts the current state so it cannot
-drift unnoticed.
+**What retrieval may and may not decide.** A claim about what a filing *says* —
+"Apple's annual report discusses risks from supplier concentration" — is
+answered from retrieved filing text and returns a verdict with the passages
+cited. A claim naming a **number** is not: filing prose can never become a
+trusted observation, so a figure read out of a filing table cannot settle a
+numeric claim, and such a claim falls back to XBRL or declines. Absence of a
+passage is never treated as refutation.
 
 Deeper dives: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
 [`docs/RAG_AND_AGENTIC_RAG_GUIDE.md`](docs/RAG_AND_AGENTIC_RAG_GUIDE.md).
@@ -185,9 +183,8 @@ not a dependency on any provider.
 - **Model-directed ReAct agents in a deterministic workflow** — routing, period resolution,
   consensus and guardrails are fixed pipeline stages; within the selected agent the model
   chooses its own tools and iterations.
-- **Hybrid retrieval over filings** *(subsystem; not reachable from claim routing in
-  Release A)* — Postgres full-text relevance plus pgvector similarity,
-  fused with RRF, scoped to the resolved period, with a calibrated relevance floor. Measured
+- **Hybrid retrieval over filings** — Postgres full-text relevance plus pgvector similarity,
+  fused with RRF, scoped forward from the claimed period, with a calibrated relevance floor. Measured
   at the tool boundary
   on 30 positive and 30 negative queries over a 1,398-chunk corpus: zero irrelevant results
   accepted at full recall. Ten further near-miss queries — on topic but aimed at a period or
