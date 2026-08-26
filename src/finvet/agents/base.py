@@ -634,6 +634,13 @@ class BaseVerificationAgent(ABC):
                 f"{self.agent_type} no trusted observation for a numeric claim; "
                 f"failing closed to NOT_ENOUGH_INFO"
             )
+            # Same rule as the success path below: what the response shows must
+            # be what Python compared. This branch returned before reaching it,
+            # so the field kept the verdict LLM's own reading of the prose and
+            # the evidence dict published it -- in the field that elsewhere
+            # holds a certified XBRL fact, with no marker separating them.
+            # Nothing is lost: the passages themselves stay in provenance.
+            verdict_output.retrieved_value = None
             return "NOT_ENOUGH_INFO", min(confidence, 0.5), None
 
         # The same fail-closed rule for a claim that names no value. Nothing

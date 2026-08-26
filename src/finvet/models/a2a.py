@@ -52,9 +52,27 @@ A2A_CORROBORATES: A2AStatus = "CORROBORATES"
 A2A_CONTRADICTS: A2AStatus = "CONTRADICTS"
 
 # An applicable filing was identified and successfully searched, and it does not
-# mention the claim. Only reachable when a search actually succeeded: see
-# summarize_filing_search.
+# mention the claim. Only reachable when a search actually succeeded *and came
+# back empty*: see summarize_filing_search.
 A2A_NO_MATCHING_DISCLOSURE: A2AStatus = "NO_MATCHING_DISCLOSURE"
+
+# The filing was searched and passages came back, but nothing in them could
+# certify a number: filing prose may never become a TrustedObservation, and
+# these metrics have no XBRL concept to fall back on.
+#
+# This status exists because NO_MATCHING_DISCLOSURE used to cover it, and that
+# is a claim about the document -- "the issuer's filing does not mention this"
+# -- recorded for a run that read eight passages and found the amount. The
+# distinction is between what the document says and what the system could
+# certify, and only the first is a fact about the filing.
+#
+# Decided from the retrieved chunks, never from `retrieved_value`: that field
+# is populated by the verdict LLM, and letting it choose the status would put
+# model output back in charge one layer up.
+#
+# Not decisive. It does not make CORROBORATES or CONTRADICTS reachable, and it
+# does not trigger review -- it is an honest name for a non-decisive outcome.
+A2A_FOUND_UNCERTIFIED: A2AStatus = "FOUND_UNCERTIFIED"
 
 A2A_NOT_APPLICABLE_YET: A2AStatus = "NOT_APPLICABLE_YET"
 
@@ -147,7 +165,7 @@ def summarize_filing_search(
     outcome, so this reads that rather than inferring from the verdict.
     """
     summary = {"searched": False, "unavailable": False, "failed": False,
-               "no_corpus": False}
+               "no_corpus": False, "retrieved": False}
 
     for entry in provenance or []:
         if not isinstance(entry, dict) or entry.get("tool") != "search_filing_text":
@@ -158,6 +176,13 @@ def summarize_filing_search(
 
         if result.get("success"):
             summary["searched"] = True
+            # Whether anything came back, which is what separates a filing
+            # that is silent from one the system could not certify. Read from
+            # the retrieval payload, not from the verdict LLM's reported
+            # number: a status decided by model output is the defect this
+            # distinction exists to remove.
+            if result.get("chunks"):
+                summary["retrieved"] = True
             if result.get("reason") == "no_corpus":
                 summary["no_corpus"] = True
             continue
@@ -221,6 +246,12 @@ def reclassify_corroboration(
         elif search["no_corpus"]:
             # There was no filing to be silent.
             status = A2A_NO_CORPUS
+        elif search["retrieved"]:
+            # Passages came back and none of them could certify a figure. That
+            # is a limit of what may be trusted, not a statement that the
+            # filing is silent -- and the run that exposed this read eight
+            # passages and found the amount in them.
+            status = A2A_FOUND_UNCERTIFIED
 
     updated["status"] = status
     return updated
