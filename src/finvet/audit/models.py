@@ -42,6 +42,10 @@ class AuditExecution(Base):
     execution_hash = Column(String(64), nullable=False)
     full_trace = Column(JSONB, nullable=False)
     data_sources = Column(JSONB, nullable=True)  # {"xbrl": {...}, "rag": {...}, "a2a": {...}}
+    # Which model stood behind each role. Nullable: rows written before this
+    # column existed have no answer, and inventing one would be worse than a
+    # gap. Not named model_config -- that is Pydantic v2's reserved attribute.
+    llm_config = Column(JSONB, nullable=True)  # {"parser": {...}, "agent": {...}, "verdict": {...}}
     created_at = Column(String(50), nullable=False, default=lambda: datetime.utcnow().isoformat())
 
     def __repr__(self):

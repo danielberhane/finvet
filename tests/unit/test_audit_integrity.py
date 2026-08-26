@@ -42,14 +42,14 @@ class TestEnvelopeShape:
 
     def test_envelope_is_versioned(self):
         """A stored hash is only interpretable against a known layout."""
-        assert _envelope()["schema_version"] == 1
+        assert _envelope()["schema_version"] == 2
 
     def test_envelope_carries_every_field_the_row_stores(self):
         envelope = _envelope()
         assert set(envelope) == {
             "schema_version", "request_id", "claim", "terminal_status",
             "verdict", "confidence", "agents_run", "events", "final_response",
-            "data_sources",
+            "data_sources", "llm_config",
         }
 
 
@@ -298,6 +298,7 @@ class TestWhatIsWrittenIsWhatVerifies:
                 "confidence": row.confidence,
                 "agents_run": row.agents_run,
                 "data_sources": row.data_sources,
+                "llm_config": row.llm_config,
                 "full_trace": json.loads(json.dumps(row.full_trace)),
                 "execution_hash": row.execution_hash}
 
