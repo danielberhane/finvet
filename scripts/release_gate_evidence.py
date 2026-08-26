@@ -110,25 +110,31 @@ def check_rag_retrieval_subsystem():
     }
 
 
-def check_rag_is_not_reachable_end_to_end():
-    """The narrowed public claim, asserted so it cannot drift silently.
+def check_rag_answers_a_filing_claim():
+    """A claim about what a filing says reaches a verdict on retrieved text.
 
-    A qualitative filing claim has no route to an agent: METRIC_WHITELIST["sec"]
-    holds only numeric GAAP metrics, so the parser rejects it as non_financial,
-    and 0 of 322 recorded executions have ever carried a `rag` data source.
-    Release A therefore advertises RAG as a tested retrieval subsystem, not as
-    a path a claim can take.
+    This check used to assert the opposite. D14 recorded that filing retrieval
+    was a tested subsystem with no route from a claim -- true when written, and
+    the check existed so the boundary could not move unnoticed. Parser rule R2b
+    moved it: a claim about what a filing *says* is now a `sec` claim with a
+    null metric, which `verification_strategy_for` already routed to
+    `filing_rag`.
 
-    This check fails the day that stops being true -- which is the point. Whoever
-    adds the qualitative route must update the documentation with it.
+    The guard did its job; this is the updated assertion. Nothing was loosened
+    to get here -- the claim names no number, so the numeric guard has nothing
+    to demand, and filing prose still cannot become a trusted observation.
     """
-    _, body = _verify("Apple discussed supplier concentration risk in its annual report")
+    _, body = _verify("Apple's annual report discusses risks from supplier concentration")
     meta = body.get("metadata") or {}
+    rag = (meta.get("data_sources") or {}).get("rag") or {}
+    evidence = (rag.get("evidence") or [{}])[0]
     return {
         "verdict": body.get("verdict"),
-        "disposition": meta.get("disposition"),
-        "disposition_detail": meta.get("disposition_detail"),
-        "rag_in_data_sources": "rag" in (meta.get("data_sources") or {}),
+        "status": body.get("status"),
+        "rag_used": bool(rag.get("used")),
+        "chunks_retrieved": rag.get("chunks_retrieved"),
+        "evidence_id_present": bool(evidence.get("evidence_id")),
+        "filing_type": evidence.get("filing_type"),
     }
 
 
@@ -207,8 +213,10 @@ CHECKS = [
      lambda r: _expect(r, success=True, evidence_id_present=True,
                        total_found=lambda n: isinstance(n, int) and n > 0,
                        section=lambda s: bool(s))),
-    ("rag_not_reachable_end_to_end", check_rag_is_not_reachable_end_to_end,
-     lambda r: _expect(r, verdict="REJECTED", rag_in_data_sources=False)),
+    ("rag_answers_a_filing_claim", check_rag_answers_a_filing_claim,
+     lambda r: _expect(r, verdict="SUPPORTS", status="success", rag_used=True,
+                       evidence_id_present=True,
+                       chunks_retrieved=lambda n: isinstance(n, int) and n > 0)),
     ("qualitative_claim_not_refuted", check_a_qualitative_claim_is_not_refuted,
      lambda r: _expect(r, verdict="NOT_ENOUGH_INFO", status="success",
                        limitation="non_corroboration_is_not_contradiction")),
