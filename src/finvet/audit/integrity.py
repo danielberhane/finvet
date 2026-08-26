@@ -31,7 +31,11 @@ CHECKSUM_ALGORITHM = "sha256"
 # The envelope layout the checksum is computed over. Stored with the row so a
 # future reader knows which layout a historical digest was taken against;
 # changing the fields below requires bumping this.
-ENVELOPE_SCHEMA_VERSION = 1
+#
+# 2: adds `llm_config` -- which models produced the run. A result that does not
+#    say what produced it cannot be compared against a result from another
+#    model, which is the comparison this system's central claim rests on.
+ENVELOPE_SCHEMA_VERSION = 2
 
 # What the checksum covers, reported by the API alongside the result so the
 # claim is legible rather than implied.
@@ -112,12 +116,19 @@ def build_execution_envelope(
     events: Optional[List[Dict[str, Any]]],
     final_response: Optional[Dict[str, Any]],
     data_sources: Optional[Dict[str, Any]],
+    llm_config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Everything about a finished run that the checksum protects.
 
     Every field the execution row persists appears here. A field stored beside
     the checksum but absent from it is a field the checksum does not cover,
     which is exactly the defect this replaces.
+
+    `llm_config` names the models behind each role. It is not called
+    `model_config`: that is Pydantic v2's reserved configuration attribute,
+    already used by `config/settings.py`, `models/claim.py` and
+    `api/models.py`, and a data field of that name would shadow it in any
+    Pydantic model that later mirrors these rows.
     """
     return {
         "schema_version": ENVELOPE_SCHEMA_VERSION,
@@ -132,6 +143,7 @@ def build_execution_envelope(
         "events": canonical_event_order(events),
         "final_response": final_response,
         "data_sources": data_sources,
+        "llm_config": llm_config,
     }
 
 
@@ -172,6 +184,9 @@ def compare_execution_projection(execution: Mapping[str, Any],
         "confidence": execution.get("confidence"),
         "agents_run": execution.get("agents_run") or [],
         "data_sources": execution.get("data_sources"),
+        # Schema 1 envelopes have no such key; both sides read None and agree,
+        # so legacy rows report no drift rather than a manufactured mismatch.
+        "llm_config": execution.get("llm_config"),
     }
     mismatches = [
         key for key, value in checks.items()

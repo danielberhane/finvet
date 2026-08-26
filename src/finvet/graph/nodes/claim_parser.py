@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict
 from langchain_core.messages import SystemMessage, HumanMessage
 from ...config.metrics import METRIC_HARD_DROPS, METRIC_REMAPS, METRIC_WHITELIST
+from ...config.settings import settings
 from ...models.state import VerificationState
 from ...models.claim import ParsedClaim
 from ...llm import create_llm
@@ -408,7 +409,10 @@ def claim_parser(state: VerificationState) -> Dict:
                 },
                 "raw": parsed_data,
                 "decisions": decisions,
-                "parser": "deepseek",
+                # The configured model, not a literal. "deepseek" was hardcoded
+                # here and happened to be correct under the default; it became
+                # a falsehood the moment LLM_PARSER__MODEL named anything else.
+                "parser": settings.llm_parser.model,
             },
         )
 
