@@ -23,39 +23,47 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from ..config.constants import CORROBORATION_METRICS
-
 # Audit-facing outcome. Kept separate from `verdict` because a verdict answers
 # "what did the target agent conclude" while status answers "what does that mean
 # for the claim under review" — and silence is not contradiction.
-A2A_CORROBORATES = "CORROBORATES"
-A2A_CONTRADICTS = "CONTRADICTS"
-A2A_NO_MATCHING_DISCLOSURE = "NO_MATCHING_DISCLOSURE"
-A2A_NOT_APPLICABLE_YET = "NOT_APPLICABLE_YET"
-A2A_FAILED = "FAILED"
-
-# A narrower, more serious case of NO_MATCHING_DISCLOSURE: the claim asserts a
-# material amount the issuer would have had to disclose, a filing exists that
-# covers the period, and that filing does not mention it. Generic silence is
-# uninformative -- a periodic report omits most things -- but silence about a
-# fine at an identifiable issuer, in a filing that could have carried it, is
-# worth a person's attention.
 #
-# This exists because neither side of the delegation can be decisive on these
-# metrics: a fine amount is a narrative fact with no XBRL concept, so after the
-# trusted-observation boundary both the news claim and the filing check resolve
-# to NOT_ENOUGH_INFO. Escalating on disagreement is therefore unreachable;
-# escalating on unsupported assertion is not.
-A2A_UNDISCLOSED_MATERIAL_CLAIM = "UNDISCLOSED_MATERIAL_CLAIM"
-
+# Declared before the constants so each can be annotated with it: bare string
+# constants are not narrowed to the Literal, which made `Field(A2A_FAILED, ...)`
+# a type error on the status field below.
 A2AStatus = Literal[
+    "PENDING_CLASSIFICATION",
     "CORROBORATES",
     "CONTRADICTS",
     "NO_MATCHING_DISCLOSURE",
-    "UNDISCLOSED_MATERIAL_CLAIM",
     "NOT_APPLICABLE_YET",
+    "SOURCE_UNAVAILABLE",
+    "NO_CORPUS",
     "FAILED",
 ]
+
+# The tool runs inside the News agent's ReAct loop, before that agent has a
+# verdict, so it has nothing to classify against. This is what it carries until
+# reclassify_corroboration decides. It used to borrow NO_MATCHING_DISCLOSURE,
+# which is a real outcome -- a result that never reached reclassification read
+# as a filing that said nothing.
+A2A_PENDING_CLASSIFICATION: A2AStatus = "PENDING_CLASSIFICATION"
+
+A2A_CORROBORATES: A2AStatus = "CORROBORATES"
+A2A_CONTRADICTS: A2AStatus = "CONTRADICTS"
+
+# An applicable filing was identified and successfully searched, and it does not
+# mention the claim. Only reachable when a search actually succeeded: see
+# summarize_filing_search.
+A2A_NO_MATCHING_DISCLOSURE: A2AStatus = "NO_MATCHING_DISCLOSURE"
+
+A2A_NOT_APPLICABLE_YET: A2AStatus = "NOT_APPLICABLE_YET"
+
+# The distinction that makes silence meaningful. Nothing was read, so nothing is
+# known about what the filing says.
+A2A_SOURCE_UNAVAILABLE: A2AStatus = "SOURCE_UNAVAILABLE"
+A2A_NO_CORPUS: A2AStatus = "NO_CORPUS"
+
+A2A_FAILED: A2AStatus = "FAILED"
 
 
 class A2AResult(BaseModel):
@@ -128,6 +136,43 @@ class A2AResult(BaseModel):
     error: Optional[str] = Field(None)
 
 
+def summarize_filing_search(
+    provenance: Optional[List[Dict[str, Any]]],
+) -> Dict[str, bool]:
+    """What the nested agent's filing searches actually established.
+
+    Whether a filing was read is a different question from what the nested
+    agent concluded, and only the first licenses the sentence "the issuer's
+    filing does not mention this". `search_filing_text` reports its own
+    outcome, so this reads that rather than inferring from the verdict.
+    """
+    summary = {"searched": False, "unavailable": False, "failed": False,
+               "no_corpus": False}
+
+    for entry in provenance or []:
+        if not isinstance(entry, dict) or entry.get("tool") != "search_filing_text":
+            continue
+        result = entry.get("result")
+        if not isinstance(result, dict):
+            continue
+
+        if result.get("success"):
+            summary["searched"] = True
+            if result.get("reason") == "no_corpus":
+                summary["no_corpus"] = True
+            continue
+
+        # A failure to reach the source is not a failure of the source to say
+        # anything. Which kind matters to a reader deciding whether to re-run.
+        error = str(result.get("error") or "").lower()
+        if "not available" in error or "unavailable" in error:
+            summary["unavailable"] = True
+        else:
+            summary["failed"] = True
+
+    return summary
+
+
 def reclassify_corroboration(
     parent_verdict: str,
     result: Dict[str, Any],
@@ -161,15 +206,21 @@ def reclassify_corroboration(
         updated.get("verdict", "NOT_ENOUGH_INFO"),
     )
 
-    # Promote plain silence to the escalating status when the claim asserted a
-    # material amount and a filing that could have covered it said nothing.
-    # temporal_scope guards the obvious false positive: a filing that closed
-    # before the event was never going to mention it.
-    if (status == A2A_NO_MATCHING_DISCLOSURE
-            and updated.get("metric") in CORROBORATION_METRICS
-            and updated.get("claimed_value") is not None
-            and updated.get("temporal_scope") != "unknown"):
-        status = A2A_UNDISCLOSED_MATERIAL_CLAIM
+    # Two decisive verdicts can be compared however each was reached, so the
+    # comparison stands on its own. Everything else resolves to "the filing
+    # does not mention this" -- a claim about a document, which may only be
+    # made if a document was actually read.
+    if status == A2A_NO_MATCHING_DISCLOSURE:
+        search = summarize_filing_search(updated.get("provenance"))
+        if not search["searched"]:
+            # Nothing was successfully searched. The delegation completed, but
+            # it established nothing about the filing's contents, and calling
+            # that silence turns an absence of evidence into evidence of
+            # absence.
+            status = A2A_FAILED if search["failed"] else A2A_SOURCE_UNAVAILABLE
+        elif search["no_corpus"]:
+            # There was no filing to be silent.
+            status = A2A_NO_CORPUS
 
     updated["status"] = status
     return updated

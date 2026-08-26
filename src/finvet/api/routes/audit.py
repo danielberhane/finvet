@@ -8,6 +8,7 @@ from ...audit import get_audit_logger
 from ...audit.integrity import (
     CHECKSUM_ALGORITHM,
     CHECKSUM_SCOPE,
+    compare_execution_projection,
     verify_execution_checksum,
 )
 from ..models import VerifyClaimRequest
@@ -55,36 +56,62 @@ async def get_audit_trail(request_id: str):
         "execution": execution,
         "events": events,
         "total_events": len(events),
-        "integrity": _integrity_for(execution),
+        "integrity": _integrity_for(execution, events),
     }
 
 
-def _integrity_for(execution: dict) -> dict:
-    """Recompute the stored checksum and report the result.
+# Verdict values that are review-lifecycle state rather than an outcome. A row
+# in one of these is mid-transition: `claim_pending_review` writes REVIEWING
+# with a single atomic UPDATE (that atomicity is what makes the reviewer race
+# safe) and the review route logs its hitl_* event straight to the database.
+# Both are intended, and neither is covered by the committed envelope, so the
+# projection comparison cannot speak for such a row. The checksum still can.
+NON_TERMINAL_REVIEW_VERDICTS = {
+    "REVIEWING": "review_in_progress",
+    "REVIEW_FINALIZATION_FAILED": "review_finalization_failed",
+}
+
+
+def _integrity_for(execution: dict, events: list) -> dict:
+    """Recompute the stored checksum, then compare the whole displayed record.
 
     Verification happens here, once, server side. The UI used to decide an
     execution was "Verified" because the hash column was non-empty, which is
     not a check -- it reported the presence of a string.
 
+    Order matters. The checksum runs before any lifecycle reasoning: it is the
+    only step that detects a changed snapshot, and skipping it for a row under
+    review would let a genuinely corrupted record report "not checked" instead
+    of "failed". Lifecycle state excuses the projection comparison, never the
+    checksum.
+
     `scope` is returned so the claim is legible rather than implied: this
     covers the stored snapshot only, and it cannot resist a privileged writer
     who updates the data and the checksum together.
     """
+    base = {"algorithm": CHECKSUM_ALGORITHM, "scope": CHECKSUM_SCOPE}
     envelope = execution.get("full_trace")
     stored = execution.get("execution_hash")
 
     if not isinstance(envelope, dict) or not stored:
-        status = "unavailable"
-    elif verify_execution_checksum(envelope, stored):
-        status = "verified"
-    else:
-        status = "failed"
+        return {**base, "status": "unavailable",
+                "reason": "no_checksum_recorded", "mismatches": []}
 
-    return {
-        "algorithm": CHECKSUM_ALGORITHM,
-        "status": status,
-        "scope": CHECKSUM_SCOPE,
-    }
+    if not verify_execution_checksum(envelope, stored):
+        return {**base, "status": "failed", "reason": "checksum_mismatch",
+                "mismatches": ["execution_hash"]}
+
+    reason = NON_TERMINAL_REVIEW_VERDICTS.get(execution.get("verdict"))
+    if reason:
+        return {**base, "status": "unavailable", "reason": reason,
+                "mismatches": []}
+
+    mismatches = compare_execution_projection(execution, events)
+    if mismatches:
+        return {**base, "status": "failed", "reason": "projection_mismatch",
+                "mismatches": mismatches}
+
+    return {**base, "status": "verified", "reason": None, "mismatches": []}
 
 
 @router.post("/search-history")

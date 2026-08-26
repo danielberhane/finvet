@@ -6,7 +6,7 @@
 [![ci](https://github.com/danielberhane/finvet/actions/workflows/ci.yml/badge.svg)](https://github.com/danielberhane/finvet/actions/workflows/ci.yml)
 -->
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)
 
 Give it a claim — *"Tesla's 2024 annual revenue was $150 billion"* — and it returns a verdict
 (`SUPPORTS` / `REFUTES` / `NOT_ENOUGH_INFO`), a confidence score, the evidence chain, and an
@@ -44,9 +44,10 @@ A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each 
 with its own tools. They are not isolated: an agent can delegate to another when the answer
 lies outside its sources: the News agent asks SEC whether the issuer's own filing discloses a
 reported fine or settlement, checking press coverage against the primary source.
-Evidence is reconciled, guarded, and paused for human review on any of four triggers: low
-confidence, unsafe output, two decisive sources disagreeing, or **a material claim the
-issuer's own filing does not support**.
+Evidence is reconciled, guarded, and paused for human review on any of three triggers: low
+confidence, unsafe output, or **two decisive sources disagreeing**. Filing silence is not a
+fourth: deciding an issuer *should* have disclosed something is a materiality judgment, and
+this release does not make one.
 
 <p align="center">
   <img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="800">
@@ -54,15 +55,20 @@ issuer's own filing does not support**.
 
 | Agent | Handles | Sources | Can delegate to |
 |---|---|---|---|
-| **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP, hybrid RAG over filing text | — |
+| **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP; filing-text retrieval is in the toolbox but unused by Release A routing (see below) | — |
 | **Market** | Prices, valuation, market cap | Finnhub | — |
 | **News** | Events, announcements, macro indicators | Tavily search, FRED | SEC |
 
-Delegation runs one way only, so it terminates by construction. Two outcomes escalate: both
-sides reaching decisive but opposite verdicts, and a claim asserting a fine or settlement that
-a filing covering the period never mentions. Silence on its own does not — a periodic report
-omits most things — and neither does silence from a filing that closed before the event, which
-is tracked separately rather than counted as absence of evidence.
+Delegation runs one way only, so it terminates by construction. Exactly one outcome escalates:
+both sides reaching decisive but opposite verdicts. Silence does not — a periodic report omits
+most things — and neither does silence from a filing that closed before the event. A filing
+that was never successfully searched is recorded as such rather than counted as silence: a
+claim about what a document says requires having read one.
+
+Retrieved filing text is **supporting evidence**: it can show what a company said, and it
+can never become the number a verdict rests on — the trust boundary rejects it as a numeric
+observation regardless of shape, and every passage is tagged `evidence_role="supporting"`.
+XBRL remains the authoritative numeric source for SEC claims.
 
 Retrieval over filing text is hybrid: Postgres full-text relevance (`ts_rank` over a
 `tsvector` column) plus pgvector cosine similarity, fused with reciprocal rank fusion.
@@ -72,6 +78,16 @@ because a 10-Q restarts its numbering in each part and "Item 1" means different 
 Part I and Part II. Retrieval is scoped to the resolved period, and the dense arm has a relevance floor
 calibrated against a labelled set rather than chosen — below it, the tool returns no evidence
 instead of the nearest available passage.
+
+**What Release A does not claim.** Retrieval is a tested subsystem, not a route a claim can
+take. `METRIC_WHITELIST["sec"]` holds only numeric GAAP metrics, so a qualitative filing claim
+("Apple discussed supplier concentration risk in its annual report") is rejected by the parser
+as `non_financial` and never reaches an agent; the SEC prompt separately tells the model not to
+call filing search to re-confirm an XBRL number. The result is that **no recorded execution has
+produced filing-text evidence** — 0 of 322 in the audit trail. The retrieval measurements below
+are of the subsystem, driven at the tool boundary. Wiring a qualitative claim type through to it
+is Release B, and `scripts/release_gate_evidence.py` asserts the current state so it cannot
+drift unnoticed.
 
 Deeper dives: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
 [`docs/RAG_AND_AGENTIC_RAG_GUIDE.md`](docs/RAG_AND_AGENTIC_RAG_GUIDE.md).
@@ -92,6 +108,12 @@ docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 ```
 
 Prebuilt images: `docker pull ghcr.io/danielberhane/finvet-api:latest` (and `finvet-ui`).
+
+Every published port binds to `127.0.0.1`. The API has no authentication and Postgres ships a
+development default password, so neither belongs on a shared network by accident. Containers
+still reach each other normally — that traffic goes over the compose network, not a published
+port. To expose the stack deliberately, set `FINVET_BIND_ADDR=0.0.0.0`, and change
+`POSTGRES_PASSWORD` first.
 
 The system verifies against live financial data, so real API keys are required. Only
 `DEEPSEEK_API_KEY`, `TAVILY_API_KEY`, and `POSTGRES_PASSWORD` are mandatory; when an optional
@@ -163,10 +185,15 @@ not a dependency on any provider.
 - **Model-directed ReAct agents in a deterministic workflow** — routing, period resolution,
   consensus and guardrails are fixed pipeline stages; within the selected agent the model
   chooses its own tools and iterations.
-- **Hybrid retrieval over filings** — Postgres full-text relevance plus pgvector similarity,
+- **Hybrid retrieval over filings** *(subsystem; not reachable from claim routing in
+  Release A)* — Postgres full-text relevance plus pgvector similarity,
   fused with RRF, scoped to the resolved period, with a calibrated relevance floor. Measured
-  on 30 positive and 30 negative queries over a 988-chunk corpus: zero irrelevant results
-  accepted at full recall.
+  at the tool boundary
+  on 30 positive and 30 negative queries over a 1,398-chunk corpus: zero irrelevant results
+  accepted at full recall. Ten further near-miss queries — on topic but aimed at a period or
+  form the corpus does not hold — return nothing, which the floor alone cannot achieve.
+  Every case and its retrieval evidence is recorded in
+  [`tests/accuracy/rag_release_a_manifest.json`](tests/accuracy/rag_release_a_manifest.json).
 - **Bounded, in-process News-to-SEC delegation** — one hop, one direction. Not a network
   agent-to-agent protocol; the SEC agent holds no delegation tool, which is what makes the
   call terminate by construction.
@@ -182,9 +209,12 @@ not a dependency on any provider.
   that the API re-verifies on read. It detects a record altered without its checksum being
   recomputed; it is not tamper-proof against a writer who can change both.
 - **Bounded agent delegation** — the news agent can ask SEC whether the issuer's own filing
-  discloses a reported fine or settlement. If the claim names an amount and a filing covering
-  that period does not mention it, the claim goes to a human rather than shipping.
-- **Claim memory** — embedding search over past verifications for caching and context.
+  discloses a reported fine or settlement. Only a decisive contradiction between the two
+  sources sends the claim to a human; filing silence does not, and silence is only reported
+  when an applicable filing was actually searched.
+- **Claim memory** *(experimental, off by default)* — embedding search over past
+  verifications. Its output is prior model output, not a source, so it ships disabled;
+  `ENABLE_CLAIM_MEMORY=true` turns it on.
 
 ---
 
@@ -238,12 +268,17 @@ Postgres, and an LLM cost budget.
   request, so that pair cannot be requested. Such claims are declined explicitly rather than
   answered approximately.
 - **Pending reviews do not survive an API restart.** Checkpoints are `MemorySaver`-backed; an
-  unresumable review is refused rather than answered from the reviewer's own submission.
+  unresumable review is refused rather than answered from the reviewer's own submission. A
+  review whose graph ran but whose audit write failed is marked
+  `REVIEW_FINALIZATION_FAILED` and can be retried via `POST /review/{id}/reconcile` — but that
+  retry reads the in-memory checkpoint, so it is **same-process recovery only**, not
+  cross-process or restart-durable.
 - The consensus step is **heuristic**, not learned.
 - **Historical prices need a paid Finnhub tier**; on a free key the market agent reports
   NOT_ENOUGH_INFO rather than scraping around it.
 - **Not a compliance product** — it applies model-risk-management *principles*; it certifies
   nothing.
+- **Python 3.11, 3.12 and 3.13** are tested in CI and are the supported range.
 
 ---
 

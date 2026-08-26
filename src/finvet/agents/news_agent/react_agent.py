@@ -9,7 +9,6 @@ from pathlib import Path
 from ..base import BaseVerificationAgent
 from ...config.constants import AGENT_MAX_ITERATIONS
 from ...tools.corroborate_sec import corroborate_with_filing
-from ...tools.macro_tools import get_macro_indicator
 from ...tools.news_tools import NEWS_TOOLS
 from ...tools.memory_tools import search_past_verifications
 
@@ -34,8 +33,11 @@ class NewsAgent(BaseVerificationAgent):
         """Initialize the News Agent with news + A2A tools."""
         super().__init__(
             agent_type="news",
+            # get_macro_indicator is deliberately absent: macro metrics are
+            # unsupported in Release A (D10), and leaving the tool in reach
+            # would let the model answer a claim the vocabulary declines. The
+            # module is kept for future work.
             tools=NEWS_TOOLS + [
-                get_macro_indicator,
                 search_past_verifications,
                 corroborate_with_filing,
             ],

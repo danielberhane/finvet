@@ -67,12 +67,16 @@ class AuditLogger:
                     self._events[request_id] = []
                 self._events[request_id].append(event)
 
-        # Write to database
+        # Write to database, carrying the timestamp generated above. The row
+        # and the buffered copy describe one event and must agree; the database
+        # layer used to stamp its own, so the audit API's comparison of the
+        # persisted trail against the hashed envelope mismatched every time.
         self._last_write_ok = self.db.log_event(
             event_id=event_id,
             request_id=request_id,
             event_type=event_type,
             data=data,
+            timestamp=timestamp,
             parent_event_id=parent_event_id,
             agent=agent,
         )
@@ -178,13 +182,68 @@ class AuditLogger:
         """
         return self.db.get_events(request_id)
 
+    def events_for_finalization(self, request_id: str) -> List[Dict[str, Any]]:
+        """Every event the run produced, for the envelope that gets hashed.
+
+        Two failures the plain `get_events` cannot express, both of which used
+        to end with a review finalized over an incomplete trail:
+
+        1. The read itself fails. `get_events` returns [] and the caller cannot
+           tell that from a run with no events, so the execution committed with
+           an empty `full_trace.events` -- and the checksum, computed over that
+           empty envelope, then verified. A wiped trail reported as intact.
+        2. An event's immediate write failed. `log_event` is best effort and
+           keeps a buffered copy; re-reading the database cannot see what never
+           landed. `commit_execution` reconciles from the buffer for exactly
+           this reason, and the review path did not.
+
+        So the read is strict, and the buffer fills the gaps. Ordering matches
+        the database's own (timestamp, event_id) contract so the envelope and
+        the queried trail agree.
+        """
+        persisted = self.db.get_events_strict(request_id)
+
+        with self._lock:
+            buffered = list(self._events.get(request_id, []))
+
+        merged = {
+            event["event_id"]: event
+            for event in list(buffered) + list(persisted)
+            if event.get("event_id")
+        }
+        return sorted(merged.values(),
+                      key=lambda e: (e.get("timestamp") or "",
+                                     e.get("event_id") or ""))
+
     def claim_pending_review(self, request_id: str) -> str:
-        """Take ownership of a pending review: "claimed", "conflict", "missing"."""
+        """Take ownership of a pending review.
+
+        "claimed", "conflict", "missing", or "unavailable" -- the last for a
+        storage failure, which is not the same as no such row.
+        """
         return self.db.claim_pending_review(request_id)
 
     def release_review_claim(self, request_id: str) -> bool:
-        """Return a claimed row to PENDING after a failed resume."""
+        """Return a claimed row to PENDING after a *pre-invoke* failure only.
+
+        Safe while the graph has not been entered. Once invoke has been called
+        the checkpoint may have advanced, and releasing would let a second
+        reviewer resume a partially-executed run; use
+        mark_review_finalization_failed there instead.
+        """
         return self.db.release_review_claim(request_id)
+
+    def mark_review_finalization_failed(self, request_id: str, **kwargs) -> bool:
+        """Move a claimed row to the explicit recovery state."""
+        return self.db.mark_review_finalization_failed(request_id, **kwargs)
+
+    def claim_review_finalization(self, request_id: str) -> str:
+        """Take ownership of a stuck review so it can be retried."""
+        return self.db.claim_review_finalization(request_id)
+
+    def restore_review_finalization_failed(self, request_id: str) -> bool:
+        """Put a failed retry back where an operator will find it."""
+        return self.db.restore_review_finalization_failed(request_id)
 
     def finalize_review(self, request_id: str, **kwargs) -> bool:
         """Write the reviewed outcome, its events and its checksum atomically."""

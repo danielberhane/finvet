@@ -106,6 +106,15 @@ def run_news_agent(state: VerificationState) -> Dict:
       is built from AIMessage/ToolMessage pairs (base.py:198), and a call made
       out here never appears there.
     """
+    # The same pre-flight the SEC and market routes run. It was wired into
+    # those two and not this one, so a metric the vocabulary declined still
+    # reached an agent here -- and news is the only route macro claims take.
+    # A guard the relevant path never calls is not a guard.
+    declined = _unsupported_claim(state)
+    if declined is not None:
+        logger.info(f"News claim declined: {declined['limitation']}")
+        return {"agent_evidence": declined, "agent_type": "news"}
+
     result = _run_agent(NewsAgent, "news", "Financial News", state)
     evidence = result.get("agent_evidence", {})
 
@@ -180,8 +189,21 @@ def _corroborate_by_policy(state: VerificationState, evidence: Dict) -> Optional
             trigger_mode="policy",
         ).model_dump()
     except Exception as e:
+        # A failure is an outcome, not an absence. Returning None dropped the
+        # delegation from state entirely, so the audit trail could not show
+        # that a corroboration had been attempted and had broken -- which
+        # reads exactly like a claim nobody thought to check.
         logger.error(f"A2A policy corroboration failed: {e}")
-        return None
+        from ...models.a2a import A2A_FAILED, A2AResult
+
+        return A2AResult(
+            success=False, status=A2A_FAILED, source_agent="news",
+            target_agent="sec", trigger_mode="policy",
+            finding=state.get("claim_raw", ""),
+            metric=getattr(parsed, "metric", "") or "",
+            claimed_value=getattr(parsed, "value", None),
+            error=str(e),
+        ).model_dump()
 
 
 def _event_date_for(state: VerificationState) -> str:

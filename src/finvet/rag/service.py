@@ -23,8 +23,50 @@ from ..config.settings import settings
 from ..utils.logging import get_logger
 from .models import FilingChunk
 from .parser import parse_filing_html, chunk_sections
+from .types import RAGSearchResult
 
 logger = get_logger(__name__)
+
+# What content_sha256 covers, carried with every result so the claim is legible
+# rather than implied. search_filing_text wraps the model-facing excerpt in
+# <filing_excerpt> tags; the hash is taken over the stored column, not the
+# wrapper, so a reader recomputing it knows exactly which bytes to use.
+HASH_SCOPE = "filing_chunks.chunk_text"
+
+
+def content_sha256(text_value: str) -> str:
+    """SHA-256 over the canonical stored chunk text."""
+    return hashlib.sha256(text_value.encode("utf-8")).hexdigest()
+
+
+def build_evidence_id(
+    *,
+    cik: str,
+    filing_type: str,
+    period_end: str,
+    part: Optional[str],
+    item_number: str,
+    section_name: str,
+    chunk_index: int,
+    text: str,
+) -> str:
+    """A stable identifier for one passage, derived from what it is.
+
+    Deliberately independent of the autoincrement primary key: truncating and
+    re-ingesting the same corpus renumbers every row, so an audit record citing
+    the row id would afterwards point at a different passage, or at none. This
+    id survives that, which is what makes a citation written today still
+    resolvable after the next corpus rebuild.
+
+    The components are joined with "|" and none may contain it, so field
+    boundaries cannot collide -- ("I", "2") and ("I2", "") are different
+    passages and must not hash alike.
+    """
+    identity = "|".join([
+        cik, filing_type, period_end, part or "", item_number,
+        section_name, str(chunk_index), content_sha256(text),
+    ])
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +139,28 @@ class RAGService:
         except Exception as e:
             logger.warning(f"RAG availability check failed: {e}")
             return False
+
+    def has_filings_for(self, ticker: str) -> bool:
+        """Whether any filing is indexed for this issuer.
+
+        Distinguishes the two empty searches. "This filing does not mention
+        the fine" and "no filing for this issuer is indexed" both returned zero
+        chunks, so a delegation could report an unread corpus as a filing that
+        had been read and stayed silent -- turning an absence of evidence into
+        evidence of absence.
+
+        A count, not a scan: the ticker column is indexed.
+        """
+        try:
+            with get_db_session() as session:
+                return session.query(FilingChunk.id).filter(
+                    FilingChunk.ticker == ticker.upper()
+                ).first() is not None
+        except Exception as e:
+            logger.warning(f"Corpus check failed for {ticker}: {e}")
+            # Unknown is not "empty". Claiming no corpus on a failed lookup
+            # would be the same false certainty in the other direction.
+            return True
 
     def _ensure_table(self):
         """Create the filing_chunks table if it doesn't exist."""
@@ -187,9 +251,21 @@ class RAGService:
                     period_end=period_end,
                     section=chunk.section_name,
                     section_title=chunk.section_title,
+                    part=chunk.part,
+                    item_number=chunk.item_number,
                     chunk_index=chunk.chunk_index,
                     chunk_text=chunk.text,
                     token_count=chunk.token_count,
+                    evidence_id=build_evidence_id(
+                        cik=cik,
+                        filing_type=filing_type,
+                        period_end=period_end,
+                        part=chunk.part,
+                        item_number=chunk.item_number,
+                        section_name=chunk.section_name,
+                        chunk_index=chunk.chunk_index,
+                        text=chunk.text,
+                    ),
                     embedding=embedding,
                 )
                 session.add(record)
@@ -212,7 +288,7 @@ class RAGService:
         period_end_max: str | None = None,
         top_k: int = 5,
         min_vector_similarity: float | None = None,
-    ) -> list[dict]:
+    ) -> list[RAGSearchResult]:
         """Search filing chunks using hybrid vector + keyword search.
 
         Combines pgvector cosine similarity with PostgreSQL full-text search
@@ -281,7 +357,8 @@ class RAGService:
         # Use CAST() instead of ::vector to avoid conflict with SQLAlchemy :param syntax
         vec_sql = text(f"""
             SELECT id, chunk_text, section, section_title, filing_type, period_end,
-                   ticker, cik, chunk_index,
+                   ticker, cik, chunk_index, filing_date, part, item_number,
+                   evidence_id,
                    1 - (embedding <=> CAST(:query_vec AS vector)) AS vec_score
             FROM filing_chunks
             {where_clause}
@@ -293,7 +370,8 @@ class RAGService:
         kw_filter = "AND" if filters else "WHERE"
         kw_sql = text(f"""
             SELECT id, chunk_text, section, section_title, filing_type, period_end,
-                   ticker, cik, chunk_index,
+                   ticker, cik, chunk_index, filing_date, part, item_number,
+                   evidence_id,
                    ts_rank(tsv, plainto_tsquery('english', :query_text)) AS kw_score
             FROM filing_chunks
             {where_clause}
@@ -349,31 +427,39 @@ class RAGService:
         scored.sort(key=lambda x: x[1], reverse=True)
         top_results = scored[:top_k]
 
-        # Format output
+        # Format output. Typed rather than a bare dict: `ts_rank` returns a
+        # relevance score and used to be emitted as "keyword_rank", a name that
+        # promises an ordinal position, while the dense arm's actual position
+        # and the fused score were not emitted at all.
         output = []
         for chunk_id, score in top_results:
             row = result_map[chunk_id]
-            output.append({
-                # Identity: enough to find this passage in the filing again
-                # without trusting the pipeline's copy of it.
-                "chunk_id": chunk_id,
-                "cik": row.cik,
-                "chunk_index": row.chunk_index,
-                "content_sha256": hashlib.sha256(
-                    row.chunk_text.encode("utf-8")).hexdigest(),
-                "chunk_text": row.chunk_text,
-                "section": row.section,
-                "section_title": row.section_title,
-                "filing_type": row.filing_type,
-                "period_end": row.period_end,
-                "ticker": row.ticker,
-                # Raw arm scores alongside the fused rank: RRF discards them,
-                # and without them nothing downstream can judge how strong a
-                # result actually was.
-                "vector_similarity": round(vec_scores.get(chunk_id, 0.0), 6),
-                "keyword_rank": round(kw_scores.get(chunk_id, 0.0), 6),
-                "score": round(score, 6),
-            })
+            output.append(RAGSearchResult(
+                evidence_id=row.evidence_id or build_evidence_id(
+                    cik=row.cik, filing_type=row.filing_type,
+                    period_end=row.period_end, part=row.part,
+                    item_number=row.item_number or "",
+                    section_name=row.section, chunk_index=row.chunk_index,
+                    text=row.chunk_text,
+                ),
+                ticker=row.ticker,
+                cik=row.cik,
+                filing_type=row.filing_type,
+                filing_date=row.filing_date,
+                period_end=row.period_end,
+                part=row.part,
+                item_number=row.item_number or "",
+                section=row.section,
+                section_title=row.section_title,
+                chunk_index=row.chunk_index,
+                chunk_text=row.chunk_text,
+                content_sha256=content_sha256(row.chunk_text),
+                vector_similarity=round(vec_scores.get(chunk_id, 0.0), 6),
+                vector_rank=vec_ranks.get(chunk_id),
+                keyword_score=round(kw_scores.get(chunk_id, 0.0), 6),
+                keyword_rank=kw_ranks.get(chunk_id),
+                rrf_score=round(score, 6),
+            ))
 
         return output
 

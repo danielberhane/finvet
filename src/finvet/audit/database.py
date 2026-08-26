@@ -1,7 +1,7 @@
 """PostgreSQL database for audit trail storage using SQLAlchemy."""
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.exc import IntegrityError
 from ..config.database import get_db_session
@@ -13,6 +13,21 @@ from .integrity import (
 from .models import AuditEvent, AuditExecution
 
 logger = get_logger(__name__)
+
+# The verdict column doubles as review-lifecycle state. This marker means the
+# graph was entered but produced no durable audited outcome, so the row is
+# neither pending nor reviewed: it is waiting for an operator to retry
+# finalization. Release B moves lifecycle state to its own column.
+REVIEW_FINALIZATION_FAILED = "REVIEW_FINALIZATION_FAILED"
+
+# The queue's view of each lifecycle state. Exposed as its own field so a
+# client chooses an action from a value it can switch on, rather than parsing
+# the verdict column and inheriting its double meaning.
+REVIEW_STATUS_BY_VERDICT = {
+    "PENDING": "pending",
+    "REVIEWING": "in_review",
+    REVIEW_FINALIZATION_FAILED: "finalization_failed",
+}
 
 
 class AuditDatabase:
@@ -32,6 +47,7 @@ class AuditDatabase:
         request_id: str,
         event_type: str,
         data: Dict[str, Any],
+        timestamp: str,
         parent_event_id: Optional[str] = None,
         agent: Optional[str] = None,
     ) -> bool:
@@ -42,14 +58,18 @@ class AuditDatabase:
             request_id: Request this event belongs to
             event_type: Type of event (e.g., "claim_parsed", "sec_agent_completed")
             data: Event data as dictionary
+            timestamp: When the event occurred, generated once by AuditLogger
+                and persisted unchanged. Stamping the row here from a second
+                clock gave the same logical event two different times -- one in
+                the buffered copy that reaches `full_trace.events`, another in
+                the row -- so the audit API's comparison of the two reported a
+                mismatch on every legitimate execution.
             parent_event_id: Optional parent event ID
             agent: Optional agent name
 
         Returns:
             True if logged successfully
         """
-        timestamp = datetime.utcnow().isoformat()
-
         try:
             with get_db_session() as session:
                 event = AuditEvent(
@@ -226,6 +246,35 @@ class AuditDatabase:
             logger.error(f"Failed to get execution {request_id}: {e}")
             return None
 
+    def get_events_strict(self, request_id: str) -> list:
+        """Retrieve all events for a request, raising if the read fails.
+
+        `get_events` swallows the exception and returns [], which is right for
+        a caller rendering a page and wrong for the one caller that hashes the
+        result: an unreadable trail became an empty envelope whose checksum
+        then verified, reporting a wiped audit trail as an intact one.
+        """
+        with get_db_session() as session:
+            # Same ordering contract as get_events: event_id breaks ties so
+            # the envelope and the queried trail cannot disagree.
+            events = session.query(AuditEvent).filter(
+                AuditEvent.request_id == request_id
+            ).order_by(AuditEvent.timestamp, AuditEvent.event_id).all()
+
+            return [
+                {
+                    "event_id": event.event_id,
+                    "request_id": event.request_id,
+                    "parent_event_id": event.parent_event_id,
+                    "event_type": event.event_type,
+                    "timestamp": event.timestamp,
+                    "agent": event.agent,
+                    "data": event.data,
+                    "created_at": event.created_at,
+                }
+                for event in events
+            ]
+
     def get_events(self, request_id: str) -> list:
         """Retrieve all events for a request.
 
@@ -237,9 +286,13 @@ class AuditDatabase:
         """
         try:
             with get_db_session() as session:
+                # event_id breaks ties. Two events can share a timestamp, and
+                # ordering by timestamp alone leaves their order up to the
+                # database -- enough to make the audit API's comparison against
+                # the hashed envelope fail intermittently on correct data.
                 events = session.query(AuditEvent).filter(
                     AuditEvent.request_id == request_id
-                ).order_by(AuditEvent.timestamp).all()
+                ).order_by(AuditEvent.timestamp, AuditEvent.event_id).all()
 
                 return [
                     {
@@ -261,7 +314,12 @@ class AuditDatabase:
     def claim_pending_review(self, request_id: str) -> str:
         """Atomically take ownership of a pending review.
 
-        Returns "claimed", "conflict", or "missing".
+        Returns "claimed", "conflict", "missing", or "unavailable".
+
+        "unavailable" is distinct on purpose: a database outage used to be
+        reported as "missing", which the route turned into a 404 telling the
+        reviewer their claim did not exist. It does exist; the store cannot be
+        reached, and a 503 says so.
 
         The transition is a single conditional UPDATE. Reading the row and then
         writing it leaves a window where two reviewers both see PENDING and both
@@ -289,7 +347,7 @@ class AuditDatabase:
                 return "conflict" if exists else "missing"
         except Exception as e:
             logger.error(f"Failed to claim review for {request_id}: {e}")
-            return "missing"
+            return "unavailable"
 
     def release_review_claim(self, request_id: str) -> bool:
         """Return a claimed row to PENDING after a failed resume.
@@ -308,6 +366,114 @@ class AuditDatabase:
                 return bool(changed)
         except Exception as e:
             logger.error(f"Failed to release review claim for {request_id}: {e}")
+            return False
+
+    def mark_review_finalization_failed(
+        self,
+        request_id: str,
+        *,
+        error_type: str,
+        review_decision: str,
+        reviewer_notes: Optional[str],
+        checkpoint_has_final_state: bool,
+    ) -> bool:
+        """REVIEWING -> REVIEW_FINALIZATION_FAILED, in one transaction.
+
+        Reached once the graph has been entered but no durable reviewed outcome
+        exists. Returning the row to PENDING is not an option there: the
+        checkpoint may already have advanced, and a second reviewer resuming it
+        would run a partially-executed graph. The row is instead moved to an
+        explicit recovery state that an operator can find and a reconcile call
+        can retry.
+
+        Only safe metadata is recorded. The graph's verdict and confidence are
+        deliberately absent: they were never durably audited, and copying them
+        into the row would present an unaudited result as a stored outcome.
+        """
+        try:
+            with get_db_session() as session:
+                execution = (
+                    session.query(AuditExecution)
+                    .filter(AuditExecution.request_id == request_id,
+                            AuditExecution.verdict == "REVIEWING")
+                    .first()
+                )
+                if execution is None:
+                    logger.warning(
+                        "mark_review_finalization_failed found no REVIEWING "
+                        f"row for {request_id}")
+                    return False
+
+                envelope = dict(execution.full_trace or {})
+                envelope["terminal_status"] = "review_finalization_failed"
+                envelope["review_recovery"] = {
+                    "error_type": error_type,
+                    "occurred_at": datetime.now(timezone.utc).isoformat(),
+                    "review_decision": review_decision,
+                    "reviewer_notes": reviewer_notes,
+                    # What recovery can actually rely on, not what it hopes for.
+                    "checkpoint_has_final_state": bool(checkpoint_has_final_state),
+                }
+
+                execution.verdict = REVIEW_FINALIZATION_FAILED
+                execution.full_trace = envelope
+                # The envelope changed, so its digest must change with it.
+                execution.execution_hash = compute_execution_checksum(envelope)
+            return True
+        except Exception as e:
+            logger.error(
+                f"Failed to mark review finalization failed for {request_id}: {e}")
+            return False
+
+    def claim_review_finalization(self, request_id: str) -> str:
+        """Take ownership of a stuck review for reconciliation.
+
+        REVIEW_FINALIZATION_FAILED -> REVIEWING as a single conditional UPDATE,
+        so two operators retrying the same row cannot both proceed to
+        finalize_review. Returns "claimed", "conflict", "missing" or
+        "unavailable", matching claim_pending_review.
+        """
+        try:
+            with get_db_session() as session:
+                changed = (
+                    session.query(AuditExecution)
+                    .filter(AuditExecution.request_id == request_id,
+                            AuditExecution.verdict == REVIEW_FINALIZATION_FAILED)
+                    .update({"verdict": "REVIEWING"}, synchronize_session=False)
+                )
+                if changed:
+                    return "claimed"
+                exists = (
+                    session.query(AuditExecution.request_id)
+                    .filter(AuditExecution.request_id == request_id)
+                    .first()
+                )
+                return "conflict" if exists else "missing"
+        except Exception as e:
+            logger.error(
+                f"Failed to claim review finalization for {request_id}: {e}")
+            return "unavailable"
+
+    def restore_review_finalization_failed(self, request_id: str) -> bool:
+        """REVIEWING -> REVIEW_FINALIZATION_FAILED after a failed retry.
+
+        A reconcile attempt that claims the row and then cannot finalize must
+        put it back where an operator will find it again, rather than leaving
+        it in REVIEWING with nobody working on it.
+        """
+        try:
+            with get_db_session() as session:
+                changed = (
+                    session.query(AuditExecution)
+                    .filter(AuditExecution.request_id == request_id,
+                            AuditExecution.verdict == "REVIEWING")
+                    .update({"verdict": REVIEW_FINALIZATION_FAILED},
+                            synchronize_session=False)
+                )
+                return bool(changed)
+        except Exception as e:
+            logger.error(
+                f"Failed to restore finalization-failed state for {request_id}: {e}")
             return False
 
     def finalize_review(
@@ -390,8 +556,12 @@ class AuditDatabase:
                 # row from every reviewer's queue permanently. Showing it is
                 # safe -- claim_pending_review still serialises access, so a
                 # second reviewer gets a conflict rather than a duplicate.
+                # REVIEW_FINALIZATION_FAILED belongs here too: its graph ran
+                # but the audit write did not land, and the queue is the only
+                # place a reviewer would ever look for it.
                 executions = session.query(AuditExecution).filter(
-                    AuditExecution.verdict.in_(("PENDING", "REVIEWING"))
+                    AuditExecution.verdict.in_(
+                        ("PENDING", "REVIEWING", REVIEW_FINALIZATION_FAILED))
                 ).order_by(AuditExecution.timestamp.desc()).all()
 
                 results = []
@@ -403,6 +573,11 @@ class AuditDatabase:
                         "request_id": execution.request_id,
                         "claim": execution.claim_text,
                         "timestamp": execution.timestamp,
+                        # Machine-readable, so the UI picks an action rather
+                        # than decoding a verdict string that doubles as
+                        # lifecycle state.
+                        "review_status": REVIEW_STATUS_BY_VERDICT.get(
+                            execution.verdict, "pending"),
                         "preliminary_analysis": final_resp.get("preliminary_analysis", {}),
                         "hitl_triggers": final_resp.get("hitl_triggers",
                                          final_resp.get("metadata", {}).get("hitl_triggers", [])),

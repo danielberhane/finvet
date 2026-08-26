@@ -19,8 +19,8 @@ from langchain_core.tools import tool
 from ..config.constants import A2A_MAX_ITERATIONS
 from ..models.a2a import (
     A2A_FAILED,
-    A2A_NO_MATCHING_DISCLOSURE,
     A2A_NOT_APPLICABLE_YET,
+    A2A_PENDING_CLASSIFICATION,
     A2AResult,
 )
 from ..utils.logging import get_logger
@@ -212,10 +212,22 @@ def _corroborate(
             if not isinstance(result, dict):
                 continue
             for chunk in result.get("chunks", []) or []:
+                # Enough identity to find the passage again in the filing.
+                # part, item_number and content_sha256 arrive with the RAG
+                # identity migration; until then they are absent rather than
+                # invented, so a reader can tell "not recorded" from "recorded
+                # as empty".
                 sources.append({
+                    "ticker": chunk.get("ticker"),
+                    "cik": chunk.get("cik"),
                     "filing_type": chunk.get("filing_type"),
+                    "filing_date": chunk.get("filing_date"),
                     "period_end": chunk.get("period_end"),
+                    "part": chunk.get("part"),
+                    "item_number": chunk.get("item_number"),
                     "section": chunk.get("section"),
+                    "chunk_id": chunk.get("chunk_id"),
+                    "content_sha256": chunk.get("content_sha256"),
                     "query": prov.get("args", {}).get("query"),
                 })
 
@@ -228,7 +240,10 @@ def _corroborate(
             success=True,
             # Neutral placeholder: reclassify_corroboration sets the real
             # status once the parent verdict exists. Never classify here.
-            status=A2A_NO_MATCHING_DISCLOSURE,
+            # NO_MATCHING_DISCLOSURE used to stand here, but that is a real
+            # outcome -- a result that never reached reclassification would
+            # have read as a filing that said nothing.
+            status=A2A_PENDING_CLASSIFICATION,
             verdict=target_verdict,
             confidence=ev.get("confidence", 0.0),
             reasoning=ev.get("reasoning", ""),

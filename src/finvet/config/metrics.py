@@ -132,11 +132,18 @@ SERVABLE_METRICS: dict[str, frozenset[str]] = {
         "pe_ratio", "price_change_absolute", "price_change_percent",
         "volume",
     }),
-    "news": frozenset({
-        "unemployment_rate", "federal_funds_rate", "consumer_confidence",
-        "gdp_growth", "cpi_inflation", "core_pce",
-        "retail_sales_growth", "wage_growth",
-    }),
+    # Empty in Release A. The macro series here (CPI, PCE, unemployment, ...)
+    # carry an observation date but no contract for *which* observation a claim
+    # means: "inflation was 3.1%" names no vintage, and these series are
+    # revised, so the same claim is true or false depending on which release
+    # you read. Nothing in the pipeline resolves that, so a decisive verdict
+    # would rest on an unstated choice. The rest -- price targets, analyst
+    # estimates, ownership percentages -- have no structured source at all.
+    #
+    # NARRATIVE_METRICS is consulted first, so fine_amount and
+    # settlement_amount still route to qualitative news search. See
+    # RELEASE_A_DECISIONS.md, D10.
+    "news": frozenset(),
     "reject": frozenset(),
 }
 

@@ -95,6 +95,12 @@ class Chunk:
     section_title: str        # e.g., "Risk Factors"
     chunk_index: int
     token_count: int
+    # Where in the filing this came from. A 10-Q restarts item numbering in
+    # each part, so "Item 2" is Management's Discussion in Part I and
+    # Unregistered Sales in Part II -- an item number alone names two places.
+    # None for a 10-K, which has no parts.
+    part: str | None = None
+    item_number: str = ""
 
 
 def _count_tokens(text: str) -> int:
@@ -368,6 +374,8 @@ def chunk_sections(
                 section_title=section.title,
                 chunk_index=index,
                 token_count=_count_tokens(text),
+                part=section.part,
+                item_number=section.item_number,
             )
 
         for atom in atoms:

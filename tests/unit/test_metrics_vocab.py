@@ -89,16 +89,17 @@ class TestServable:
         for claim_type, servable in SERVABLE_METRICS.items():
             assert servable <= METRIC_WHITELIST[claim_type]
 
-    def test_news_serves_exactly_the_fred_validated_macro_metrics(self):
-        """Eight macro metrics read FRED (mcp/fred.py), each series validated
-        against the gold dataset's own recorded values. Company-event and
-        analyst metrics still live in prose and stay unservable — carrying
-        them whitelisted-but-unservable is the disclosed-limitation design."""
-        assert SERVABLE_METRICS["news"] == frozenset({
-            "unemployment_rate", "federal_funds_rate", "consumer_confidence",
-            "gdp_growth", "cpi_inflation", "core_pce",
-            "retail_sales_growth", "wage_growth"})
-        assert len(SERVABLE_METRICS["news"]) == 8
+    def test_news_serves_nothing_in_release_a(self):
+        """The eight FRED-validated macro metrics are retrievable and still
+        unservable: no contract says which vintage of a revised series a claim
+        refers to. Company-event and analyst metrics were never servable.
+
+        Whitelisted-but-unservable is the disclosed-limitation design: the
+        parser still recognises these metrics, so the claim is declined with a
+        stated reason instead of misparsed into silence."""
+        assert SERVABLE_METRICS["news"] == frozenset()
+        assert len(METRIC_WHITELIST["news"]) > 8, (
+            "the parser must still recognise them in order to decline them")
 
     def test_stage_00_concepts_are_servable(self):
         """R&D and interest expense became retrievable in stage 00."""

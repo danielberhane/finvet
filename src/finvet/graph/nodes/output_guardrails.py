@@ -6,10 +6,7 @@ from ...config.settings import settings
 from ...guards.composite import CompositeGuardProvider
 from ...guards.financial import FinancialGuardProvider
 from ...guards.llama_guard import LlamaGuardProvider
-from ...models.a2a import (
-    A2A_CONTRADICTS,
-    A2A_UNDISCLOSED_MATERIAL_CLAIM,
-)
+from ...models.a2a import A2A_CONTRADICTS
 from ...models.state import VerificationState
 from ...audit import get_audit_logger
 from ...utils.logging import get_logger
@@ -48,14 +45,29 @@ def output_guardrails(state: VerificationState) -> Dict:
     hitl_triggers = []
     hitl_required = False
 
-    # Check 1: Low confidence
+    # Check 1: Low confidence.
+    #
+    # Unless the pipeline already knows why. `_unsupported_claim` declines a
+    # claim before any agent runs -- Q4 derivation, a metric no tool serves, a
+    # period this route cannot resolve -- and returns evidence carrying a
+    # `limitation`. Its confidence is deliberately low, which used to trip this
+    # check and send the claim to review.
+    #
+    # There is nothing there for a reviewer to weigh. No tool serves the
+    # metric, and no amount of attention changes that; they can only agree.
+    # Queueing these is the same mistake as escalating filing silence: it fills
+    # a person's queue with items they cannot act on and teaches them to stop
+    # reading the flag. The confidence stays low, because the system is not
+    # confident -- what changes is that it does not ask.
+    agent_evidence = state.get("agent_evidence") or {}
+    declined_with_reason = bool(agent_evidence.get("limitation"))
+
     threshold = settings.confidence_threshold_hitl
-    if confidence < threshold:
+    if confidence < threshold and not declined_with_reason:
         hitl_triggers.append("low_confidence")
         hitl_required = True
 
-    # Check 2: Output safety guard
-    agent_evidence = state.get("agent_evidence", {})
+    # Check 2: Output safety guard. Safety is never waived by a limitation.
     reasoning_text = agent_evidence.get("reasoning", "") if agent_evidence else ""
     claim_raw = state.get("claim_raw", "")
 
@@ -69,24 +81,25 @@ def output_guardrails(state: VerificationState) -> Dict:
             f"Output guard triggered: {guard_result.violation_type} (request: {request_id})"
         )
 
-    # Check 3: the primary source undermines the claim. Two ways that happens,
-    # and they escalate for different reasons.
+    # Check 3: the primary source contradicts the claim.
     #
-    # CONTRADICTS — both agents reached decisive, opposite verdicts. A primary
-    # source contradicting the one the verdict rests on is a question for a
-    # person, not a confidence score.
+    # CONTRADICTS is the only delegation outcome that escalates: both agents
+    # reached decisive, opposite verdicts, and a primary source contradicting
+    # the one the verdict rests on is a question for a person, not a confidence
+    # score.
     #
-    # UNDISCLOSED_MATERIAL_CLAIM — the claim asserted a fine or settlement, a
-    # filing covering the period exists, and it does not mention it. Neither
-    # agent can be decisive about a narrative amount (there is no XBRL concept
-    # for a penalty), so disagreement is unreachable for exactly the claims the
-    # delegation exists to check. An unsupported material assertion is the
-    # reachable signal, and it is the one worth a reviewer's time.
+    # Every other status is an absence of evidence, not a conflict.
+    # NO_MATCHING_DISCLOSURE and NOT_APPLICABLE_YET are silences -- a periodic
+    # filing omits most things, and one that closed before the event was never
+    # going to mention it. SOURCE_UNAVAILABLE, NO_CORPUS and FAILED are
+    # failures to look at all. Treating any of them as conflict would route
+    # much of the traffic to a reviewer and teach them to ignore the flag.
     #
-    # Plain NO_MATCHING_DISCLOSURE and NOT_APPLICABLE_YET still do not escalate:
-    # a periodic filing is silent about most things, and one that closed before
-    # the event was never going to mention it. Treating either as conflict would
-    # route half the traffic to a reviewer and teach them to ignore the flag.
+    # An earlier UNDISCLOSED_MATERIAL_CLAIM branch escalated on filing silence
+    # about a fine or settlement. Reaching it meant deciding the issuer should
+    # have disclosed the amount -- a materiality judgment with nothing
+    # calibrating it, made by testing a metric name against a set. Release A
+    # does not make that judgment.
     corroboration = state.get("corroboration_result")
     corroboration_status = (corroboration.get("status")
                             if isinstance(corroboration, dict) else None)
@@ -98,14 +111,6 @@ def output_guardrails(state: VerificationState) -> Dict:
             f"Source disagreement: {corroboration.get('source_agent')} said "
             f"{state.get('verdict')}, {corroboration.get('target_agent')} said "
             f"{corroboration.get('verdict')} (request: {request_id})"
-        )
-    elif corroboration_status == A2A_UNDISCLOSED_MATERIAL_CLAIM:
-        hitl_triggers.append("unsupported_material_claim")
-        hitl_required = True
-        logger.warning(
-            f"Unsupported material claim: {corroboration.get('metric')} of "
-            f"{corroboration.get('claimed_value')} is not disclosed in the "
-            f"issuer's filing for the period (request: {request_id})"
         )
 
     # Audit event
@@ -129,8 +134,9 @@ def output_guardrails(state: VerificationState) -> Dict:
     else:
         logger.info(f"All guardrails passed (request: {request_id})")
 
+    # guard_result_output is not returned: nothing read it, and the
+    # output_guardrails_checked event above already records the outcome.
     return {
         "hitl_required": hitl_required,
         "hitl_triggers": hitl_triggers,
-        "guard_result_output": guard_result_dict,
     }

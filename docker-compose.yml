@@ -1,3 +1,15 @@
+# Every published port binds to loopback. `"5432:5432"` publishes on 0.0.0.0,
+# which put a Postgres with a development default password, an API with no
+# authentication, and an unauthenticated Ollama on whatever network the host
+# happened to be joined to -- a coffee-shop Wi-Fi included. This stack is a
+# local demonstration and nothing in it expects a caller from another machine.
+#
+# Container-to-container traffic is unaffected: services reach each other over
+# the compose network by name (api -> postgres:5432, ui -> api:8000), which
+# does not go through a published port.
+#
+# To expose the stack deliberately -- a LAN demo, a remote workstation --
+# set FINVET_BIND_ADDR=0.0.0.0, and change POSTGRES_PASSWORD before you do.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -7,7 +19,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finvet_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-finvet}
     ports:
-      - "5432:5432"
+      - "${FINVET_BIND_ADDR:-127.0.0.1}:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
@@ -38,7 +50,7 @@ services:
       ollama:
         condition: service_started
     ports:
-      - "8000:8000"
+      - "${FINVET_BIND_ADDR:-127.0.0.1}:8000:8000"
     restart: unless-stopped
 
   # Streamlit UI. Talks to the API over the compose network.
@@ -54,7 +66,7 @@ services:
     depends_on:
       - api
     ports:
-      - "8501:8501"
+      - "${FINVET_BIND_ADDR:-127.0.0.1}:8501:8501"
     restart: unless-stopped
 
   # SEC EDGAR MCP server — self-contained (installs the published package at a
@@ -70,7 +82,7 @@ services:
     environment:
       SEC_EDGAR_USER_AGENT: ${SEC_EDGAR_USER_AGENT:-FinVet (your@email.com)}
     ports:
-      - "9870:9870"
+      - "${FINVET_BIND_ADDR:-127.0.0.1}:9870:9870"
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost',9870),2); s.close()"]
       interval: 15s
@@ -90,7 +102,7 @@ services:
     image: ollama/ollama
     container_name: finvet-ollama
     ports:
-      - "11434:11434"
+      - "${FINVET_BIND_ADDR:-127.0.0.1}:11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped

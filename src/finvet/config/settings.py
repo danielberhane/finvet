@@ -87,7 +87,15 @@ class Settings(BaseSettings):
     confidence_threshold_hitl: float = 0.70
 
     # Feature Flags
-    enable_claim_memory: bool = True
+    #
+    # Off by default, and deliberately so. Claim memory is the one subsystem
+    # whose output is prior *model* output rather than a source: reusing a
+    # cached verdict, or feeding a past summary back to an agent, moves
+    # something the system said into the position of something it found. That
+    # is worth experimenting with and not worth shipping on. Set
+    # ENABLE_CLAIM_MEMORY=true to study it; the implementation stays in the
+    # repository either way. See docs/RELEASE_A_DECISIONS.md, D8.
+    enable_claim_memory: bool = False
 
     @property
     def postgres_url(self) -> str:

@@ -15,22 +15,19 @@ How it works:
 
 Pipeline flow (which node writes which fields):
     /verify route      → claim_raw, user_id, request_id, timestamp_received,
-                          execution_start_time, audit_trail, total_tokens_used,
-                          memory_context
-    Node 1 (input_guardrails)   → claim_normalized, guardrails_passed/failed,
-                                   guard_result_input
+                          total_tokens_used, memory_context
+    Node 1 (input_guardrails)   → claim_normalized
     Node 2 (claim_parser)       → parsed_claim, total_tokens_used
     Node 3 (period_resolver)    → canonical_period
     Node 4 (domain_agent)       → agent_type, agent_evidence,
                                    rag_chunks_retrieved, corroboration_result
     Node 5 (consensus)          → verdict, confidence, confidence_label,
                                    consensus_reasons, confidence_adjustments
-    Node 6 (output_guardrails)  → hitl_required, hitl_triggers,
-                                   guard_result_output
+    Node 6 (output_guardrails)  → hitl_required, hitl_triggers
     Node 7 (hitl_checkpoint)    → hitl_checkpoint_passed
     Node 8 (apply_hitl_decision)→ hitl_applied, verdict (override),
                                    confidence (override), disposition
-    Node 9 (response_generator) → final_response, execution_end_time
+    Node 9 (response_generator) → final_response
 
     reject_handler (terminal)   → verdict, confidence, confidence_label,
                                    disposition, disposition_detail
@@ -54,6 +51,16 @@ class AgentEvidence(TypedDict):
     Stored in state as state["agent_evidence"] and later written to the
     audit_executions PostgreSQL table in the full_trace JSONB column.
     """
+
+    # The trusted observation the deterministic comparison actually used,
+    # as a dict, or None when no verified number was resolved. Distinguishes
+    # a value Python checked against a source from one the model asserted.
+    trusted_observation: Optional[dict]
+
+    # Whether the claim's period could be aligned with the evidence:
+    # "resolved", "not_period_bound", or "unresolved_period" (the claim names
+    # a period this route cannot resolve, so no numeric comparison was made).
+    temporal_status: str
 
     # Which agent produced this evidence: "sec", "market", or "news".
     # Used by response_generator to label the data source and by consensus
@@ -201,27 +208,9 @@ class VerificationState(TypedDict, total=False):
     # Read by: claim_parser (uses this instead of claim_raw for parsing).
     claim_normalized: str
 
-    # Names of guardrail checks that passed.
-    # Example: ["composite_guard"]
-    # Read by: audit trail only.
-    guardrails_passed: list[str]
 
-    # Names of guardrail checks that failed.
-    # Always empty if the pipeline continues (failures raise GuardrailViolation
-    # which aborts the pipeline with a 400 error).
-    guardrails_failed: list[str]
 
-    # Full GuardResult from input classification, serialized as dict.
-    # Contains: safe, categories, flags, violation_type, provider, latency_ms.
-    # Example: {"safe": true, "provider": "composite", "latency_ms": 12.5,
-    #           "flags": ["llama_guard_unavailable"]}
-    # Read by: audit trail for debugging guard behavior.
-    guard_result_input: Optional[dict[str, Any]]
 
-    # Full GuardResult from OUTPUT classification (set by output_guardrails, not here).
-    # Same structure as guard_result_input but for the agent's response.
-    # None until Node 6 (output_guardrails) runs.
-    guard_result_output: Optional[dict[str, Any]]
 
     # ===================================================================
     # NODE 2: CLAIM PARSER
@@ -469,11 +458,10 @@ class VerificationState(TypedDict, total=False):
     # Multiple nodes append to these. Written to PostgreSQL at the end.
     # ===================================================================
 
-    # Complete chronological log of all events across all nodes.
-    # Initialized as [] by /verify route. Nodes append events throughout.
-    # Written to PostgreSQL audit_events table and audit_executions.full_trace
-    # at the end of the pipeline via audit.commit_execution().
-    audit_trail: list[dict[str, Any]]
+    # `audit_trail` used to be declared here as a chronological event log.
+    # Nothing ever read it: AuditLogger owns events, buffers them per request
+    # and commits them, so the state copy was assembled and discarded. Removed
+    # rather than left as a field a reader might trust.
 
     # Running counter of LLM tokens consumed across all LLM calls.
     # Initialized as 0 by /verify route. Incremented by claim_parser and
@@ -481,13 +469,10 @@ class VerificationState(TypedDict, total=False):
     # Written to response metadata for cost tracking.
     total_tokens_used: int
 
-    # ISO timestamp of when processing started. Set by /verify route.
-    # Same value as timestamp_received — duplicated here so pipeline nodes
-    # can compute elapsed time without knowing about the API layer.
-    # Read by: response_generator (to compute execution_time_ms).
-    execution_start_time: str
-
-    # ISO timestamp of when processing completed. Set by response_generator.
-    # None until the pipeline finishes. Used with execution_start_time to
-    # calculate total execution time.
-    execution_end_time: Optional[str]
+    # `execution_start_time` and `execution_end_time` used to be declared here
+    # as the pair a node would subtract to get elapsed time. Neither was ever
+    # read: the API measures the request with `elapsed_ms(started_at)` and the
+    # agent reports its own duration in AgentEvidence. The comment claiming
+    # response_generator read them was the only thing keeping them alive.
+    #
+    # `timestamp_received` remains, and is the one timestamp state carries.

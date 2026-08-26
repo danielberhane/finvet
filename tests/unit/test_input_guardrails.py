@@ -36,13 +36,38 @@ def _guard(safe, categories=None, violation_type=None):
 class TestAdviceIsNotBlocked:
 
     def test_s6_only_passes_through_to_the_parser(self):
+        """Not blocking is the property. It used to be asserted via a
+        `guardrails_passed` field in state that nothing ever read; the guard's
+        outcome is on the audit trail via log_event, and the pipeline evidence
+        that it passed is that the node returns normally with the claim."""
         out = _run(_guard(False, ["S6"], "LLAMA_GUARD_UNSAFE"))
         assert out["claim_normalized"] == "x"
-        assert out["guardrails_passed"] == ["composite_guard"]
 
     def test_safe_input_passes_as_before(self):
         out = _run(_guard(True))
-        assert out["guardrails_passed"] == ["composite_guard"]
+        assert out["claim_normalized"] == "x"
+
+    def test_the_guard_outcome_reaches_the_audit_trail(self):
+        """Where the record actually lives, now that state carries no copy."""
+        import importlib
+        from unittest.mock import MagicMock, patch
+
+        # nodes/__init__ re-exports the node function under its module's own
+        # name, so a plain import binds the function. import_module returns
+        # the module itself.
+        node = importlib.import_module("finvet.graph.nodes.input_guardrails")
+
+        audit = MagicMock()
+        with patch.object(node, "get_audit_logger", lambda: audit):
+            _run(_guard(False, ["S6"], "LLAMA_GUARD_UNSAFE"))
+
+        data = audit.log_event.call_args.kwargs["data"]
+        # `flags` and `categories` are separate fields on GuardResult; the
+        # event carries flags. Asserting the keys reach the trail is the
+        # point -- state no longer holds a copy of any of this.
+        assert data["guard_provider"] == "composite"
+        assert "guard_flags" in data
+        assert data["claim_normalized"] == "x"
 
 
 class TestUnsafeStillRaises:

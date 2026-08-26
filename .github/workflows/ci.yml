@@ -28,8 +28,12 @@ jobs:
       - run: |
           uv run mypy \
             src/finvet/models/evidence.py \
+            src/finvet/models/state.py \
             src/finvet/api/execution.py \
-            src/finvet/audit/integrity.py
+            src/finvet/audit/integrity.py \
+            src/finvet/models/a2a.py \
+            src/finvet/rag/types.py
+      - run: uv run python -m compileall -q src ui tests scripts
       # Documentation drift guard: every src/ path named in docs must exist.
       # ARCHITECTURE.md pointed at a memory/service.py that never existed.
       - name: Docs reference real files
@@ -58,18 +62,20 @@ jobs:
       - run: uv sync --frozen
       # Integration tests are excluded by pyproject addopts; eval-dependent tests
       # skip without FINVET_EVAL_DATA_DIR, so no secrets are needed here.
-      # Coverage floor, ratcheted. Measured 72% overall on 2026-08-25 with all
-      # ten implementation tasks complete. Task 11 Step 5 asked for 75% overall
-      # and 85% on six named modules; two of those are met -- review.py 95%,
-      # output_guardrails.py 87% -- and the rest are not: audit/database.py 57%
-      # and rag/service.py 59% are mostly database error paths and the ingest
-      # half of the RAG service, neither of which the remaining tasks touch.
-      #
-      # The floor sits at today's measured level rather than at the target,
-      # because a gate the repo cannot pass protects nothing and gets disabled.
-      # Raise it when those two modules gain tests; the target stands as the
-      # destination, recorded here rather than quietly dropped.
-      - run: uv run pytest tests/unit -q --cov=src/finvet --cov-fail-under=72
+      # The Release-A gates, both now met rather than aspirational: 75% overall
+      # and 85% on the six modules where a defect becomes a wrong answer
+      # someone acts on. The earlier floor sat at the then-measured 72% with a
+      # note that two modules were short; they are no longer short, so the
+      # floor is the target.
+      - run: |
+          uv run pytest tests/unit -q \
+            --cov=src/finvet \
+            --cov-report=term-missing \
+            --cov-report=json:coverage.json \
+            --cov-fail-under=75
+      # Per-file floors. An overall percentage can clear its gate while the
+      # code that decides a verdict is barely exercised.
+      - run: uv run python scripts/check_critical_coverage.py coverage.json
 
   docker:
     runs-on: ubuntu-latest
