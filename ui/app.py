@@ -5,7 +5,7 @@ import streamlit as st
 from finvet import __version__
 
 from api_client import get_pending_reviews, health_check
-from components.formatting import _escape
+from components.formatting import _escape, verdict_label
 from styles import STYLES
 from views.verify import render_verify
 from views.reviews import render_reviews
@@ -119,7 +119,7 @@ with st.sidebar:
     elif last == "NOT_ENOUGH_INFO":
         verdict_html = '<span class="status-verdict status-verdict-nei">NEI</span>'
     elif last:
-        verdict_html = f'<span class="status-verdict status-verdict-none">{_escape(last)}</span>'
+        verdict_html = f'<span class="status-verdict status-verdict-none">{_escape(verdict_label(last))}</span>'
     else:
         verdict_html = '<span class="status-verdict status-verdict-none">--</span>'
 

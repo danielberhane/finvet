@@ -202,3 +202,81 @@ class TestTheRouteRefusesToFinalizeOnAFailedRead:
         result = self._submit()
 
         assert result["status"] == "reviewed"
+
+
+class TestRecoveryUsesTheSameStrictView:
+    """The recovery path is where an incomplete envelope actually matters.
+
+    `submit_hitl_review` was fixed to read strictly and merge the buffer.
+    `reconcile_review` — the path a failed finalization *lands in* — still read
+    `get_events() or []`, so the defect survived exactly where it does harm: a
+    review whose first write failed is reconciled from a lossy read, and an
+    event whose immediate write also failed is absent from the recovered
+    envelope. The primary path was closed and the recovery path left open.
+
+    The buffer is also discarded in `finally` on every exit, including the
+    failure that leads to recovery, so by reconciliation time the in-memory
+    copy is gone. It is now retained while a review is still recoverable.
+    """
+
+    @pytest.fixture
+    def audit(self):
+        logger = MagicMock()
+        logger.get_review_recovery.return_value = {
+            "review_decision": "approve", "reviewer_notes": None}
+        logger.claim_review_finalization.return_value = "claimed"
+        logger.get_execution.return_value = {
+            "full_trace": {"review_recovery": {
+                "review_decision": "approve", "reviewer_notes": None}}}
+        logger.finalize_review.return_value = True
+        logger.events_for_finalization.return_value = [
+            _event("evt_a", "2026-08-26T00:00:01")]
+        logger.get_events.return_value = []
+        return logger
+
+    @pytest.fixture(autouse=True)
+    def _wire(self, monkeypatch, audit):
+        monkeypatch.setattr(review_route, "get_audit_logger", lambda: audit)
+        graph = MagicMock()
+        graph.get_state.return_value = MagicMock(values={
+            "final_response": {"verdict": "REFUTES", "confidence": 0.9,
+                               "metadata": {}}})
+        monkeypatch.setattr(review_route.deps, "verification_graph", graph)
+        yield
+
+    def test_reconciliation_reads_the_merged_view(self, audit):
+        review_route.reconcile_review("req_recover")
+
+        audit.events_for_finalization.assert_called_once_with("req_recover")
+        assert audit.finalize_review.call_args.kwargs["events"] == [
+            _event("evt_a", "2026-08-26T00:00:01")]
+
+    def test_reconciliation_never_uses_the_lossy_read(self, audit):
+        review_route.reconcile_review("req_recover")
+
+        audit.get_events.assert_not_called()
+
+    def test_a_failed_read_does_not_finalize_a_recovery(self, audit):
+        audit.events_for_finalization.side_effect = RuntimeError("db down")
+
+        with pytest.raises(HTTPException) as excinfo:
+            review_route.reconcile_review("req_recover")
+
+        assert excinfo.value.status_code == 503
+        audit.finalize_review.assert_not_called()
+
+    def test_the_buffer_survives_a_failed_finalization(self, audit):
+        """It is the only copy of an event whose write failed, and
+        reconciliation is what still needs it."""
+        audit.finalize_review.return_value = False
+
+        with pytest.raises(HTTPException):
+            review_route.submit_hitl_review(
+                "req_pending", HITLReviewRequest(decision="approve"))
+
+        audit.discard_buffer.assert_not_called()
+
+    def test_the_buffer_is_released_after_durable_success(self, audit):
+        review_route.reconcile_review("req_recover")
+
+        audit.discard_buffer.assert_called_once_with("req_recover")

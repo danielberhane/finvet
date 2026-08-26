@@ -7,7 +7,7 @@ import streamlit as st
 
 from api_client import memory_accept, memory_check, verify_claim_stream
 from components.evidence import render_evidence
-from components.formatting import _escape
+from components.formatting import _escape, verdict_label
 from components.source_badges import _data_source_badges_html, _override_badge_html
 
 
@@ -45,7 +45,7 @@ def _render_verification_result(data, from_memory=False, memory_similarity=None)
     parts = [
         f'<div class="{verdict_class}" style="display: flex; align-items: center; justify-content: space-between; text-align: left;">',
         '<div>',
-        f'<div class="verdict-text">{verdict}</div>',
+        f'<div class="verdict-text">{verdict_label(verdict)}</div>',
         f'<div style="font-size: 0.88rem; color: #64748b; margin-top: 0.25rem;">{summary}</div>',
         '</div>',
         '<div style="text-align: right; min-width: 140px;">',
@@ -367,7 +367,7 @@ def render_verify():
             '</div>',
             f'<div class="memory-card-claim">{_escape(match_claim)}</div>',
             '<div class="memory-card-meta">',
-            f'<span class="memory-meta-chip"><span class="badge {verdict_badge_class}" style="padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">{match_verdict}</span></span>',
+            f'<span class="memory-meta-chip"><span class="badge {verdict_badge_class}" style="padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">{verdict_label(match_verdict)}</span></span>',
             f'<span class="memory-meta-chip"><span class="memory-meta-label">Confidence</span> <span class="memory-meta-value">{match_confidence:.0%}</span></span>',
         ]
         if agent_display:
