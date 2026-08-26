@@ -295,31 +295,70 @@ set by id. Release A has no citation field on `VerdictOutput`.
 
 ---
 
-## D14 — Filing retrieval is a subsystem, not a claim path
+## D14 — Filing retrieval is a subsystem, not a claim path — **LIFTED, same day**
 
-**Decision.** Release A advertises hybrid filing retrieval as a *tested
-retrieval subsystem*, measured at the tool boundary. It does not claim a
-qualitative filing claim can be verified end to end.
+**Status: superseded by parser rule R2b.** The decision below is kept in full
+because the boundary moving is the point: it was written in the morning, was
+accurate when written, and was lifted the same evening once the cost of it
+became visible. What follows is the original, then what changed.
 
-**Why.** It cannot. `METRIC_WHITELIST["sec"]` holds only numeric GAAP metrics,
-so a claim like "Apple discussed supplier concentration risk in its annual
-report" is rejected by the parser as `non_financial` and never reaches an
-agent. The SEC prompt separately instructs the model not to call
-`search_filing_text` to re-confirm an XBRL number. The two together leave no
-route: **0 of 322 recorded executions carry a `rag` data source.**
+### The original decision
 
-The subsystem itself works, and is asserted by the release gate: a direct tool
-call returns scored chunks with section, form, period and a content-derived
-`evidence_id`.
+Release A advertised hybrid filing retrieval as a *tested retrieval subsystem*,
+measured at the tool boundary, and did not claim a qualitative filing claim
+could be verified end to end.
 
-**What changed.** The README and the readiness report previously listed hybrid
-RAG among the SEC agent's live sources. Both now say what is true, and
-`scripts/release_gate_evidence.py` asserts the unreachability so it cannot
-drift unnoticed — the check fails the day a qualitative route is added, which
-is when the documentation must change with it.
+**Why.** `METRIC_WHITELIST["sec"]` holds only numeric GAAP metrics, so "Apple
+discussed supplier concentration risk in its annual report" was rejected by the
+parser as `non_financial` and never reached an agent. The SEC prompt separately
+instructs the model not to call `search_filing_text` to re-confirm an XBRL
+number. Together they left no route: **0 of 322 recorded executions carried a
+`rag` data source.**
 
-**To lift it.** A qualitative SEC claim type routed to the SEC agent. That is a
-parser taxonomy change, and it is Release B.
+**To lift it,** the original text said: *"A qualitative SEC claim type routed to
+the SEC agent. That is a parser taxonomy change, and it is Release B."*
+
+### What lifted it
+
+That estimate was wrong in one respect, and the error is worth recording.
+`verification_strategy_for` (`config/metrics.py:185-219`) **already returned
+`filing_rag`** for a `sec` claim with a null metric. The strategy existed and
+was wired; nothing in the taxonomy needed changing. The only thing standing in
+the way was the parser calling such claims `non_financial`.
+
+So the change was one rule in `agents/prompts/parser_system.txt` — **R2b**: a
+claim about what a filing *says* is a `sec` claim with `metric: null`. No code
+change, and no touch to `METRIC_WHITELIST`, which is vendored from the parser
+project and conformance-tested.
+
+**Nothing was loosened.** These claims name no number, so the numeric guard has
+nothing to demand of them. A claim that *does* name a number still needs an
+XBRL fact or a market quote, and filing prose still cannot become one
+(`SUPPORTING_EVIDENCE_TOOLS`, D9). D13 still forbids refuting on absence.
+
+**Observed after the change:**
+
+```
+Apple's annual report discusses risks from supplier concentration
+  -> SUPPORTS, 95%, status=success, data_sources.rag.used=true, 8 chunks
+Nvidia's 10-K describes dependence on a limited number of suppliers
+  -> SUPPORTS, 95%, 10 chunks
+```
+
+The reject boundary was re-verified at the same time: all seven cases still
+reject with their original reasons, including the one R2b could plausibly have
+swallowed — "Apple's CEO enjoys sailing on weekends" is about the company and
+is in no filing, and stays `non_financial`.
+`tests/integration/test_qualitative_filing_claims.py` pins both halves.
+
+### The drift guard worked
+
+The original text said `scripts/release_gate_evidence.py` *"asserts the
+unreachability so it cannot drift unnoticed — the check fails the day a
+qualitative route is added, which is when the documentation must change with
+it."* That is exactly what happened, and this rewrite is the consequence. The
+check is now inverted to assert reachability.
+
 
 ---
 
