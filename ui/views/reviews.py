@@ -4,6 +4,8 @@ from datetime import datetime
 
 import streamlit as st
 
+from components.formatting import verdict_label
+
 from api_client import get_reviews_detailed
 
 
@@ -74,7 +76,7 @@ def render_reviews():
                 <div class="pending-claim-text">"{claim}"</div>
                 <div class="pending-meta">
                     <div class="pending-meta-item">
-                        <span class="badge {verdict_badge}">{prelim_verdict}</span>
+                        <span class="badge {verdict_badge}">{verdict_label(prelim_verdict)}</span>
                     </div>
                     <div class="pending-meta-item">
                         <span class="badge {conf_badge}">{conf_label}</span>

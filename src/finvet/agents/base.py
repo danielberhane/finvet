@@ -62,6 +62,103 @@ def compose_failure_reasoning(error_msg: str) -> str:
     )
 
 
+def _tolerance_for(claimed_value, agent_type) -> float:
+    """Percentage tolerance for a claimed magnitude. Module-level so the
+    comparator does not need an agent instance."""
+    if agent_type == "market":
+        return TOLERANCE_MARKET
+    if agent_type == "news":
+        return TOLERANCE_NEWS
+    if claimed_value is None:
+        return TOLERANCE_DEFAULT
+    if abs(claimed_value) >= TOLERANCE_LARGE_VALUE_THRESHOLD:
+        return TOLERANCE_SEC_LARGE
+    return TOLERANCE_SEC_SMALL
+
+
+def compare_observation(parsed_claim, observation, agent_type="sec") -> tuple:
+    """The numeric decision, with no model involved.
+
+    Extracted from `_apply_override` so the same arithmetic serves two callers:
+    the override, which corrects a model verdict, and the fallback used when
+    the verdict LLM never produced one. They must not drift -- a fallback that
+    compared differently would be a second, unreviewed verdict path.
+
+    Returns (verdict, confidence, magnitude_diff). Fails closed to
+    NOT_ENOUGH_INFO whenever the comparison cannot honestly be made.
+    """
+    claimed = getattr(parsed_claim, "value", None) if parsed_claim else None
+    retrieved = observation.value if observation else None
+
+    if claimed is None or retrieved is None:
+        return "NOT_ENOUGH_INFO", 0.5, None
+
+    divisor = max(abs(claimed), abs(retrieved))
+    magnitude_diff = (abs(claimed - retrieved) / divisor * 100
+                      if divisor > 0 else 0.0)
+
+    comparison = getattr(parsed_claim, "operator", None) or "eq"
+    tolerance = _tolerance_for(claimed, agent_type)
+
+    if comparison == "range":
+        lower = getattr(parsed_claim, "range_min", None)
+        upper = getattr(parsed_claim, "range_max", None)
+        if lower is None or upper is None:
+            return "NOT_ENOUGH_INFO", 0.5, magnitude_diff
+        margin = tolerance / 100.0
+        lo = lower - abs(lower) * margin
+        hi = upper + abs(upper) * margin
+        return ("SUPPORTS" if lo <= retrieved <= hi else "REFUTES",
+                0.90, magnitude_diff)
+
+    if comparison == "approx":
+        tolerance *= TOLERANCE_APPROX_MULTIPLIER
+        comparison = "eq"
+
+    if comparison == "eq":
+        if magnitude_diff <= tolerance:
+            return "SUPPORTS", (0.90 if magnitude_diff < tolerance / 2
+                                else 0.85), magnitude_diff
+        return "REFUTES", 0.90, magnitude_diff
+
+    if comparison in ("gt", "gte"):
+        passes = (retrieved > claimed if comparison == "gt"
+                  else retrieved >= claimed)
+        return "SUPPORTS" if passes else "REFUTES", 0.90, magnitude_diff
+
+    if comparison in ("lt", "lte"):
+        passes = (retrieved < claimed if comparison == "lt"
+                  else retrieved <= claimed)
+        return "SUPPORTS" if passes else "REFUTES", 0.90, magnitude_diff
+
+    # An operator we cannot interpret: two numbers, no way to compare them.
+    return "NOT_ENOUGH_INFO", 0.5, magnitude_diff
+
+
+def deterministic_reasoning(parsed_claim, observation, verdict) -> str:
+    """Python's own account of a comparison it made.
+
+    Written here rather than borrowed from a template that reads like model
+    prose: when this text appears, no model contributed to the verdict, and a
+    reader of the audit trail must be able to tell.
+    """
+    claimed = getattr(parsed_claim, "value", None)
+    metric = getattr(parsed_claim, "metric", None) or "the claimed metric"
+    operator = getattr(parsed_claim, "operator", None) or "eq"
+    return (
+        f"Verdict determined by direct comparison, without a model. "
+        f"The claim states {metric} {operator} {claimed:,.0f}. "
+        f"The trusted observation is {observation.concept or metric} = "
+        f"{observation.value:,.0f} {observation.units or ''}".rstrip()
+        + (f" for the period ending {observation.period_end}"
+           if observation.period_end else "")
+        + f", retrieved by {observation.tool}. "
+        f"Comparing those two numbers yields {verdict}. "
+        f"The verdict-extraction step did not complete, so no model opinion "
+        f"was available or used."
+    )
+
+
 class VerdictOutput(BaseModel):
     """Structured verdict output from the LLM."""
     verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]
@@ -164,19 +261,18 @@ class BaseVerificationAgent(ABC):
         tools_called, tool_calls_detail, provenance, tool_records = \
             self._extract_tool_info(messages)
 
-        # Extract verdict (separate LLM call — anti-anchoring)
-        try:
-            verdict_output = self._extract_verdict(messages, state)
-        except Exception as e:
-            logger.error(f"{self.agent_type} verdict extraction failed: {e}")
-            execution_time_ms = int((time.time() - start_time) * 1000)
-            return self._error_evidence(
-                str(e), execution_time_ms, tools_called, tool_calls_detail
-            )
-
         # The one number the deterministic layer is allowed to compare. Bound
         # to the resolved period so a correct figure from the wrong fiscal year
         # cannot satisfy the claim -- the comparator has no way to notice.
+        #
+        # Resolved BEFORE the verdict call, deliberately. This used to run
+        # after, and `_extract_verdict` returned `_error_evidence` from its
+        # handler, so a verdict LLM that ran to its token limit discarded a
+        # trusted XBRL fact that was already in hand: filed shareholders equity
+        # of $56.95B was never compared against a claimed "< $100 billion", and
+        # the claim went to a human for want of one subtraction. The
+        # deterministic layer exists to overrule the model; it must not depend
+        # on the model succeeding.
         canonical_period = state.get("canonical_period")
         parsed_claim = state.get("parsed_claim")
         observation = resolve_trusted_observation(
@@ -220,6 +316,37 @@ class BaseVerificationAgent(ABC):
         # meaningful for a claim naming no value, where no observation is
         # expected and nothing else checks that the verdict rests on a source.
         evidence_gap = qualitative_evidence_gap(tool_records)
+
+        # Extract verdict (separate LLM call — anti-anchoring)
+        try:
+            verdict_output = self._extract_verdict(messages, state)
+        except Exception as e:
+            logger.error(f"{self.agent_type} verdict extraction failed: {e}")
+            execution_time_ms = int((time.time() - start_time) * 1000)
+
+            # The comparison needs the claimed value, the operator and a
+            # trusted observation -- all already in hand, none of them from the
+            # model. If they are here, answer the question; the model's failure
+            # is a fact about the run, not about the evidence.
+            fallback, fb_confidence, fb_diff = compare_observation(
+                parsed_claim, observation, self.agent_type)
+            if fallback != "NOT_ENOUGH_INFO":
+                logger.warning(
+                    f"{self.agent_type} verdict extraction failed; deciding "
+                    f"deterministically from the trusted observation: "
+                    f"{fallback}"
+                )
+                return self._deterministic_evidence(
+                    parsed_claim, observation, fallback, fb_confidence,
+                    fb_diff, temporal_status, execution_time_ms,
+                    tools_called, tool_calls_detail, provenance, str(e),
+                )
+
+            # Nothing to compare. The fallback rescues a comparison, never a
+            # verdict, so this stays an error.
+            return self._error_evidence(
+                str(e), execution_time_ms, tools_called, tool_calls_detail
+            )
 
         # Python-based verdict override (deterministic number comparison)
         original_verdict = verdict_output.verdict
@@ -626,6 +753,55 @@ class BaseVerificationAgent(ABC):
 
         logger.info(f"{self.agent_type} final verdict: {verdict} (confidence: {confidence:.2f})")
         return verdict, confidence, magnitude_diff
+
+    def _deterministic_evidence(
+        self,
+        parsed_claim,
+        observation,
+        verdict: str,
+        confidence: float,
+        magnitude_diff,
+        temporal_status: str,
+        execution_time_ms: int,
+        tools_called,
+        tool_calls_detail,
+        provenance,
+        extraction_error: str,
+    ) -> Dict[str, Any]:
+        """Evidence for a verdict Python reached without any model opinion.
+
+        Distinct from both the normal path and `_error_evidence`. The run is
+        `completed` -- the question was answered, on trusted evidence -- but
+        `llm_original_verdict` is None and `verdict_source` says so, because a
+        reader must be able to tell that no model contributed and that the
+        extraction step failed. The failure is preserved in
+        `verdict_extraction_error` rather than being swallowed by the success.
+        """
+        return {
+            "agent": self.agent_type,
+            "verdict": verdict,
+            "confidence": confidence,
+            "retrieved_value": observation.value if observation else None,
+            "claimed_value": getattr(parsed_claim, "value", None),
+            "magnitude_difference_percent": magnitude_diff,
+            "source_description": self._get_source_description(),
+            "tools_called": tools_called,
+            "tool_calls_detail": tool_calls_detail,
+            "provenance": provenance,
+            "trusted_observation": (observation.model_dump()
+                                    if observation else None),
+            "temporal_status": temporal_status,
+            "limitation": None,
+            "reasoning": deterministic_reasoning(
+                parsed_claim, observation, verdict),
+            "execution_time_ms": execution_time_ms,
+            "override_applied": False,
+            "llm_original_verdict": None,
+            "verdict_source": "deterministic_fallback",
+            "verdict_extraction_error": extraction_error,
+            "execution_status": "completed",
+            "error": None,
+        }
 
     def _error_evidence(
         self,

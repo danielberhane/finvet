@@ -57,7 +57,7 @@ this release does not make one.
 |---|---|---|---|
 | **SEC** | GAAP financials — revenue, income, EPS, balance sheet, cash flow | SEC EDGAR (XBRL) via MCP; filing-text retrieval is in the toolbox but unused by Release A routing (see below) | — |
 | **Market** | Prices, valuation, market cap | Finnhub | — |
-| **News** | Events, announcements, macro indicators | Tavily search, FRED | SEC |
+| **News** | Events and announcements | Tavily search | SEC |
 
 Delegation runs one way only, so it terminates by construction. Exactly one outcome escalates:
 both sides reaching decisive but opposite verdicts. Silence does not — a periodic report omits
@@ -167,7 +167,7 @@ the same container but stays off unless you set `ENABLE_LLAMA_GUARD=true` and pu
 | `TAVILY_API_KEY` | news search | news claims → NOT_ENOUGH_INFO |
 | `FINNHUB_API_KEY` | market quotes, tickers | market claims → NOT_ENOUGH_INFO |
 | *(none)* | embeddings → RAG + claim memory | served locally by Ollama — no key, no per-call cost |
-| *(none)* | FRED macro, SEC XBRL | free public endpoints |
+| *(none)* | SEC XBRL | free public endpoints |
 
 The LLM is pluggable ([`llm/factory.py`](src/finvet/llm/factory.py)) — point any
 endpoint speaking the OpenAI-compatible chat-completions protocol — Ollama, vLLM, LiteLLM, or
@@ -259,7 +259,7 @@ Postgres, and an LLM cost budget.
 - **US equities only** · **point-in-time claims** (no time series) · **latency 15–40s/claim**
   (one ReAct agent making real tool calls, plus an optional delegated run).
 - **A numeric verdict requires a structured source.** Values are compared only when they come
-  from an XBRL fact, a market quote field, or a FRED series. A number the model read out of
+  from an XBRL fact or a market quote field. A number the model read out of
   prose is not evidence, so claims whose metric has no structured source — fines,
   settlements, analyst targets and 38 others the parser can emit — return NOT_ENOUGH_INFO
   rather than a verdict resting on an LLM's reading.

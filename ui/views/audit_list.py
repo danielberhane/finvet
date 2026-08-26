@@ -5,7 +5,7 @@ from datetime import datetime
 import streamlit as st
 
 from api_client import list_audit_executions
-from components.formatting import _escape
+from components.formatting import _escape, verdict_label
 from components.source_badges import _data_source_badges_html
 
 
@@ -55,7 +55,7 @@ def render_audit_list():
         with f_col1:
             f_verdict = st.selectbox(
                 "Verdict", _VERDICT_OPTIONS,
-                format_func=lambda x: "All verdicts" if x == "" else x,
+                format_func=lambda x: "All verdicts" if x == "" else verdict_label(x),
                 key="audit_filter_verdict",
             )
         with f_col2:
@@ -142,7 +142,7 @@ def render_audit_list():
                 '<div class="audit-card">',
                 f'<div class="audit-card-claim">"{_escape(claim_text)}"</div>',
                 '<div class="audit-card-meta">',
-                f'<span class="badge {badge_class}">{_escape(verdict)}</span>',
+                f'<span class="badge {badge_class}">{_escape(verdict_label(verdict))}</span>',
                 f'<span>{confidence:.0%} confidence</span>',
                 f'<span>{_escape(agent_display)} Agent</span>',
                 f'<span>{exec_s}</span>',

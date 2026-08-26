@@ -10,7 +10,7 @@ import pandas as pd
 
 from api_client import get_audit_detail
 from components.evidence import render_evidence
-from components.formatting import _escape
+from components.formatting import _escape, verdict_label
 from components.source_badges import _data_source_badges_html
 
 
@@ -130,7 +130,7 @@ def render_audit_detail():
         f'<div style="font-size:0.78rem;color:#94A3B8;margin-top:0.4rem;">{_escape(time_str)} &middot; {_escape(agent_display)} Agent &middot; {exec_s} {badges_html}</div>',
         "</div>",
         '<div style="text-align:right;min-width:120px;">',
-        f'<div class="verdict-text">{_escape(verdict)}</div>',
+        f'<div class="verdict-text">{_escape(verdict_label(verdict))}</div>',
         f'<div class="verdict-confidence" style="font-size:2rem;font-weight:800;">{confidence:.0%}</div>',
         "</div>",
         "</div>",

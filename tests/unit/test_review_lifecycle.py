@@ -245,23 +245,49 @@ class TestFinalizationFailureIsRecoverable:
         assert _submit()["status"] == "reviewed"
 
 
-class TestTheBufferIsAlwaysDrained:
-    """Every exit, including every failure, releases the request's events."""
+class TestTheBufferIsDrainedOnlyWhenNothingStillNeedsIt:
+    """This class previously asserted the buffer drained on *every* exit, and
+    that invariant was the defect.
+
+    `log_event` writes best effort and keeps a buffered copy, so the buffer
+    holds the only record of an event whose immediate write failed.
+    Reconciliation is what needs that copy — and the paths that lead to
+    reconciliation are precisely the failures the old rule drained on. By the
+    time `/reconcile` ran, the recovered envelope could no longer be made
+    whole.
+
+    The rule now follows what happens to the row:
+
+      * durable success ....................... drain; nothing else will run
+      * back to PENDING (pre-invoke failure) .. drain; the review retries whole
+      * REVIEW_FINALIZATION_FAILED ............ retain; /reconcile needs it
+    """
 
     def test_success_drains_the_buffer(self, audit):
         _submit()
         audit.discard_buffer.assert_called_once_with("req_pending")
 
-    @pytest.mark.parametrize("break_it", [
-        lambda a, g: setattr(g.update_state, "side_effect", Exception("x")),
-        lambda a, g: setattr(g.invoke, "side_effect", Exception("x")),
-        lambda a, g: setattr(g.invoke, "return_value", {}),
-        lambda a, g: setattr(a.finalize_review, "return_value", False),
-    ], ids=["pre-invoke", "invoke", "no-result", "finalize"])
-    def test_every_failure_path_drains_the_buffer(self, audit, graph, break_it):
-        break_it(audit, graph)
+    def test_a_pre_invoke_failure_drains_it(self, audit, graph):
+        """The row goes back to PENDING and the whole review can be retried
+        from scratch, re-logging its events. Nothing needs the old copy."""
+        graph.update_state.side_effect = Exception("x")
 
         with pytest.raises(HTTPException):
             _submit()
 
         audit.discard_buffer.assert_called_once_with("req_pending")
+
+    @pytest.mark.parametrize("break_it", [
+        lambda a, g: setattr(g.invoke, "side_effect", Exception("x")),
+        lambda a, g: setattr(g.invoke, "return_value", {}),
+        lambda a, g: setattr(a.finalize_review, "return_value", False),
+    ], ids=["invoke", "no-result", "finalize"])
+    def test_a_recoverable_failure_keeps_it(self, audit, graph, break_it):
+        """Each of these leaves the row in REVIEW_FINALIZATION_FAILED, so
+        reconciliation still has to assemble a complete envelope."""
+        break_it(audit, graph)
+
+        with pytest.raises(HTTPException):
+            _submit()
+
+        audit.discard_buffer.assert_not_called()

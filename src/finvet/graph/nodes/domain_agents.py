@@ -5,6 +5,7 @@ into the LangGraph workflow. Each agent uses DeepSeek to reason about
 which tools to call and returns structured evidence.
 """
 
+import re
 from typing import Dict, Optional, Type
 from ...config.constants import AGENT_MAX_ITERATIONS, CORROBORATION_METRICS
 from ...config.metrics import verification_strategy_for
@@ -264,6 +265,27 @@ def _limitation_evidence(agent_type: str, source_desc: str, limitation: str,
     return evidence
 
 
+_FOURTH_QUARTER = re.compile(r"\bq\s*4\b|\bfourth\s+quarter\b", re.IGNORECASE)
+
+
+def _names_fourth_quarter(period: Optional[str]) -> bool:
+    """Whether the claim itself says Q4.
+
+    Read from the claim rather than from the resolver's opinion of it.
+    `Microsoft's Q4 fiscal 2025 revenue was $76 billion` returned three
+    different verdicts in three consecutive runs, because the decline tested
+    `canonical_period.fiscal_quarter` and period resolution is not
+    deterministic for that phrasing. When it produced an annual period instead,
+    the claim went to an agent, which retrieved the *annual* $281.7B and
+    refuted a *quarterly* $76B with it -- a correct number from the wrong
+    period scope, and the guard could not object because the annual fact
+    matched the annual window it was given.
+
+    Whether a claim names a quarter is a property of the claim.
+    """
+    return bool(period) and bool(_FOURTH_QUARTER.search(str(period)))
+
+
 def _unsupported_claim(state: VerificationState) -> Optional[Dict]:
     """Reasons to decline before an agent runs, or None to proceed."""
     parsed = state.get("parsed_claim")
@@ -278,7 +300,8 @@ def _unsupported_claim(state: VerificationState) -> Optional[Dict]:
     canonical = state.get("canonical_period")
     if (getattr(parsed, "claim_type", None) == "sec"
             and getattr(parsed, "value", None) is not None
-            and getattr(canonical, "fiscal_quarter", None) == "Q4"):
+            and (getattr(canonical, "fiscal_quarter", None) == "Q4"
+                 or _names_fourth_quarter(getattr(parsed, "period", None)))):
         return _limitation_evidence(
             "sec", "SEC EDGAR", "unsupported_q4_derivation",
             "Q4 figures are not filed separately and deriving them requires "
