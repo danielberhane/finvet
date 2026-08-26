@@ -78,7 +78,7 @@ def _run(monkeypatch, claim_period, canonical):
     seen = {}
 
     def _capture(parsed_claim, records, expected_period_end=None,
-                 expected_period_start=None):
+                 expected_period_start=None, **_kwargs):
         seen["end"] = expected_period_end
         seen["start"] = expected_period_start
         return TrustedObservation(**OBSERVATION)
