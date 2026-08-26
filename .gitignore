@@ -61,3 +61,6 @@ RAGagentic/
 
 # Coverage artifact
 .coverage
+
+# Prompts addressed to the author, not to a reader of the repo
+docs/PROMPT_*.md
