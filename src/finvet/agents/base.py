@@ -305,6 +305,15 @@ class BaseVerificationAgent(ABC):
             # that edge rejected the right filing for every non-calendar
             # issuer.
             expected_period_start=getattr(usable_period, "start_date", None),
+            # The nested A2A run rebuilds the claim as claim_type "sec" with
+            # metric None, because fine_amount is a *news* metric and
+            # ParsedClaim validates the pair. The original metric is what says
+            # a filed penalty amount may be read, so it travels beside the
+            # claim rather than inside it.
+            narrative_metric=state.get("a2a_metric"),
+            # The claim usually names its own currency in plain text
+            # ("500 million euros"); ParsedClaim has no field for it.
+            claim_text=state.get("claim_raw"),
         )
 
         # Only the SEC route runs period_resolver, so canonical_period is None
