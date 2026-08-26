@@ -31,6 +31,93 @@ logger = get_logger(__name__)  # Terminal/console logging for debugging
 
 router = APIRouter()
 
+# A progress event is sent for every node of every run, to a browser. Only
+# named, bounded values go in it.
+_PROGRESS_STRING_LIMIT = 200
+
+
+def _clip(value):
+    """Bound a string that turns out to be prose."""
+    if isinstance(value, str) and len(value) > _PROGRESS_STRING_LIMIT:
+        return value[:_PROGRESS_STRING_LIMIT] + "…"
+    return value
+
+
+def _progress_detail(node_name: str, updates: dict) -> dict:
+    """What a node produced, for the client to show while the run continues.
+
+    The graph stream already carries each node's state delta and the route
+    discarded it, yielding only the node's name. The pipeline therefore
+    computed the parse, the resolved period and the deterministic comparison
+    and told the client none of it — which is why the UI inferred the claim
+    type from keywords in the raw text and captioned a spinner with a guess.
+
+    An allow-list rather than the delta itself. `agent_evidence` carries
+    `provenance` and `tool_calls_detail`, which hold whole filing excerpts;
+    those belong in the reviewed final response, not on every step. Names and
+    counts here, never bodies.
+    """
+    updates = updates or {}
+    detail: dict = {}
+
+    if node_name == "claim_parser":
+        from ...graph.nodes.response_generator import _parsed_claim_view
+
+        parsed = _parsed_claim_view(updates.get("parsed_claim"))
+        if parsed:
+            detail = {k: parsed.get(k) for k in
+                      ("claim_type", "ticker", "metric", "operator", "value",
+                       "period")}
+
+    elif node_name == "period_resolver":
+        period = updates.get("canonical_period")
+        if period is not None:
+            assumptions = getattr(period, "assumptions", None) or []
+            detail = {
+                "start": getattr(period, "start_date", None),
+                "end": getattr(period, "end_date", None),
+                "assumption": _clip(assumptions[0]) if assumptions else None,
+            }
+
+    elif node_name in ("sec_agent", "market_agent", "news_agent"):
+        evidence = updates.get("agent_evidence") or {}
+        observation = evidence.get("trusted_observation") or {}
+        detail = {
+            "agent": evidence.get("agent"),
+            "tools": list(evidence.get("tools_called") or []),
+            "retrieved_value": evidence.get("retrieved_value"),
+            "magnitude_difference_percent": evidence.get(
+                "magnitude_difference_percent"),
+            "llm_original_verdict": evidence.get("llm_original_verdict"),
+            "override_applied": evidence.get("override_applied"),
+            "limitation": evidence.get("limitation"),
+            "temporal_status": evidence.get("temporal_status"),
+            "concept": observation.get("concept"),
+            "period_end": observation.get("period_end"),
+            "observed_at": observation.get("observed_at"),
+            "rag_chunks": len(updates.get("rag_chunks_retrieved") or []),
+            "a2a_status": (updates.get("corroboration_result") or {}).get(
+                "status"),
+        }
+
+    elif node_name == "consensus":
+        detail = {
+            "verdict": updates.get("verdict"),
+            "confidence": updates.get("confidence"),
+            "confidence_label": updates.get("confidence_label"),
+        }
+
+    elif node_name == "output_guardrails":
+        detail = {
+            "hitl_required": updates.get("hitl_required"),
+            "hitl_triggers": list(updates.get("hitl_triggers") or []),
+        }
+
+    # A node nobody has taught this function about says nothing, rather than
+    # leaking whatever its delta happens to contain.
+    return {k: _clip(v) for k, v in detail.items() if v is not None or k in
+            ("value", "retrieved_value", "override_applied", "hitl_required")}
+
 
 @router.post("/verify")
 def verify_claim(request: VerifyClaimRequest):
@@ -203,7 +290,19 @@ def verify_claim_stream(request: VerifyClaimRequest):
                 initial_state, config, stream_mode="updates"
             ):
                 for node_name, updates in event.items():
-                    yield f"data: {json.dumps({'type': 'progress', 'node': node_name, 'request_id': request_id})}\n\n"
+                    # `updates` was merged and discarded, so the client saw a
+                    # node name and nothing else. _progress_detail sends the
+                    # allow-listed part of what the node actually produced.
+                    yield (
+                        "data: "
+                        + json.dumps({
+                            "type": "progress",
+                            "node": node_name,
+                            "request_id": request_id,
+                            "detail": _progress_detail(node_name, updates),
+                        })
+                        + "\n\n"
+                    )
                     final_result.update(updates)
 
             # Same coordinator as /verify: it derives the status, records
