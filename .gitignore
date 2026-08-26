@@ -64,3 +64,7 @@ RAGagentic/
 
 # Prompts addressed to the author, not to a reader of the repo
 docs/PROMPT_*.md
+
+# Agent instructions: used by tooling on this machine, not published
+CLAUDE.md
+AGENTS.md
