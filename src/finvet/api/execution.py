@@ -362,6 +362,8 @@ def build_pending_response(request_id: str, claim_text: str,
     Shared so both routes describe a pending review identically; they returned
     different shapes for the same graph result before.
     """
+    from ..graph.nodes.response_generator import build_data_sources
+
     agent_evidence = state.get("agent_evidence") or {}
     hitl_triggers = state.get("hitl_triggers", [])
     response = {
@@ -381,6 +383,13 @@ def build_pending_response(request_id: str, claim_text: str,
             "hitl_triggers": hitl_triggers,
             "agent": agent_evidence.get("agent"),
             "tools_called": agent_evidence.get("tools_called", []),
+            # What was gathered before the run paused. This block was omitted,
+            # so a News -> SEC delegation -- which fires on exactly the claims
+            # that then escalate -- left no trace in the response the client
+            # received, and the feature looked broken while working. The same
+            # omission hid retrieved filing chunks and XBRL provenance from the
+            # reviewer who most needs them.
+            "data_sources": build_data_sources(state, agent_evidence),
         },
     }
     if preliminary_analysis is not None:
