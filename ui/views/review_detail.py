@@ -6,7 +6,7 @@ import streamlit as st
 
 from api_client import reconcile_review, submit_review
 from components.evidence import render_evidence
-from components.formatting import _escape
+from components.formatting import _escape, verdict_label
 
 
 def render_review_detail():
@@ -89,7 +89,7 @@ def render_review_detail():
         <div class="{verdict_class}" style="display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 1.25rem 1.5rem;">
             <div>
                 <div style="font-size: 0.72rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.15rem;">AI Preliminary Assessment</div>
-                <div class="verdict-text" style="font-size: 1.3rem;">Preliminary: {prelim_verdict}</div>{sub_html}
+                <div class="verdict-text" style="font-size: 1.3rem;">Preliminary: {verdict_label(prelim_verdict)}</div>{sub_html}
             </div>
             <div style="text-align: right;">
                 <div style="font-size: 2rem; font-weight: 800; letter-spacing: -1px;">{prelim_confidence:.0%}</div>
@@ -139,6 +139,7 @@ def render_review_detail():
             override_verdict = st.selectbox(
                 "Select verdict:",
                 options=["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"],
+                format_func=verdict_label,
                 label_visibility="collapsed"
             )
         else:

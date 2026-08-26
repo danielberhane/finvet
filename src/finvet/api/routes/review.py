@@ -70,6 +70,8 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
             },
         )
 
+    outcome_is_durable = False
+    left_recoverable = False
     try:
         logger.info(f"HITL review claimed for {request_id}: {review.decision}")
         audit.log_event(
@@ -136,6 +138,7 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
             _mark_unfinalized(audit, request_id, review,
                               error_type="resume_failed",
                               checkpoint_has_final_state=False)
+            left_recoverable = True
             raise HTTPException(
                 status_code=503,
                 detail={
@@ -157,6 +160,7 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
             _mark_unfinalized(audit, request_id, review,
                               error_type="review_result_missing",
                               checkpoint_has_final_state=False)
+            left_recoverable = True
             raise HTTPException(
                 status_code=500,
                 detail={
@@ -182,6 +186,7 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
             _mark_unfinalized(audit, request_id, review,
                               error_type="audit_read_failed",
                               checkpoint_has_final_state=True)
+            left_recoverable = True
             raise HTTPException(
                 status_code=503,
                 detail={
@@ -213,6 +218,7 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
             _mark_unfinalized(audit, request_id, review,
                               error_type="audit_persistence_failed",
                               checkpoint_has_final_state=True)
+            left_recoverable = True
             raise HTTPException(
                 status_code=503,
                 detail={
@@ -229,6 +235,7 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
             f"decision: {review.decision}, verdict: {final_verdict})"
         )
 
+        outcome_is_durable = True
         return {
             "status": "reviewed",
             "request_id": request_id,
@@ -239,9 +246,21 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
             "final_response": final_response,
         }
     finally:
-        # Every exit, including every failure above. Without this the events
-        # buffered under this request are retained for the process lifetime.
-        audit.discard_buffer(request_id)
+        # Released when the outcome is durable, or when the row went back to
+        # PENDING and the whole review can simply be retried from scratch.
+        # Retained while the row is left in REVIEW_FINALIZATION_FAILED, because
+        # /reconcile is what still needs it: `log_event` writes best effort, so
+        # the buffer holds the only copy of an event whose write failed, and
+        # discarding on every exit dropped it on exactly the failures that lead
+        # to recovery. The recovered envelope could then never be made whole.
+        #
+        # The cost is a buffer held for the process lifetime if nobody ever
+        # reconciles. That is the right trade -- an incomplete audit envelope is
+        # worse than a retained dict, and `scripts/report_audit_operations.py`
+        # lists rows awaiting reconciliation so they are visible rather than
+        # silently accumulating.
+        if outcome_is_durable or not left_recoverable:
+            audit.discard_buffer(request_id)
 
 
 @router.post("/review/{request_id}/reconcile")
@@ -314,13 +333,34 @@ def reconcile_review(request_id: str):
                 },
             )
 
+        # The same strict merged view the first attempt uses. Reading
+        # `get_events() or []` here left the original defect exactly where it
+        # does harm: this is the path a *failed* finalization lands in, so an
+        # event whose immediate write also failed would be missing from the
+        # recovered envelope, and its checksum would verify over the gap.
+        try:
+            reconciled_events = audit.events_for_finalization(request_id)
+        except Exception as e:
+            logger.error(f"Could not read the audit trail to reconcile "
+                         f"{request_id}: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "review_finalization_failed",
+                    "message": (
+                        "The audit trail could not be read; the review "
+                        "remains awaiting reconciliation."
+                    ),
+                },
+            )
+
         finalized = audit.finalize_review(
             request_id,
             verdict=final_response["verdict"],
             confidence=final_response.get("confidence", 0.0),
             final_response=final_response,
             data_sources=(final_response.get("metadata") or {}).get("data_sources"),
-            events=audit.get_events(request_id) or [],
+            events=reconciled_events,
             # The reviewer decided once; that decision was persisted with the
             # recovery marker and is reused rather than asked for again.
             review_decision=recovery.get("review_decision", "approve"),
