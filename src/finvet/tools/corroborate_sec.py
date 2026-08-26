@@ -178,8 +178,11 @@ def _corroborate(
                 **base,
             )
 
+        # Unscoped: the question is whether the issuer disclosed this at
+        # all, not what one period reported. _filing_could_cover above
+        # already refused the case where no filing could carry it.
         out = run_sec_agent_scoped(
-            state, max_iterations=A2A_MAX_ITERATIONS
+            state, max_iterations=A2A_MAX_ITERATIONS, scope_retrieval=False
         )
         ev = out.get("agent_evidence", {})
 

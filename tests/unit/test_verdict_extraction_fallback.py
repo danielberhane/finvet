@@ -58,7 +58,13 @@ def _observation(value=56_950_000_000.0):
 class _Period:
     """A resolved period. Without one the temporal guard nulls the
     observation, which is correct production behaviour and not what these
-    tests are about."""
+    tests are about.
+
+    `period_type` is required on the real CanonicalPeriod and was omitted here;
+    once a placeholder period stopped being used as a bound, a stub without it
+    was correctly read as a placeholder. The stub was incomplete, not the gate.
+    """
+    period_type = "annual"
     start_date = "2023-10-01"
     end_date = "2024-09-28"
     fiscal_quarter = None
