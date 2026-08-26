@@ -8,7 +8,8 @@ from components.source_badges import _data_source_badges_html
 
 
 def render_evidence(reasoning, source_description=None, tools_called=None,
-                    tool_calls_detail=None, data_sources=None):
+                    tool_calls_detail=None, data_sources=None,
+                    show_badges=True):
     """Render the evidence as a structured analysis report."""
     if not reasoning or not reasoning.strip():
         return
@@ -25,7 +26,13 @@ def render_evidence(reasoning, source_description=None, tools_called=None,
     # Section header
     html_parts.append('<div class="report-header">')
     html_parts.append('<span class="report-title">Analysis Report</span>')
-    if data_sources:
+    # Suppressed by pages that already show the same badges beside the
+    # verdict -- repeating a signal a few centimetres apart makes a reader
+    # wonder whether the two are saying different things. Defaults to showing
+    # them: the review page has no other badge site, and of the two ways a
+    # call site can get this wrong, a duplicate is cosmetic and a missing
+    # badge loses provenance.
+    if data_sources and show_badges:
         html_parts.append(_data_source_badges_html({"data_sources": data_sources}))
     if source_description:
         html_parts.append(f'<span class="report-source">{_escape(source_description)}</span>')

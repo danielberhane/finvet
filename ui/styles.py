@@ -1080,6 +1080,77 @@ STYLES = """
     .pipeline-step-dot-warn { background: #F59E0B; }
     .pipeline-step-dot-skip { background: #CBD5E1; }
 
+    /* A step still running. Reuses the hitl-pulse keyframe rather than
+       defining a second one; the grey -skip dot read as "skipped", which a
+       step in progress is not. */
+    .pipeline-step-dot-running {
+        background: #F59E0B;
+        animation: hitl-pulse 2s ease-in-out infinite;
+    }
+
+    /* A heartbeat on the heading, for the five to ten seconds an agent can
+       think between steps. Opacity only: dots that appear and disappear
+       reflow the line on every frame, and animating font-weight reflows too,
+       because bold is wider. Each dot keeps its space and only fades.
+
+       Pure CSS by necessity -- a Streamlit rerun re-executes the script and
+       would restart the SSE stream, so this cannot be driven from Python.
+
+       1.4s and a 0.15 trough: slow and low-contrast reads as "working";
+       faster or sharper reads as "alarmed", and this runs for 20 seconds. */
+    .verifying-dots {
+        display: inline-flex;
+        gap: 3px;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+
+    .verifying-dots span {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #3B82F6;
+        opacity: 0.15;
+        animation-duration: 1.6s;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+    }
+
+    /* Accumulating, not travelling: one dot, then two, then three, then a
+       reset. A shared keyframe with animation-delay cannot express this -- a
+       delay shifts an identical curve in time, which is exactly what makes a
+       pulse appear to slide. Each dot has to hold its state for a different
+       length of time, so each needs its own keyframe, all on one 1.6s clock
+       (four phases of 0.4s) so they cannot drift apart.
+
+       The reset frame drops to the same 0.15 trough rather than to zero. Going
+       fully invisible would leave a quarter of every cycle showing nothing at
+       all, and on a twenty-second wait an indicator that keeps vanishing reads
+       as "it stopped" -- the opposite of what it is for.
+
+       Switches span 1% of the cycle (~16ms), so a dot pops on rather than
+       fading in: accumulation should read as counting, not breathing. */
+    .verifying-dot-1 { animation-name: verifying-dot-1; }
+    .verifying-dot-2 { animation-name: verifying-dot-2; }
+    .verifying-dot-3 { animation-name: verifying-dot-3; }
+
+    @keyframes verifying-dot-1 {
+        0%,  74%  { opacity: 1; }
+        75%, 100% { opacity: 0.15; }
+    }
+
+    @keyframes verifying-dot-2 {
+        0%,  24%  { opacity: 0.15; }
+        25%, 74%  { opacity: 1; }
+        75%, 100% { opacity: 0.15; }
+    }
+
+    @keyframes verifying-dot-3 {
+        0%,  49%  { opacity: 0.15; }
+        50%, 74%  { opacity: 1; }
+        75%, 100% { opacity: 0.15; }
+    }
+
     .pipeline-step-body { flex: 1; }
 
     .pipeline-step-label {

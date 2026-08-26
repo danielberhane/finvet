@@ -6,7 +6,7 @@ import streamlit as st
 
 from api_client import reconcile_review, submit_review
 from components.evidence import render_evidence
-from components.formatting import _escape, humanize, verdict_label
+from components.formatting import _escape, humanize, stage_label, verdict_label
 
 
 def render_review_detail():
@@ -46,7 +46,7 @@ def render_review_detail():
     # Preliminary Verdict Panel
     prelim_verdict = preliminary.get("verdict")
     prelim_confidence = preliminary.get("confidence", 0)
-    prelim_agent = preliminary.get("agent", "unknown")
+    prelim_agent = preliminary.get("agent")
 
     if prelim_verdict:
         if prelim_verdict == "SUPPORTS":
@@ -56,7 +56,7 @@ def render_review_detail():
         else:
             verdict_class = "verdict-nei"
 
-        agent_display = {"sec": "SEC", "market": "Market", "news": "News"}.get(prelim_agent, prelim_agent.upper())
+        agent_display = stage_label({"agent": prelim_agent}).replace(" Agent", "") or "—"
 
         # Why triggered + Preliminary verdict in one banner
         trigger_text = ""
@@ -69,7 +69,8 @@ def render_review_detail():
         if preliminary.get("override_applied"):
             original = preliminary.get("llm_original_verdict")
             override_text = (
-                f"Model concluded {original}; deterministic numeric check overruled it"
+                f"The model concluded {verdict_label(original)}; the deterministic "
+                f"numeric check overruled it"
                 if original
                 else "Deterministic numeric check overruled the model verdict"
             )
@@ -160,7 +161,8 @@ def render_review_detail():
         }
         result, error = submit_review(request_id, review_payload)
         if result:
-            st.success(f"✅ Review submitted. Final verdict: **{result.get('verdict')}**")
+            st.success("✅ Review submitted. Final verdict: "
+                       f"**{verdict_label(result.get('verdict'))}**")
             time.sleep(1.5)
             st.session_state.selected_review_id = None
             st.session_state.selected_review_data = None
@@ -201,7 +203,7 @@ def _render_finalization_retry(request_id):
         result, error = reconcile_review(request_id)
         if result:
             st.success(
-                f"✅ Recorded. Final verdict: **{result.get('verdict')}**")
+                f"✅ Recorded. Final verdict: **{verdict_label(result.get('verdict'))}**")
             time.sleep(1.5)
             st.session_state.selected_review_id = None
             st.session_state.selected_review_data = None

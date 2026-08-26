@@ -74,6 +74,101 @@ def humanize(value):
     return " ".join(words) if words else "--"
 
 
+_AGENT_NAMES = {"sec": "SEC", "market": "Market", "news": "News"}
+
+# Read from the response rather than inferred: `data_sources.a2a`
+# records which way the delegation ran.
+_A2A_DIRECTIONS = {"news_to_sec": ("news", "sec"),
+                   "sec_to_news": ("sec", "news")}
+
+# A run that never selected an agent still had a stage that ended it, and the
+# rejection records which one.
+_STAGE_NAMES = {
+    "rejected_parser": "Claim Parser",
+    "rejected_input_guard": "Input Guardrails",
+    "rejected_human": "Human Reviewer",
+}
+
+
+def stage_label(metadata):
+    """Who produced this result — an agent, or the stage that stopped it.
+
+    "UNKNOWN Agent · 0.0s" was shown on a rejected claim. Nothing unknown had
+    happened: the parser read a question, classified it, and stopped before any
+    agent was selected, which is why the metadata carries no `agent`. The UI
+    defaulted the absent value to "unknown" and captioned it as an agent that
+    could not be identified.
+
+    An empty string when nothing is known, rather than a name that was made up.
+    """
+    metadata = metadata or {}
+    agent = metadata.get("agent")
+    if agent and str(agent).lower() != "unknown":
+        label = f"{_AGENT_NAMES.get(agent, humanize(agent))} Agent"
+
+        # When one agent asked another, say so. The delegation is the most
+        # interesting thing that happened on such a run, and naming only the
+        # agent that started it left the feature visible in the badge and the
+        # raw response but not in the sentence describing who answered.
+        a2a = (metadata.get("data_sources") or {}).get("a2a") or {}
+        if a2a.get("used"):
+            pair = _A2A_DIRECTIONS.get(a2a.get("direction"))
+            if pair:
+                source, target = pair
+                label = (f"{_AGENT_NAMES.get(source, humanize(source))} Agent"
+                         f" → "
+                         f"{_AGENT_NAMES.get(target, humanize(target))} Agent")
+        return label
+
+    stage = _STAGE_NAMES.get(metadata.get("disposition"))
+    return stage or ""
+
+
+def parsed_claim_rows(parsed):
+    """The parse as (label, value) rows a person can read.
+
+    It reaches the response nested inside twenty other metadata keys, which is
+    technically visible and practically hidden. This is the same information
+    laid out for reading: labels in words, numbers formatted, and empty fields
+    dropped rather than printed as null.
+
+    Two absences are kept, because they mean something. A null metric with a
+    null value is not a gap — it is the parse that routes a claim to filing
+    text instead of XBRL, and it decides which half of the system answers.
+    """
+    if not parsed:
+        return []
+
+    rows = []
+
+    def add(label, value):
+        if value not in (None, "", []):
+            rows.append((label, value))
+
+    add("Claim type", humanize(parsed.get("claim_type")))
+    add("Ticker", parsed.get("ticker"))
+
+    metric, value = parsed.get("metric"), parsed.get("value")
+    if metric:
+        add("Metric", metric)
+    elif parsed.get("claim_type") == "sec":
+        # The routing decision, stated rather than left as a blank.
+        rows.append(("Metric", "none — routed to filing text"))
+
+    low, high = parsed.get("range_min"), parsed.get("range_max")
+    if low is not None and high is not None:
+        add("Range", f"{format_value(low)} – {format_value(high)}")
+    elif value is not None:
+        add("Value", format_value(value))
+
+    add("Comparison", humanize(parsed.get("operator"))
+        if parsed.get("operator") else None)
+    add("Period", parsed.get("period"))
+    if parsed.get("reject_reason"):
+        add("Reject reason", humanize(parsed["reject_reason"]))
+    return rows
+
+
 def _escape(text):
     """Escape HTML special characters."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

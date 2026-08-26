@@ -92,3 +92,100 @@ class TestTheUiHumanizesAnythingElse:
     @pytest.mark.parametrize("empty", [None, ""])
     def test_absence_is_a_dash(self, empty):
         assert self._humanize()(empty) == "--"
+
+
+class TestNoAgentIsNamedWhenNoAgentRan:
+    """"UNKNOWN Agent · 0.0s" was shown on a rejected claim.
+
+    Nothing unknown happened. The claim parser read "What was Apple's revenue
+    in 2024?", classified it as a question, and stopped — no agent was ever
+    selected, which is why `metadata` carries no `agent` key. The UI defaulted
+    the missing value to the string "unknown" and captioned it as though an
+    agent had run and could not be identified.
+
+    The rejection already says which stage stopped it, in `disposition`. That
+    is what the line should name.
+    """
+
+    def _attribution(self, metadata):
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ui"))
+        from components.formatting import stage_label
+
+        return stage_label(metadata)
+
+    def test_a_parser_rejection_names_the_parser(self):
+        assert self._attribution(
+            {"disposition": "rejected_parser"}) == "Claim Parser"
+
+    def test_a_guardrail_block_names_the_guard(self):
+        assert self._attribution(
+            {"disposition": "rejected_input_guard"}) == "Input Guardrails"
+
+    def test_a_human_rejection_names_the_reviewer(self):
+        assert self._attribution(
+            {"disposition": "rejected_human"}) == "Human Reviewer"
+
+    def test_an_agent_run_names_the_agent(self):
+        for wire, shown in (("sec", "SEC Agent"), ("market", "Market Agent"),
+                            ("news", "News Agent")):
+            assert self._attribution({"agent": wire}) == shown
+
+    def test_nothing_is_named_when_nothing_is_known(self):
+        """Better an empty attribution than an invented one."""
+        assert self._attribution({}) == ""
+
+    def test_the_word_unknown_never_appears(self):
+        for metadata in ({}, {"agent": None}, {"agent": "unknown"},
+                         {"disposition": "rejected_parser"}):
+            assert "unknown" not in self._attribution(metadata).lower()
+
+
+class TestADelegationIsNamedAsOne:
+    """"News Agent" alone hides the most interesting thing that happened.
+
+    When the News agent corroborates a finding against the issuer's own filing,
+    two agents ran and one asked the other. The line under the verdict named
+    only the first, so the delegation — the feature — was visible in the badge
+    and the raw JSON but not in the sentence describing who produced the
+    answer.
+
+    The direction is already in the response (`data_sources.a2a.direction`), so
+    this reads it rather than inferring it.
+    """
+
+    def _attribution(self, metadata):
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ui"))
+        from components.formatting import stage_label
+
+        return stage_label(metadata)
+
+    def _with_a2a(self, direction="news_to_sec", used=True):
+        return {"agent": "news",
+                "data_sources": {"a2a": {"used": used, "direction": direction}}}
+
+    def test_a_news_to_sec_delegation_names_both_agents(self):
+        assert self._attribution(self._with_a2a()) == "News Agent → SEC Agent"
+
+    def test_the_arrow_follows_the_recorded_direction(self):
+        assert self._attribution(
+            self._with_a2a("sec_to_news")) == "SEC Agent → News Agent"
+
+    def test_an_unrecorded_direction_falls_back_to_the_agent(self):
+        """Better the plain agent than an invented delegation."""
+        assert self._attribution(self._with_a2a("sideways")) == "News Agent"
+
+    def test_a_delegation_that_did_not_run_names_one_agent(self):
+        assert self._attribution(self._with_a2a(used=False)) == "News Agent"
+
+    def test_a_plain_agent_run_is_unchanged(self):
+        assert self._attribution({"agent": "sec"}) == "SEC Agent"
+
+    def test_a_rejection_is_unchanged(self):
+        assert self._attribution(
+            {"disposition": "rejected_parser"}) == "Claim Parser"

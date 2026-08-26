@@ -10,7 +10,7 @@ import pandas as pd
 
 from api_client import get_audit_detail
 from components.evidence import render_evidence
-from components.formatting import _escape, verdict_label
+from components.formatting import _escape, humanize, verdict_label
 from components.source_badges import _data_source_badges_html
 
 
@@ -105,7 +105,7 @@ def render_audit_detail():
         time_str = timestamp
 
     agent_display = "/".join(
-        {"sec": "SEC", "market": "Market", "news": "News"}.get(a, a.upper())
+        {"sec": "SEC", "market": "Market", "news": "News"}.get(a, humanize(a))
         for a in agents_run
     ) or "—"
 
@@ -179,6 +179,8 @@ def render_audit_detail():
             tools_called=metadata.get("tools_called", []),
             tool_calls_detail=metadata.get("tool_calls_detail", []),
             data_sources=metadata,
+            # Already shown in the header above.
+            show_badges=False,
         )
 
     # ── HITL Section ──────────────────────────────────────────────
@@ -187,11 +189,11 @@ def render_audit_detail():
         decision = hitl_meta.get("decision", "")
         notes = hitl_meta.get("reviewer_notes", "")
         override = hitl_meta.get("override_verdict", "")
-        override_html = f' &rarr; Override: <strong>{_escape(override)}</strong>' if override else ""
+        override_html = f' &rarr; Override: <strong>{_escape(verdict_label(override))}</strong>' if override else ""
         hitl_parts = [
             '<div class="hitl-panel" style="margin-top:1rem;padding:1rem 1.25rem;border-radius:8px;">',
             '<div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;color:#92400E;margin-bottom:0.4rem;">Human Review Applied</div>',
-            f'<div style="font-size:0.88rem;color:#78350F;">Decision: <strong>{_escape(decision.title())}</strong>{override_html}</div>',
+            f'<div style="font-size:0.88rem;color:#78350F;">Decision: <strong>{_escape(humanize(decision))}</strong>{override_html}</div>',
         ]
         if notes:
             hitl_parts.append(f'<div style="font-size:0.82rem;color:#92400E;margin-top:0.3rem;">Notes: {_escape(notes)}</div>')
