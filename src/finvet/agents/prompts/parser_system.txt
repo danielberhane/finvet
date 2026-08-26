@@ -42,6 +42,16 @@ __METRIC_WHITELIST__
        "iPhone revenue", "Azure cloud revenue", "advertising revenue",
        "data-center revenue" → metric: null. Only use "revenue" when the claim
        is about the whole company's revenue.
+   R2b. A claim about what a FILING SAYS is a "sec" claim with metric: null.
+       An issuer's own report is a verifiable source, and its narrative
+       sections — risk factors, legal proceedings, MD&A, the notes — are
+       retrievable text. These are NOT "non_financial":
+         "Apple's annual report discusses risks from supplier concentration"
+         "Nvidia's 10-K describes dependence on a limited number of suppliers"
+         "Microsoft disclosed a legal proceeding in its latest filing"
+       → claim_type "sec", metric null, value null.
+       The test is whether a filing could settle it. A claim about the company
+       that no filing addresses ("Apple's CEO enjoys sailing") stays a reject.
    R3. A FORECAST is not the reported figure.
        "analysts forecast revenue of $32.4B" → claim_type "news", metric "estimated_revenue"
        "reported revenue of $32.4B"          → claim_type "sec",  metric "revenue"

@@ -185,7 +185,9 @@ def build_error_response(request_id: str, claim_text: str, message: str,
         "explanation": message,
         "sources": [],
         "disclosures": [],
-        "metadata": {"error_code": error_code},
+        # Present-and-null, never absent: an absent key leaves a reader
+        # guessing whether parsing was skipped, failed, or unreported.
+        "metadata": {"error_code": error_code, "parsed_claim": None},
     }
 
 
@@ -206,7 +208,9 @@ def build_guardrail_response(request_id: str, claim_text: str,
         "explanation": message,
         "sources": [],
         "disclosures": [],
-        "metadata": {"error_code": violation_type},
+        # A guardrail runs before the parser, so there is no parse to
+        # show — and saying so is more useful than omitting the key.
+        "metadata": {"error_code": violation_type, "parsed_claim": None},
     }
 
 
@@ -362,7 +366,8 @@ def build_pending_response(request_id: str, claim_text: str,
     Shared so both routes describe a pending review identically; they returned
     different shapes for the same graph result before.
     """
-    from ..graph.nodes.response_generator import build_data_sources
+    from ..graph.nodes.response_generator import (
+        _parsed_claim_view, build_data_sources)
 
     agent_evidence = state.get("agent_evidence") or {}
     hitl_triggers = state.get("hitl_triggers", [])
@@ -390,6 +395,7 @@ def build_pending_response(request_id: str, claim_text: str,
             # omission hid retrieved filing chunks and XBRL provenance from the
             # reviewer who most needs them.
             "data_sources": build_data_sources(state, agent_evidence),
+            "parsed_claim": _parsed_claim_view(state.get("parsed_claim")),
         },
     }
     if preliminary_analysis is not None:

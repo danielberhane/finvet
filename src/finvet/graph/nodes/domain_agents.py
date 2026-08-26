@@ -225,8 +225,9 @@ def run_sec_agent_scoped(
     state: VerificationState,
     *,
     max_iterations: Optional[int] = None,
+    scope_retrieval: bool = True,
 ) -> Dict:
-    """Run the SEC agent with the resolved period applied to every tool call.
+    """Run the SEC agent, optionally with the resolved period applied.
 
     Shared by the normal SEC route and by the News -> SEC A2A delegation. The
     delegation must not reimplement this: calling SECAgent.execute directly
@@ -234,10 +235,29 @@ def run_sec_agent_scoped(
     period than the parent is the kind of inconsistency that surfaces later as
     an unexplainable disagreement between two of your own agents.
 
+    `scope_retrieval=False` for that delegation, because it asks a different
+    question. The SEC route asks what a named period reported, and must read
+    that period. A corroboration asks whether the issuer has disclosed a matter
+    *at all* -- and scoping it to one period answered "no" by excluding the
+    filings that carry the disclosure. "Apple was fined by the European
+    Commission over App Store practices" resolved to 2025-12-31; Apple's newest
+    indexed filings close 2025-12-27 and 2025-09-27, both earlier, so every
+    search returned zero and the nested agent died at its recursion limit. The
+    same claim on the SEC route, where nothing is scoped, found evidence
+    immediately.
+
+    Temporal eligibility is not lost by this: `_filing_could_cover` already
+    compares the event against the newest filing on record and returns
+    NOT_APPLICABLE_YET when none could carry it. That check is the honest one
+    and it sits above retrieval. Nothing numeric depends on the nested run's
+    period either -- CORROBORATION_METRICS holds fine_amount and
+    settlement_amount, never a GAAP figure.
+
     No recursion guard is needed. The SEC agent holds no delegation tool, so
     News -> SEC terminates by construction.
     """
-    target = period_target_for(state.get("canonical_period"))
+    target = (period_target_for(state.get("canonical_period"))
+              if scope_retrieval else None)
     if target:
         logger.info(f"SEC retrieval targeting period {target[0]} ({target[1]})")
     kwargs = {}

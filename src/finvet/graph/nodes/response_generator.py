@@ -30,6 +30,28 @@ _REJECT_REASON_LABELS = {
 }
 
 
+_PARSED_CLAIM_FIELDS = ("claim_type", "ticker", "metric", "operator", "value",
+                        "range_min", "range_max", "period", "reject_reason")
+
+
+def _parsed_claim_view(parsed_claim) -> Optional[Dict[str, Any]]:
+    """How the claim was read, as the parser produced it.
+
+    Every verdict rests on an interpretation — which company, which metric,
+    which period, what number, which comparison — and only three of those
+    fields surfaced, as loose metadata keys. A reader debugging a surprising
+    verdict is almost always asking a parsing question, and the answer existed
+    without being shown.
+
+    Reported unprettified: this block is for reading the machine's own
+    interpretation, not prose. It appears on rejections too, where it matters
+    most, because a rejection *is* a parsing decision.
+    """
+    if parsed_claim is None:
+        return None
+    return {f: getattr(parsed_claim, f, None) for f in _PARSED_CLAIM_FIELDS}
+
+
 def _reject_reason_label(reason: str) -> str:
     """A readable title for a reject reason.
 
@@ -90,7 +112,8 @@ def response_generator(state: VerificationState) -> Dict:
         return _generate_error_response(
             request_id,
             "NO_EVIDENCE",
-            "Verification failed to produce evidence"
+            "Verification failed to produce evidence",
+            parsed_claim=parsed_claim,
         )
 
     # Generate success response
@@ -170,6 +193,9 @@ def _generate_hitl_response(state: VerificationState) -> Dict:
             # in the response, and the reviewer who most needs the evidence saw
             # none of it.
             "data_sources": build_data_sources(state, agent_evidence),
+            # A reviewer needs the interpretation most of all: a verdict
+            # they are asked to confirm rests on how the claim was read.
+            "parsed_claim": _parsed_claim_view(state.get("parsed_claim")),
         },
         "preliminary_analysis": preliminary_analysis,
     }
@@ -218,6 +244,8 @@ def _generate_rejection_response(state: VerificationState) -> Dict:
             "reject_reason": detail if disposition == "rejected_parser" else None,
             "disposition": disposition,
             "disposition_detail": detail,
+            # A rejection is itself a parsing decision.
+            "parsed_claim": _parsed_claim_view(parsed_claim),
         },
     }
 
@@ -229,9 +257,15 @@ def _generate_rejection_response(state: VerificationState) -> Dict:
 def _generate_error_response(
     request_id: str,
     error_code: str,
-    error_message: str
+    error_message: str,
+    parsed_claim: Any = None,
 ) -> Dict:
-    """Generate error response."""
+    """Generate error response.
+
+    Carries the parse when there was one: an error after parsing still
+    knows how the claim was read, and that is what a reader debugging
+    the error needs first.
+    """
     final_response = {
         "status": "error",
         "request_id": request_id,
@@ -246,6 +280,7 @@ def _generate_error_response(
         "metadata": {
             "error_code": error_code,
             "error_message": error_message,
+            "parsed_claim": _parsed_claim_view(parsed_claim),
         },
     }
 
@@ -480,6 +515,9 @@ def _format_metadata(state: VerificationState, agent_evidence: Dict) -> Dict[str
         # Machine-readable, so a client can tell "we cannot answer this" from
         # "we looked and found nothing". None on a normal run.
         "limitation": agent_evidence.get("limitation"),
+        # How the claim was read. Every verdict rests on this, and only
+        # metric/operator/claimed_value used to surface.
+        "parsed_claim": _parsed_claim_view(parsed_claim),
     }
 
     metadata["data_sources"] = build_data_sources(state, agent_evidence)

@@ -28,6 +28,7 @@ from ..config.constants import (
     TOLERANCE_SEC_SMALL,
 )
 from ..config.settings import settings
+from ..tools.sec_tools import _DATABLE_PERIOD_TYPES
 from ..llm import create_llm
 from ..models.evidence import (
     ToolExecutionRecord,
@@ -275,16 +276,35 @@ class BaseVerificationAgent(ABC):
         # on the model succeeding.
         canonical_period = state.get("canonical_period")
         parsed_claim = state.get("parsed_claim")
+
+        # A period the resolver could not determine is not a window to compare
+        # against. When a claim names no period it returns period_type
+        # "current" with both bounds set to today -- a placeholder meaning "we
+        # did not know". `sec_tools._DATABLE_PERIOD_TYPES` already draws this
+        # line for XBRL targeting, and says why: those types "carry today's
+        # date as a placeholder -- targeting XBRL with it would match nothing
+        # and flag every value unverified."
+        #
+        # Passing them here made that warning come true one layer over. A real
+        # filed fact for 2024-09-28 was rejected against bounds of
+        # 2026-08-26..2026-08-26, so every numeric claim naming no period was
+        # forced to NOT_ENOUGH_INFO by a date that means "unknown".
+        period_is_placeholder = (
+            canonical_period is not None
+            and getattr(canonical_period, "period_type", None)
+            not in _DATABLE_PERIOD_TYPES)
+        usable_period = None if period_is_placeholder else canonical_period
+
         observation = resolve_trusted_observation(
             parsed_claim,
             tool_records,
-            expected_period_end=getattr(canonical_period, "end_date", None),
+            expected_period_end=getattr(usable_period, "end_date", None),
             # The window, not just its edge. The resolver builds a calendar
             # approximation before anyone has asked the issuer where its
             # fiscal year ends, so requiring the filing to land exactly on
             # that edge rejected the right filing for every non-calendar
             # issuer.
-            expected_period_start=getattr(canonical_period, "start_date", None),
+            expected_period_start=getattr(usable_period, "start_date", None),
         )
 
         # Only the SEC route runs period_resolver, so canonical_period is None
@@ -298,8 +318,13 @@ class BaseVerificationAgent(ABC):
         # day alignment, quote freshness windows), so the capability is
         # unavailable rather than merely unused: decline the numeric
         # comparison instead of issuing a decisive verdict on it.
+        # The same placeholder is the fallback for a period that *was* named
+        # and could not be parsed. `canonical_period is not None` then reported
+        # "resolved" when nothing had been -- so dropping the bounds alone
+        # would let such a claim be settled by any period's figure while still
+        # claiming its period was resolved. A placeholder is not a resolution.
         if getattr(parsed_claim, "period", None):
-            temporal_status = ("resolved" if canonical_period is not None
+            temporal_status = ("resolved" if usable_period is not None
                                else "unresolved_period")
         else:
             temporal_status = "not_period_bound"
