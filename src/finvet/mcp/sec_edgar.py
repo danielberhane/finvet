@@ -164,6 +164,9 @@ class SECEdgarClient:
         self._mcp = MCPClient(self.base_url)
         self._concept_cache: Dict[tuple, Optional[Dict]] = {}
         self._frame_cache: Dict[tuple, Dict[int, Dict]] = {}
+        # MMDD per CIK. None is a cached answer too: an issuer whose fiscal
+        # year end could not be read must not be looked up once per concept.
+        self._fiscal_year_ends: Dict[str, Optional[str]] = {}
 
     # -- company info --------------------------------------------------------
 
@@ -246,6 +249,31 @@ class SECEdgarClient:
 
     # -- period-targeted resolution ------------------------------------------
 
+    def _fiscal_anchor(self, cik: Optional[Any],
+                       period_end: str) -> Optional[date]:
+        """The issuer's own fiscal year end for the year `period_end` names.
+
+        Cached per CIK: `get_company_info` is already the agent's first tool
+        call on every SEC run, so in the common path this costs no round trip.
+        Any failure returns None and the caller keeps its previous behaviour.
+        """
+        try:
+            year = int(str(period_end)[:4])
+        except (TypeError, ValueError):
+            return None
+        if cik is None:
+            return None
+
+        key = str(cik)
+        if key not in self._fiscal_year_ends:
+            try:
+                info = self.get_company_info(key)
+                self._fiscal_year_ends[key] = getattr(info, "fiscal_year_end", None)
+            except Exception as e:
+                logger.info(f"No fiscal year end for {key}: {e}")
+                self._fiscal_year_ends[key] = None
+        return fiscal_anchor_for(self._fiscal_year_ends[key], year)
+
     def _resolve_period(
         self,
         items: List[FinancialItem],
@@ -260,17 +288,33 @@ class SECEdgarClient:
         consolidated-fact overlay: a value confirmed here is both entity-wide
         and for the period actually asked about. Anything that cannot be
         confirmed keeps the filing value but is flagged rather than trusted.
+
+        `period_end` is the *calendar* year end the resolver produced, which no
+        non-calendar issuer files a fact on. The anchor is the issuer's own
+        fiscal year end for the year claimed, so an annual lookup asks for the
+        year the company keeps rather than the one the claim's phrasing
+        implies. Without it, Nvidia's FY2025 claim reached the calendar-keyed
+        frames fallback and came back with its FY2026 figure.
         """
+        anchor = self._fiscal_anchor(cik, period_end) if period == "annual" else None
+
         for item in items:
             item.consolidated = False
             if cik is None:
                 continue
 
             payload = self._fetch_company_concept(cik, item.line_item)
-            value = (
-                _select_fact_for_period(payload, accession_number, period_end, period)
+            fact = (
+                _choose_fact_for_period(payload, accession_number, period_end,
+                                        period, anchor=anchor)
                 if payload else None
             )
+            value = None
+            if fact is not None:
+                try:
+                    value = float(fact["val"])
+                except (TypeError, ValueError):
+                    value = None
             if value is None:
                 # companyconcept can be empty for a concept a company does file
                 # (Ford + EarningsPerShareDiluted returns "units": {}). frames,
@@ -332,9 +376,14 @@ class SECEdgarClient:
                     f"(period {item.period_end}) superseded by entity-wide "
                     f"{value:,.0f} for requested period {period_end}"
                 )
+            # The fact's own end, not the requested one. With an anchor they
+            # differ -- Nvidia's FY2025 fact ends 2025-01-26 while the request
+            # says 2025-12-31 -- and stamping the request would record a period
+            # the number does not cover.
+            resolved_end = fact.get("end") or period_end
             item.value = value
-            item.period_end = period_end
-            item.period = period_end
+            item.period_end = resolved_end
+            item.period = resolved_end
             item.consolidated = True
 
         return items
@@ -569,25 +618,98 @@ def _fact_duration_days(fact: Dict) -> Optional[int]:
         return None
 
 
+# How far an annual fact's end may sit from the issuer's fiscal anchor and
+# still be that fiscal year. 52/53-week filers drift by a few days a year, and
+# the anchor is built from a MMDD that is itself one year's end date, so a
+# couple of weeks either way is normal. Wide enough for that drift, far short
+# of the ~365 days that would reach an adjacent year.
+FISCAL_ANCHOR_TOLERANCE_DAYS = 45
+
+
+def fiscal_anchor_for(fiscal_year_end: Optional[str],
+                      year: Optional[int]) -> Optional[date]:
+    """The date an issuer's fiscal year *labelled* `year` ends, approximately.
+
+    `get_company_info` reports fiscal_year_end as MMDD. Nvidia's is "0131", so
+    its FY2025 ends in January 2025 -- and runs mostly through calendar 2024,
+    which is why a calendar-keyed lookup for CY2025 returns its FY2026 instead.
+
+    Returns None for anything unparseable, and the caller then behaves exactly
+    as it did before the anchor existed.
+    """
+    if not fiscal_year_end or year is None:
+        return None
+    text = str(fiscal_year_end).strip()
+    if len(text) != 4 or not text.isdigit():
+        return None
+    month, day = int(text[:2]), int(text[2:])
+    if not (1 <= month <= 12 and 1 <= day <= 31):
+        return None
+    # Clamp rather than reject: the anchor only needs to be within the
+    # tolerance window, and a nominal 0229 or 0631 should not lose the year.
+    while day > 1:
+        try:
+            return date(year, month, day)
+        except ValueError:
+            day -= 1
+    return None
+
+
 def _select_fact_for_period(
     payload: Dict,
     accession_number: Optional[str],
     period_end: Optional[str],
     period: str,
+    anchor: Optional[date] = None,
 ) -> Optional[float]:
+    """The value of the fact `_choose_fact_for_period` selects, or None."""
+    fact = _choose_fact_for_period(payload, accession_number, period_end,
+                                   period, anchor=anchor)
+    if fact is None:
+        return None
+    try:
+        return float(fact["val"])
+    except (TypeError, ValueError):
+        return None
+
+
+def _choose_fact_for_period(
+    payload: Dict,
+    accession_number: Optional[str],
+    period_end: Optional[str],
+    period: str,
+    anchor: Optional[date] = None,
+) -> Optional[Dict]:
     """Pick the entity-wide fact for a specific period end AND duration.
 
     companyconcept carries only undimensioned facts, but several of them can
     share an end date at different durations. Both must match. Facts from the
     filing under inspection win ties; otherwise any filing reporting the same
     period is acceptable. Returns None rather than guessing.
+
+    With an `anchor` -- the issuer's own fiscal year end for the year claimed --
+    an annual fact is matched by nearness to it instead of by an exact calendar
+    date. `period_end` here is the calendar year end the resolver produced, and
+    no non-calendar issuer has a fact on it, so exact matching sent every such
+    lookup to the frames fallback. That fallback is calendar-keyed too, which
+    is how a claim about Nvidia's FY2025 was answered with its FY2026 figure.
     """
     if not period_end:
         return None
 
     units = payload.get("units") or {}
     facts = [f for unit in units.values() for f in unit if isinstance(f, dict)]
-    matches = [f for f in facts if f.get("end") == period_end and f.get("val") is not None]
+
+    if anchor is not None and period == "annual":
+        matches = [
+            f for f in facts
+            if f.get("val") is not None
+            and (offset := _days_from_anchor(f, anchor)) is not None
+            and offset <= FISCAL_ANCHOR_TOLERANCE_DAYS
+        ]
+    else:
+        matches = [f for f in facts
+                   if f.get("end") == period_end and f.get("val") is not None]
     if not matches:
         return None
 
@@ -606,7 +728,36 @@ def _select_fact_for_period(
 
     same_filing = [f for f in matches if f.get("accn") == accession_number]
     chosen = same_filing or matches
+
+    if anchor is not None and period == "annual" and len(chosen) > 1:
+        # Nearest the anchor wins. A company that changed its fiscal year can
+        # file two annual periods close to one anchor, and picking either at
+        # that point is a coin toss deciding a verdict -- so an unresolved tie
+        # between *different* values declines. The same figure repeated across
+        # filings is one fact, not a tie.
+        chosen = sorted(chosen, key=lambda f: _days_from_anchor(f, anchor) or 0)
+        closest = _days_from_anchor(chosen[0], anchor)
+        tied = [f for f in chosen if _days_from_anchor(f, anchor) == closest]
+        if len({f["val"] for f in tied}) > 1:
+            logger.info(
+                f"Ambiguous fiscal-year facts at {anchor}: "
+                f"{sorted({f['val'] for f in tied})}; declining"
+            )
+            return None
+        chosen = tied
+
+    return chosen[0] if chosen else None
+
+
+def _days_from_anchor(fact: Dict, anchor: date) -> Optional[int]:
+    """How far an annual fact's end sits from the anchor, or None if it is not
+    an annual fact. The duration filter is applied here too, so a quarter
+    ending beside the anchor cannot be mistaken for the year."""
+    lo, hi = _PERIOD_DURATION_DAYS.get("annual", (330, 400))
+    duration = _fact_duration_days(fact)
+    if duration is None or not (lo <= duration <= hi):
+        return None
     try:
-        return float(chosen[0]["val"])
-    except (TypeError, ValueError):
+        return abs((date.fromisoformat(fact["end"]) - anchor).days)
+    except (KeyError, TypeError, ValueError):
         return None
