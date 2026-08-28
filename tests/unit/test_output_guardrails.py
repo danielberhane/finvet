@@ -1,6 +1,6 @@
 """Only a source disagreement sends a claim to a person.
 
-The A2A escalation matrix, stated exhaustively. A delegation can end in eight
+The A2A escalation matrix, stated exhaustively. A delegation can end in nine
 ways and exactly one of them is a conflict between two sources: `CONTRADICTS`.
 Everything else is either an absence of evidence or a failure to look, and
 neither is a reason to spend a reviewer's attention.
@@ -21,6 +21,7 @@ from finvet.graph.nodes.output_guardrails import output_guardrails
 from finvet.models.a2a import (
     A2A_CONTRADICTS,
     A2A_CORROBORATES,
+    A2A_FOUND_UNCERTIFIED,
     A2A_FAILED,
     A2A_NO_CORPUS,
     A2A_NO_MATCHING_DISCLOSURE,
@@ -60,6 +61,7 @@ class TestOnlyContradictionEscalates:
     @pytest.mark.parametrize("status", [
         A2A_CORROBORATES,
         A2A_NO_MATCHING_DISCLOSURE,
+        A2A_FOUND_UNCERTIFIED,
         A2A_NOT_APPLICABLE_YET,
         A2A_SOURCE_UNAVAILABLE,
         A2A_NO_CORPUS,
@@ -79,6 +81,9 @@ class TestOnlyContradictionEscalates:
         declared = set(typing.get_args(A2AStatus))
         covered = {
             A2A_CONTRADICTS, A2A_CORROBORATES, A2A_NO_MATCHING_DISCLOSURE,
+            # Passages were read and no amount could be extracted from them.
+            # An absence of certification, not a conflict between sources.
+            A2A_FOUND_UNCERTIFIED,
             A2A_NOT_APPLICABLE_YET, A2A_SOURCE_UNAVAILABLE, A2A_NO_CORPUS,
             A2A_FAILED, A2A_PENDING_CLASSIFICATION,
         }

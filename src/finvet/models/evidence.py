@@ -490,10 +490,15 @@ def resolve_trusted_observation(
         if not record.trusted_success:
             continue
 
-        # Filing prose is supporting evidence and can never be the number a
-        # verdict rests on. The resolvers below key on payload shape, not on
-        # which tool produced it, so a retrieval result that happened to carry
-        # an `items` list would otherwise be trusted like an XBRL fact.
+        # Filing prose may not reach the resolvers below. They key on payload
+        # shape rather than on which tool produced it, so a retrieval result
+        # that happened to carry an `items` list would otherwise be trusted
+        # like an XBRL fact.
+        #
+        # The one way prose does yield a number is `_penalty_observation`
+        # above, and it is not this: there Python extracts the amount itself,
+        # from the section that discloses penalties, only when exactly one
+        # candidate is present. Nothing here reads prose.
         if record.tool in SUPPORTING_EVIDENCE_TOOLS:
             continue
 
