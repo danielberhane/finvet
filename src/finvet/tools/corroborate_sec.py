@@ -171,13 +171,15 @@ def _corroborate(
                 event_date = derived
                 base["temporal_scope"] = "claim_period"
 
-        if not _filing_could_cover(event_date, _latest_period_end(state)):
+        if not _filing_could_cover(event_date, _claim_period_end(state)):
             return A2AResult(
                 success=True, status=A2A_NOT_APPLICABLE_YET,
                 verdict="NOT_ENOUGH_INFO",
                 reasoning=(
-                    f"No filing on record covers {event_date}; the most recent "
-                    f"period closed earlier, so its silence is not evidence."
+                    f"The period this claim resolves to closed before "
+                    f"{event_date}, so a filing for it could not carry the "
+                    f"event and its silence is not evidence. The filing corpus "
+                    f"itself was not consulted for this check."
                 ),
                 **base,
             )
@@ -286,7 +288,13 @@ def _claim_period_start(state: Dict[str, Any]) -> Optional[str]:
     return getattr(cp, "start_date", None)
 
 
-def _latest_period_end(state: Dict[str, Any]) -> Optional[str]:
-    """End date of the resolved period, when one exists."""
+def _claim_period_end(state: Dict[str, Any]) -> Optional[str]:
+    """End date of the period *this claim* resolved to, when one exists.
+
+    Renamed from `_latest_period_end`, which promised something it never did.
+    Nothing here queries the corpus, so the gate above cannot say "no filing on
+    record covers X" -- it can only say the claim's own period closed first.
+    Naming it accurately is what stops that sentence coming back.
+    """
     cp = state.get("canonical_period")
     return getattr(cp, "end_date", None) if cp else None
