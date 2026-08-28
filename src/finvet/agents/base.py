@@ -30,12 +30,14 @@ from ..config.constants import (
 from ..config.settings import settings
 from ..tools.sec_tools import _DATABLE_PERIOD_TYPES
 from ..llm import create_llm
+from ..config.metrics import verification_strategy_for
 from ..models.evidence import (
     ToolExecutionRecord,
     TrustedObservation,
     qualitative_decline_reason,
     qualitative_evidence_gap,
     resolve_trusted_observation,
+    uncertifiable_amount_reason,
 )
 from ..models.state import VerificationState
 from ..utils.logging import get_logger
@@ -408,9 +410,19 @@ class BaseVerificationAgent(ABC):
         # why rather than handing back a bare NOT_ENOUGH_INFO. Its presence
         # suppresses the low-confidence escalation: a reviewer opening this
         # claim would see exactly the nothing the system saw.
-        qualitative_limitation = qualitative_decline_reason(
-            getattr(parsed_claim, "value", None), original_verdict,
-            evidence_gap)
+        # Two declines, kept apart because they judge different things.
+        # `qualitative_decline_reason` covers a claim naming no value and
+        # returns None for any claim that does -- "the two guards must not
+        # start overlapping". The second covers the other half: a figure on a
+        # narrative metric that nothing can certify.
+        qualitative_limitation = (
+            qualitative_decline_reason(
+                getattr(parsed_claim, "value", None), original_verdict,
+                evidence_gap)
+            or (uncertifiable_amount_reason(
+                    getattr(parsed_claim, "value", None),
+                    verification_strategy_for(parsed_claim))
+                if observation is None else None))
 
         override_applied = verdict != original_verdict
         logger.info(
