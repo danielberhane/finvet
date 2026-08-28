@@ -452,6 +452,31 @@ def _penalty_observation(
     )
 
 
+# Strategies that read prose. `verification_strategy_for` already states what
+# they mean: "the narrative path, where the agent reads filing text. Legitimate,
+# and never decisive for a number."
+NARRATIVE_STRATEGIES = frozenset({"news_search", "filing_rag"})
+
+
+def uncertifiable_amount_reason(claimed_value: Optional[float],
+                                strategy: Optional[str]) -> Optional[str]:
+    """Why a figure on a narrative claim will never be certified, or None.
+
+    Not a retrieval failure. `fine_amount` and `settlement_amount` have no XBRL
+    concept, so where the filing does not carry the figure in a form Python can
+    lift, no run will ever certify it and a reviewer can only agree. The guard
+    is right to decline; without a stated reason it declines silently, and
+    `output_guardrails` then queues a person for a claim nobody can act on.
+
+    A metric a tool *does* serve that missed this time is a different fact --
+    situational, and worth a person's attention -- so this covers narrative
+    strategies only.
+    """
+    if claimed_value is None or strategy not in NARRATIVE_STRATEGIES:
+        return None
+    return "amount_not_certifiable"
+
+
 def resolve_trusted_observation(
     parsed_claim: Any,
     records: Sequence[ToolExecutionRecord],

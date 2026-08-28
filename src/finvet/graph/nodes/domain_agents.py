@@ -132,6 +132,14 @@ def run_news_agent(state: VerificationState) -> Dict:
         if prov["tool"] == "corroborate_with_filing":
             corroboration = prov_result
             corroboration.setdefault("finding", prov.get("args", {}).get("finding", ""))
+            # `claimed_value` on the model-invoked path is a tool argument the
+            # model chose, not something the claim said. A claim naming no
+            # amount was recorded carrying one -- "Apple was fined by the
+            # European Commission" came back with claimed_value 500,000,000,
+            # a figure the model supplied from its own reading. The claim is
+            # the authority on what it claimed.
+            if getattr(state.get("parsed_claim"), "value", None) is None:
+                corroboration["claimed_value"] = None
 
     if corroboration is None and _policy_wants_corroboration(state, evidence):
         corroboration = _corroborate_by_policy(state, evidence)
