@@ -466,11 +466,18 @@ declines to assert a number read from prose — the trust boundary holding, whic
 is the point.
 
 **Why relaxing this is safe.** `search_filing_text` is in
-`SUPPORTING_EVIDENCE_TOOLS`, so filing prose can never become a trusted
-observation and no numeric verdict can rest on it. "Wrong-period narrative text"
-and "wrong-period figure" are therefore not the same hazard, which is exactly
-why the constraint was misplaced here. The ticker filter — the one that actually
-prevents cross-company evidence — is untouched.
+`SUPPORTING_EVIDENCE_TOOLS`, so a *model's reading* of filing prose can never
+become a trusted observation and no numeric verdict can rest on it.
+"Wrong-period narrative text" and "wrong-period figure" are therefore not the
+same hazard, which is exactly why the constraint was misplaced here. The ticker
+filter — the one that actually prevents cross-company evidence — is untouched.
+
+*Amended.* Penalties later gained a deterministic path: for `fine_amount` and
+`settlement_amount`, Python extracts the amount from a Legal Proceedings passage
+itself, and only when exactly one candidate sits beside penalty language. That
+does not weaken the reasoning above — the model still never supplies the number
+— but the sentence "filing prose can never become a trusted observation" is no
+longer true as written, and the qualifier above is the accurate form.
 
 **The imprecision this accepts, stated rather than discovered later.** A claim
 naming a specific filing will also match later filings that carry the same

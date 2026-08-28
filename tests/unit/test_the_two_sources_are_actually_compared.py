@@ -241,3 +241,48 @@ class TestAnUnsoundReadingIsNotResurrected:
         assert out["corroboration_result"]["status"] != A2A_CONTRADICTS, (
             "a reading the system rejected as unsound was used to declare "
             "the sources in conflict")
+
+
+class TestTheStatusIsARealStatus:
+    """FOUND_UNCERTIFIED was added as a constant annotated `A2AStatus` without
+    being added to the Literal, so the annotation was false and
+    `A2AResult(status=...)` rejected it. It survived because
+    `reclassify_corroboration` works on plain dicts and skips validation --
+    every A2AResult construction site happens to use one of the older
+    statuses, which is the only reason nothing crashed.
+
+    mypy reported it: "Incompatible types in assignment (expression has type
+    Literal['FOUND_UNCERTIFIED'], variable has type Literal[...])".
+    """
+
+    def test_it_is_a_declared_status(self):
+        import typing
+
+        from finvet.models.a2a import A2A_FOUND_UNCERTIFIED, A2AStatus
+
+        assert A2A_FOUND_UNCERTIFIED in typing.get_args(A2AStatus)
+
+    def test_a_result_carrying_it_can_be_built(self):
+        """The latent crash, pinned."""
+        from finvet.models.a2a import A2A_FOUND_UNCERTIFIED, A2AResult
+
+        result = A2AResult(
+            success=True, status=A2A_FOUND_UNCERTIFIED,
+            direction="news_to_sec", source_agent="news", target_agent="sec",
+            verdict="NOT_ENOUGH_INFO", confidence=0.5, reasoning="",
+            retrieved_value=None, temporal_scope="unknown")
+
+        assert result.status == "FOUND_UNCERTIFIED"
+
+    def test_every_status_constant_is_in_the_literal(self):
+        """The class of bug, not just this instance."""
+        import typing
+
+        import finvet.models.a2a as a2a
+
+        declared = set(typing.get_args(a2a.A2AStatus))
+        constants = {name: value for name, value in vars(a2a).items()
+                     if name.startswith("A2A_") and isinstance(value, str)}
+        undeclared = {n: v for n, v in constants.items() if v not in declared}
+
+        assert not undeclared, f"status constants outside A2AStatus: {undeclared}"
