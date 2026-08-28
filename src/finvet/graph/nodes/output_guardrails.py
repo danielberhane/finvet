@@ -104,6 +104,18 @@ def output_guardrails(state: VerificationState) -> Dict:
     corroboration_status = (corroboration.get("status")
                             if isinstance(corroboration, dict) else None)
 
+    # Every contradiction is queued, including one the filing already settled.
+    #
+    # Suppressing those was tried and was wrong twice over. CONTRADICTS needs
+    # the SEC side to be decisive, which for a numeric claim means it holds a
+    # trusted observation -- which is precisely what makes the verdict get
+    # adopted. So the exemption fired on every case there is, and the trigger
+    # was unreachable again.
+    #
+    # The `declined_with_reason` exemption above does not transfer either. It
+    # covers metrics no tool serves, where a reviewer has nothing to weigh.
+    # Here two sources report different numbers for the same event, and that is
+    # actionable: the press may be wrong, or the filing may be stale.
     if corroboration_status == A2A_CONTRADICTS:
         hitl_triggers.append("source_disagreement")
         hitl_required = True
