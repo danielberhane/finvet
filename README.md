@@ -44,8 +44,10 @@ A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each 
 with its own tools. They are not isolated: an agent can delegate to another when the answer
 lies outside its sources: the News agent asks SEC whether the issuer's own filing discloses a
 reported fine or settlement, checking press coverage against the primary source.
-Evidence is reconciled, guarded, and paused for human review on any of three triggers: low
-confidence, unsafe output, or **two decisive sources disagreeing**. Filing silence is not a
+One agent runs per claim, so consensus passes its verdict through and adjusts confidence
+rather than reconciling several opinions. The result is guarded, and paused for human review on
+any of three triggers: low confidence, unsafe output, or **the press reading disagreeing with
+the filed figure**. Filing silence is not a
 fourth: deciding an issuer *should* have disclosed something is a materiality judgment, and
 this release does not make one.
 
@@ -60,15 +62,25 @@ this release does not make one.
 | **News** | Events and announcements | Tavily search | SEC |
 
 Delegation runs one way only, so it terminates by construction. Exactly one outcome escalates:
-both sides reaching decisive but opposite verdicts. Silence does not — a periodic report omits
+the two sides reaching opposite answers — what the news agent read in the press against the
+figure the SEC agent took from the filing. Those are not equally strong, and the asymmetry is
+the point: the filing figure decides the verdict, and the press reading only decides whether a
+person is asked to look. Silence does not escalate — a periodic report omits
 most things — and neither does silence from a filing that closed before the event. A filing
 that was never successfully searched is recorded as such rather than counted as silence: a
 claim about what a document says requires having read one.
 
-Retrieved filing text is **supporting evidence**: it can show what a company said, and it
-can never become the number a verdict rests on — the trust boundary rejects it as a numeric
-observation regardless of shape, and every passage is tagged `evidence_role="supporting"`.
-XBRL remains the authoritative numeric source for SEC claims.
+Retrieved filing text is **supporting evidence**: it shows what a company said, and a model's
+reading of it can never become the number a verdict rests on. Every passage is tagged
+`evidence_role="supporting"`, and the trust boundary rejects a retrieval result as a numeric
+observation regardless of shape. XBRL remains the authoritative numeric source for GAAP figures.
+
+One narrow exception, because a penalty is not a financial-statement line item and has no XBRL
+concept: for `fine_amount` and `settlement_amount`, **Python** — not the model — extracts the
+amount from the filing, and only when it can do so unambiguously. The passage must come from
+Legal Proceedings, the figure must sit beside penalty language, and exactly one candidate must
+be present or the extraction declines. What changes is who reads the filing, not whether prose
+is trusted: a model's reading is still never the number.
 
 Retrieval over filing text is hybrid: Postgres full-text relevance (`ts_rank` over a
 `tsvector` column) plus pgvector cosine similarity, fused with reciprocal rank fusion.
@@ -162,7 +174,7 @@ the same container but stays off unless you set `ENABLE_LLAMA_GUARD=true` and pu
 | Key | Powers | Without it |
 |---|---|---|
 | `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | **required** — nothing runs |
-| `TAVILY_API_KEY` | news search | news claims → NOT_ENOUGH_INFO |
+| `TAVILY_API_KEY` | news search | **required** — nothing runs |
 | `FINNHUB_API_KEY` | market quotes, tickers | market claims → NOT_ENOUGH_INFO |
 | *(none)* | embeddings → RAG + claim memory | served locally by Ollama — no key, no per-call cost |
 | *(none)* | SEC XBRL | free public endpoints |
@@ -206,9 +218,11 @@ not a dependency on any provider.
   that the API re-verifies on read. It detects a record altered without its checksum being
   recomputed; it is not tamper-proof against a writer who can change both.
 - **Bounded agent delegation** — the news agent can ask SEC whether the issuer's own filing
-  discloses a reported fine or settlement. Only a decisive contradiction between the two
-  sources sends the claim to a human; filing silence does not, and silence is only reported
-  when an applicable filing was actually searched.
+  discloses a reported fine or settlement, and where the filing states an amount the verdict
+  follows the filing rather than the press. Only a conflict between the two sends the claim to
+  a human; filing silence does not, and silence is only reported when an applicable filing was
+  actually searched *and came back empty*. When passages were read but no amount could be
+  extracted from them, that is recorded as `FOUND_UNCERTIFIED` rather than as silence.
 - **Claim memory** *(experimental, off by default)* — embedding search over past
   verifications. Its output is prior model output, not a source, so it ships disabled;
   `ENABLE_CLAIM_MEMORY=true` turns it on.

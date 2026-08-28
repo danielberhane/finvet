@@ -298,7 +298,7 @@ News Agent ReAct loop
        +-- Temporal gate: a filing that closed before the event cannot cover it
        |    -> NOT_APPLICABLE_YET, no nested run
        +-- Builds a real ParsedClaim carrying claimed_value, so _apply_override runs
-       +-- run_sec_agent_scoped(state, max_iterations=3)  <- same period targeting
+       +-- run_sec_agent_scoped(state, max_iterations=3, scope_retrieval=False)
        +-- Returns the delegation result: status, verdict, retrieved_value, sources
   +-- run_news_agent writes it to corroboration_result
 ```
@@ -312,9 +312,10 @@ other statuses record why the delegation could not contradict anything:
 | status | meaning |
 |---|---|
 | `PENDING_CLASSIFICATION` | placeholder before the parent verdict exists |
-| `CORROBORATES` | both sources decisive and agreeing |
-| `CONTRADICTS` | both sources decisive and disagreeing — the only escalation |
-| `NO_MATCHING_DISCLOSURE` | an applicable filing **was searched** and does not mention it |
+| `CORROBORATES` | the press reading and the filing figure agree |
+| `CONTRADICTS` | they disagree — the only escalation |
+| `NO_MATCHING_DISCLOSURE` | an applicable filing **was searched** and came back empty |
+| `FOUND_UNCERTIFIED` | passages were read and no amount could be extracted from them |
 | `NOT_APPLICABLE_YET` | the newest filing closed before the event |
 | `SOURCE_UNAVAILABLE` | nothing was successfully searched |
 | `NO_CORPUS` | no filing is indexed for the issuer |

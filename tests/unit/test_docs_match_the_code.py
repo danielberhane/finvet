@@ -49,10 +49,25 @@ class TestDocumentedVocabulariesExistInCode:
 
         declared = set(typing.get_args(A2AStatus))
         mentioned = set(re.findall(r'\b([A-Z][A-Z_]{4,})\b', _text()))
+
+        # The shape test is derived from the statuses themselves rather than
+        # kept as a hand-written list. The list version froze: FOUND_UNCERTIFIED
+        # was added to the code and ended in a suffix nobody had thought to
+        # add, so this test could not see the name at all. Deriving it means
+        # the next status extends the detector on its own.
+        #
+        # UNDISCLOSED_MATERIAL_CLAIM is carried explicitly: it is a status
+        # Release A *removed*, and naming it in the docs must still fail.
+        #
+        # Residual limit, stated rather than implied: an invented status whose
+        # suffix matches no real one (say FOUND_UNVERIFIED) is still invisible
+        # here. Catching that needs a different check than a name heuristic.
+        suffixes = tuple(f"_{s.rsplit('_', 1)[-1]}" for s in declared if "_" in s)
+        single_words = {s for s in declared if "_" not in s}
         a2a_shaped = {m for m in mentioned
-                      if m.endswith(("_DISCLOSURE", "_YET", "_UNAVAILABLE",
-                                     "_CLASSIFICATION", "_CLAIM"))
-                      or m in {"CORROBORATES", "CONTRADICTS", "NO_CORPUS"}}
+                      if m.endswith(suffixes)
+                      or m in single_words
+                      or m.endswith("_CLAIM")}
 
         assert a2a_shaped <= declared, (
             f"docs name A2A statuses the code does not have: "
@@ -179,3 +194,48 @@ class TestTheStackIsNotPublishedToTheNetwork:
         assert "FINVET_BIND_ADDR" in _text(), (
             "the override is not documented, so the only way a reader finds "
             "it is by reading the compose file")
+
+
+class TestTheTrustBoundaryIsDescribedAsItIs:
+    """The README said filing text "can never become the number a verdict rests
+    on". That was true until penalties gained a deterministic path: for
+    fine_amount and settlement_amount, `_penalty_observation` returns a
+    TrustedObservation whose tool is `search_filing_text`.
+
+    The distinction that survived is *who reads the filing* -- Python, not the
+    model -- so the docs must state that rather than an absolute that one run
+    falsifies."""
+
+    def test_the_claim_is_qualified_wherever_it_appears(self):
+        """Written the way this file's other phrasing checks are, and for the
+        reason its docstring gives: a check that cannot tell a claim from its
+        qualified form fails on correct documentation.
+
+        "a *model's reading* of filing text can never be the number" is true.
+        The same sentence without that qualifier is not."""
+        # Whitespace-normalised, not line-by-line: the docs are hard-wrapped,
+        # so the qualifier and the phrase it qualifies routinely land on
+        # different lines. A line-based check reported the corrected sentence
+        # as a violation.
+        flat = " ".join(_text().split())
+        for match in re.finditer(r"never become the number", flat, re.I):
+            window = flat[max(0, match.start() - 160): match.end() + 40]
+            assert re.search(r"model", window, re.I), (
+                f"an unqualified claim that prose can never carry a number: "
+                f"...{window[-140:]}")
+
+    def test_the_deterministic_exception_is_disclosed(self):
+        """Understating is its own inaccuracy: the capability is what makes a
+        $1T fine claim answerable, and a reader should know it exists."""
+        text = _text()
+
+        assert "fine_amount" in text and "Legal Proceedings" in text, (
+            "the docs do not mention that Python extracts penalty amounts "
+            "from filing text")
+
+    def test_the_extraction_is_attributed_to_python_not_the_model(self):
+        text = _text().lower()
+
+        assert "python" in text, (
+            "the docs must say who reads the filing, since that is the whole "
+            "distinction")
