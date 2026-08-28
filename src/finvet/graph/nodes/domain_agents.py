@@ -157,9 +157,37 @@ def run_news_agent(state: VerificationState) -> Dict:
         # The single classification point. The tool cannot do this -- it runs
         # inside the ReAct loop, before this agent has a verdict to compare
         # against.
-        corroboration = reclassify_corroboration(
-            evidence.get("verdict", ""), corroboration
+        # What the *press* said, not what this agent may certify. Those are
+        # two different facts and the news agent holds both: `_apply_override`
+        # discards the reading for verdict purposes -- fine_amount has no XBRL
+        # concept, so prose may not settle a number -- and keeps it as
+        # `llm_original_verdict`.
+        #
+        # Comparing the certification was the bug. It is a structural decline,
+        # meaning "I have no way to certify a fine amount", and a decline can
+        # neither agree nor disagree with a finding. Every delegation therefore
+        # collapsed to NO_MATCHING_DISCLOSURE, and CORROBORATES / CONTRADICTS
+        # were unreachable no matter how decisive the filing was.
+        #
+        # Only where the claim named a value, though. A valueless claim takes
+        # the *qualitative* decline instead, and there the reading was thrown
+        # out because refuting on absence is a fallacy (D13,
+        # `non_corroboration_is_not_contradiction`) -- a judgment that the
+        # reading was unsound, not merely uncertified. Reviving it as a
+        # comparison side would let a verdict the system deliberately rejected
+        # declare two sources in conflict.
+        #
+        # llm_original_verdict is also None on the deterministic-fallback and
+        # error paths, where the final verdict is already deterministic and is
+        # the right thing to compare.
+        claim_named_a_value = getattr(
+            state.get("parsed_claim"), "value", None) is not None
+        parent_reading = (
+            (evidence.get("llm_original_verdict") if claim_named_a_value else None)
+            or evidence.get("verdict", "")
         )
+
+        corroboration = reclassify_corroboration(parent_reading, corroboration)
         _adopt_filing_verdict(evidence, corroboration)
         logger.info(
             f"A2A status: news={evidence.get('verdict')} "
