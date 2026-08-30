@@ -35,6 +35,11 @@ class _Claim:
     metric = "revenue"
     operator = "eq"
     value = 76_000_000_000.0
+    # A SEC claim carries one, and `_unsupported_claim` now declines without it:
+    # a filing lookup needs a CIK, so a claim naming no company is unverifiable
+    # in principle. Absent here, these rows declined for that reason instead of
+    # exercising the Q4 rule they exist to test.
+    ticker = "MSFT"
 
     def __init__(self, period):
         self.period = period

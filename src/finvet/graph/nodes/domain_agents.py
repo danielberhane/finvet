@@ -415,6 +415,27 @@ def _unsupported_claim(state: VerificationState) -> Optional[Dict]:
             "two differently-scoped retrievals, which this pipeline does not "
             "support. No verdict was attempted.")
 
+    # A SEC lookup needs a CIK, which comes from a ticker. Without one there is
+    # no filing to fetch, and the claim is unverifiable in principle rather than
+    # merely unverified this time -- no larger tool budget or stronger model
+    # changes that.
+    #
+    # "A large US bank posted $30 billion in net income last year" reached the
+    # agent, which spent 14 tool calls and 150 seconds hunting a company that
+    # was never named, then escalated to a reviewer who would read the same
+    # claim and reach the same conclusion.
+    #
+    # `_policy_wants_corroboration` already declines on a missing ticker, and
+    # the parser's vocabulary already contains `ambiguous_entity`. Enforced
+    # here as well, deterministically, so the guarantee does not depend on the
+    # model noticing.
+    if (getattr(parsed, "claim_type", None) == "sec"
+            and not getattr(parsed, "ticker", None)):
+        return _limitation_evidence(
+            "sec", "SEC EDGAR", "no_company_identified",
+            "The claim does not name a company, and a filing lookup needs one. "
+            "No verdict was attempted.")
+
     # A metric no tool can serve. SERVABLE_METRICS knew about the gap and
     # nothing consulted it, so these reached an agent with no way to answer.
     if verification_strategy_for(parsed) == "unsupported":
