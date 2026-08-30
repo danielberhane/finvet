@@ -20,3 +20,21 @@ def eval_data_dir() -> Optional[Path]:
 def eval_data_file(name: str) -> Optional[Path]:
     d = eval_data_dir()
     return d / name if d else None
+
+
+def golden_data_dir() -> Optional[Path]:
+    """The private golden-claim set's directory, or None.
+
+    A separate variable from FINVET_EVAL_DATA_DIR, which points at the parser
+    fine-tuning corpus (train/val/test/heldout). The two datasets serve
+    different purposes and must not share a directory: mixing a held-out
+    evaluation set into a training corpus is how contamination starts, and
+    `eval/exclusions.py` records what that costs when it happens.
+    """
+    p = os.environ.get("FINVET_GOLDEN_DIR")
+    return Path(p).expanduser() if p else None
+
+
+def golden_data_file(name: str = "golden_100.jsonl") -> Optional[Path]:
+    d = golden_data_dir()
+    return d / name if d else None
