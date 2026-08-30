@@ -142,20 +142,50 @@ def main() -> int:
     print(f"  api     : {API}")
     print(f"  model   : {active_llm_config()['agent']['model']}\n")
 
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    tag = f"-{args.label}" if args.label else ""
+    out = Path(args.out) if args.out else path.parent / f"run-{stamp}{tag}.json"
+
+    def write(results, elapsed, complete):
+        """Persist after every claim.
+
+        The first version wrote once, at the end. A run killed 24 claims in
+        left no artifact at all -- an hour of API spend with nothing to show,
+        because the only copy lived in memory. Rows are paid for one at a time,
+        so they are saved one at a time, and `complete` says whether the file
+        is a whole run or a partial one.
+        """
+        out.write_text(json.dumps({
+            "started_utc": stamp,
+            "label": args.label,
+            "complete": complete,
+            "api": API,
+            "dataset": str(path),
+            "dataset_rows": len(rows),
+            "selected": len(selected),
+            "frozen_only": args.frozen_only,
+            # What produced this. Without it a later run under another model
+            # has nothing to diff against and the money is spent twice.
+            "llm_config": active_llm_config(),
+            "elapsed_s": round(elapsed, 1),
+            "results": results,
+        }, indent=1))
+
     results, began = [], time.time()
     for n, row in enumerate(selected, 1):
         record = run_one(row)
         results.append(record)
+        write(results, time.time() - began, complete=False)
+
         actual = record.get("actual") or {}
         mark = "ERR " if record.get("error") else (
             "ESC " if actual.get("escalated") else "    ")
+        # flush: stdout is block-buffered when redirected, so an hour-long run
+        # showed an empty log the whole time.
         print(f"  {mark}{n:>3}/{len(selected)}  id {record['id']:>3} "
               f"[{record['category']:<15}] {str(actual.get('verdict')):<16} "
-              f"{record.get('elapsed_s', 0):>5.1f}s  {record['claim'][:44]}")
-
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    tag = f"-{args.label}" if args.label else ""
-    out = Path(args.out) if args.out else path.parent / f"run-{stamp}{tag}.json"
+              f"{record.get('elapsed_s', 0):>5.1f}s  {record['claim'][:44]}",
+              flush=True)
 
     answered = [r for r in results if (r.get("actual") or {}).get("verdict")
                 and not (r.get("actual") or {}).get("escalated")]
@@ -163,20 +193,7 @@ def main() -> int:
     errored = [r for r in results if r.get("error")]
     elapsed = time.time() - began
 
-    out.write_text(json.dumps({
-        "started_utc": stamp,
-        "label": args.label,
-        "api": API,
-        "dataset": str(path),
-        "dataset_rows": len(rows),
-        "selected": len(selected),
-        "frozen_only": args.frozen_only,
-        # What produced this. Without it a later run under another model has
-        # nothing to diff against and the money is spent twice.
-        "llm_config": active_llm_config(),
-        "elapsed_s": round(elapsed, 1),
-        "results": results,
-    }, indent=1))
+    write(results, elapsed, complete=True)
 
     print(f"\n  answered {len(answered)}   escalated {len(escalated)}   "
           f"errors {len(errored)}   of {len(selected)}")
