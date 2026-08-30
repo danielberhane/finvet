@@ -89,12 +89,20 @@ def run_one(row: dict) -> dict:
     observation = meta.get("trusted_observation") or {}
     status = body.get("status")
 
+    # An input guardrail refuses the request with HTTP 400 and no verdict field,
+    # so reading `verdict` alone recorded a correct block as an empty answer and
+    # the harness scored all six guard rows as failures. `claim_matrix.py`
+    # already maps this; the mapping belongs wherever a response is read.
+    verdict = body.get("verdict")
+    if verdict is None and response.status_code == 400:
+        verdict = "BLOCKED"
+
     record.update(
         elapsed_s=round(time.time() - started, 1),
         http=response.status_code,
         request_id=body.get("request_id"),
         actual={
-            "verdict": body.get("verdict"),
+            "verdict": verdict,
             # Recorded verbatim. "pending" is a real outcome the dataset's
             # vocabulary cannot express, and forcing it into one would make
             # every escalated row read as a wrong answer.
