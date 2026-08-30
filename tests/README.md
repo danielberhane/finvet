@@ -131,10 +131,10 @@ Minimum requirements:
 ```bash
 # Make sure PostgreSQL is running
 docker-compose up -d
-
-# Initialize database
-python init_database.py
 ```
+
+The schema is created on API startup — `init_db()` runs in the lifespan hook,
+so there is no separate initialisation step.
 
 **Import errors:**
 ```bash
