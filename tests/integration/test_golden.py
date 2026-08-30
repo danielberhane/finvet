@@ -64,11 +64,26 @@ def _rows(strength=None, frozen=None):
     return rows
 
 
+def _verdict(row):
+    """The verdict a row reached, normalised.
+
+    An input guardrail refuses with HTTP 400 and no verdict field. Artifacts
+    written before the runner mapped that recorded None, so the block -- correct
+    behaviour -- read as an empty answer. Derived here as well as in the runner
+    so an already-paid-for run stays readable.
+    """
+    actual = row.get("actual") or {}
+    verdict = actual.get("verdict")
+    if verdict is None and row.get("http") == 400:
+        return "BLOCKED"
+    return verdict
+
+
 def _describe(row) -> str:
     actual = row.get("actual") or {}
     return (f"id {row['id']} [{row['category']}] {row['claim'][:60]!r}\n"
             f"    expected {row['expected'].get('verdict')} · "
-            f"got {actual.get('verdict')} "
+            f"got {_verdict(row)} "
             f"({'escalated' if actual.get('escalated') else 'answered'})"
             f" · limitation={actual.get('limitation')}")
 
@@ -100,7 +115,7 @@ class TestStrictRowsMustMatch:
             expected = row["expected"].get("verdict")
             if expected is None:
                 continue
-            if actual.get("verdict") != expected:
+            if _verdict(row) != expected:
                 failures.append(_describe(row))
 
         assert not failures, (
@@ -129,9 +144,8 @@ class TestSafeRowsMustNotInvertTheTruth:
     def test_no_safe_row_reaches_the_opposite_conclusion(self):
         failures = []
         for row in _rows(strength="safe"):
-            actual = (row.get("actual") or {}).get("verdict")
             forbidden = OPPOSITE.get(row["expected"].get("verdict"))
-            if forbidden and actual == forbidden:
+            if forbidden and _verdict(row) == forbidden:
                 failures.append(_describe(row))
 
         assert not failures, (
@@ -182,18 +196,15 @@ class TestTheReport:
             if not subset:
                 continue
             matched = sum(1 for r in subset
-                          if (r.get("actual") or {}).get("verdict")
-                          == r["expected"].get("verdict"))
+                          if _verdict(r) == r["expected"].get("verdict"))
             print(f"    {strength:<8} {matched:>3}/{len(subset)} matched exactly")
 
         mismatched = [r for r in rows
-                      if (r.get("actual") or {}).get("verdict")
-                      != r["expected"].get("verdict")
+                      if _verdict(r) != r["expected"].get("verdict")
                       and r["expected"].get("verdict") is not None]
         if mismatched:
             print(f"\n  {len(mismatched)} rows differ from expectation:")
             for r in mismatched:
-                actual = r.get("actual") or {}
                 print(f"    id {r['id']:>3} [{r['strength']:<7}] "
                       f"{str(r['expected'].get('verdict')):<16} -> "
-                      f"{str(actual.get('verdict')):<16} {r['claim'][:46]}")
+                      f"{str(_verdict(r)):<16} {r['claim'][:46]}")
