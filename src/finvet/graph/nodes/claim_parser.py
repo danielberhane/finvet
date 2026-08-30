@@ -167,6 +167,28 @@ def reconcile_reject_fields(parsed_data: Dict) -> Dict:
     claim_type = data.get("claim_type")
     reject_reason = data.get("reject_reason")
 
+    # A claim about a specific issuer's data that never names the issuer cannot
+    # be verified: a filing lookup needs a CIK and a quote needs a symbol, and
+    # both come from the ticker. "A large US bank posted $30 billion in net
+    # income last year" parsed as sec/ticker=null and reached an agent, which
+    # spent 14 tool calls and 150 seconds hunting a company nobody had named.
+    #
+    # The prompt already states this rule and gives almost that example --
+    # `"ambiguous_entity": the company cannot be identified ("the oil major",
+    # "a big bank")` -- so the model ignored an instruction it was given.
+    # Restating it would leave the guarantee depending on the model noticing.
+    #
+    # News is exempt: its search takes a company name rather than an
+    # identifier, so a missing ticker there is not disqualifying.
+    if (claim_type in ("sec", "market") and not data.get("ticker")
+            and reject_reason is None):
+        logger.info(
+            f"Parser returned claim_type='{claim_type}' with no ticker; "
+            f"the company cannot be identified, so rejecting")
+        data["claim_type"] = "reject"
+        data["reject_reason"] = "ambiguous_entity"
+        claim_type, reject_reason = "reject", "ambiguous_entity"
+
     if reject_reason is not None and claim_type != "reject":
         logger.info(
             f"Parser set reject_reason='{reject_reason}' on claim_type="
