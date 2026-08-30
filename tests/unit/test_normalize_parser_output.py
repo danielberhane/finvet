@@ -99,7 +99,11 @@ class TestNormalizeParserOutput:
     def test_value_without_operator_defaults_to_eq(self):
         """The prompt documents eq as the default; the boundary enforces it so
         the iff-invariant cannot 500 a live claim."""
-        raw = {"claim_type": "sec", "value": 5e9}
+        # The ticker is load-bearing: a sec claim without one is now rejected
+        # as ambiguous_entity, and a reject nulls every companion field, so an
+        # unnamed issuer here would test the reject contract rather than the
+        # operator default this row exists for.
+        raw = {"claim_type": "sec", "ticker": "AAPL", "value": 5e9}
         data, decisions = normalize_parser_output(raw, "x")
         assert data["operator"] == "eq"
         assert decisions["operator"] == "defaulted_eq"
