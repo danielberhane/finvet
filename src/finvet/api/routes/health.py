@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter
 
 from ... import __version__
+from ...llm.factory import active_llm_config
 from ..models import HealthResponse
 
 router = APIRouter()
@@ -21,11 +22,17 @@ async def root():
 
 @router.get("/health", response_model=HealthResponse)
 async def health():
-    """Health check endpoint."""
+    """Health check endpoint.
+
+    Reports the models this process will actually use. A benchmark client
+    cannot determine that for itself -- it runs elsewhere, and reading its own
+    environment tells it only what it was launched with.
+    """
     return {
         "status": "healthy",
         "version": __version__,
         "timestamp": datetime.utcnow().isoformat(),
+        "llm": active_llm_config(),
     }
 
 
