@@ -26,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from finvet.eval.measures import (  # noqa: E402
-    artifacts, calibration, grounding, reliability, risk, trajectory,
+    artifacts, calibration, grounding, reliability, risk, routing, trajectory,
 )
 
 
@@ -89,6 +89,7 @@ def main() -> int:
     gnd = grounding.measure(runs)
     rsk = risk.measure(runs)
     trj = trajectory.measure(runs)
+    rte = routing.measure(runs)
 
     print(f"\n  LAYER 6  reliability   pass@1 {rel.pass_at_1:.3f}   "
           f"pass^{rel.k} {rel.pass_hat_k:.3f}   n={rel.n}")
@@ -121,6 +122,14 @@ def main() -> int:
     if gnd.untraceable:
         print(f"           UNTRACEABLE: {gnd.untraceable}")
 
+    print(f"\n  ROUTING       sources used matched expectation "
+          f"{rte.matched}/{rte.scored} ({rte.rate:.1%})")
+    for row_id, (want, got) in sorted(rte.mismatches.items()):
+        print(f"           id {row_id}: expected {want} but used {got}")
+    if rte.skipped_unlabelled:
+        print(f"           skipped (no expected verdict, sources unlabelled): "
+              f"{rte.skipped_unlabelled}")
+
     print(f"\n  LAYER 5  asymmetric    dangerous errors {len(rsk.dangerous)} "
           f"({rsk.dangerous_rate:.2%} of {rsk.scored})")
     print(f"           declined {rsk.declined} ({rsk.decline_rate:.1%})   "
@@ -133,7 +142,7 @@ def main() -> int:
             "runs": [r.label or r.started_utc for r in runs],
             "reliability": asdict(rel), "calibration": asdict(cal),
             "grounding": asdict(gnd), "risk": asdict(rsk),
-            "trajectory": asdict(trj),
+            "trajectory": asdict(trj), "routing": asdict(rte),
         }, indent=1, default=str))
         print(f"\n  written to {args.json_path}")
     return 0
