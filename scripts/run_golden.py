@@ -64,6 +64,23 @@ def is_frozen(row: dict) -> bool:
     return row.get("category") in FROZEN_CATEGORIES
 
 
+def api_llm_config():
+    """Ask the API which models it will use, or None if it cannot say.
+
+    None means an API too old to report it, which is not the same as agreement
+    -- an unattributable run is refused rather than recorded under whatever
+    this shell happens to hold.
+    """
+    try:
+        response = httpx.get(f"{API}/health", timeout=10)
+        response.raise_for_status()
+    except Exception as exc:
+        print(f"  Could not reach {API}/health: {exc}", file=sys.stderr)
+        return None
+    served = (response.json() or {}).get("llm")
+    return served if isinstance(served, dict) and served else None
+
+
 def run_one(row: dict) -> dict:
     """One claim through the live route. Never raises: a failure is an outcome."""
     started = time.time()
@@ -144,6 +161,9 @@ def main() -> int:
     parser.add_argument("--label", default="",
                         help="tag for the artifact, e.g. flake-a / flake-b")
     parser.add_argument("--out", default=None)
+    parser.add_argument("--allow-model-drift", action="store_true",
+                        help="run even though the API serves a different model "
+                             "than this shell's env names")
     args = parser.parse_args()
 
     path = golden_data_file()
@@ -160,7 +180,38 @@ def main() -> int:
 
     print(f"  dataset : {path}  ({len(rows)} rows, {len(selected)} selected)")
     print(f"  api     : {API}")
-    print(f"  model   : {active_llm_config()['agent']['model']}\n")
+
+    # What the *serving process* will use. Reading our own environment answers
+    # a different question -- this script only posts HTTP -- and the two came
+    # apart: a run launched with the MiniMax env against an API still holding
+    # the DeepSeek one recorded "MiniMax-M2.7" over 56 DeepSeek rows. A model
+    # label nobody can trust makes every cross-model comparison worthless, so
+    # the label now comes from the process that does the work.
+    served = api_llm_config()
+    if served is None:
+        print("  The API did not report its LLM config. Restart it so /health "
+              "carries `llm`, otherwise this run cannot be attributed to a "
+              "model.", file=sys.stderr)
+        return 2
+
+    local = active_llm_config()
+    drift = {role for role in served
+             if served[role].get("model") != local.get(role, {}).get("model")}
+    if drift and not args.allow_model_drift:
+        print(f"  The API is serving a different model than this shell expects "
+              f"for {sorted(drift)}:", file=sys.stderr)
+        for role in sorted(drift):
+            print(f"    {role:<8} api={served[role].get('model')} "
+                  f"shell={local.get(role, {}).get('model')}", file=sys.stderr)
+        print("  Restart the API with the env you mean to benchmark, or pass "
+              "--allow-model-drift if the difference is deliberate.",
+              file=sys.stderr)
+        return 2
+
+    for role in ("parser", "agent", "verdict"):
+        cfg = served.get(role, {})
+        print(f"  {role:<8}: {cfg.get('model')}  @ {cfg.get('base_url') or 'default'}")
+    print()
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     tag = f"-{args.label}" if args.label else ""
@@ -184,9 +235,14 @@ def main() -> int:
             "dataset_rows": len(rows),
             "selected": len(selected),
             "frozen_only": args.frozen_only,
-            # What produced this. Without it a later run under another model
-            # has nothing to diff against and the money is spent twice.
-            "llm_config": active_llm_config(),
+            # What produced this, as reported by the process that produced it.
+            # Without it a later run under another model has nothing to diff
+            # against and the money is spent twice; with the *client's* copy of
+            # it, worse -- the diff runs and the answer is wrong.
+            "llm_config": served,
+            "llm_config_source": "api:/health",
+            # Kept beside it so a drifted run allowed on purpose still says so.
+            "llm_config_client": local,
             "elapsed_s": round(elapsed, 1),
             "results": results,
         }, indent=1))
