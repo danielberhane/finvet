@@ -92,12 +92,6 @@ CLAIMS = [
      "sec/operator", "strict", "REFUTES", "391,035M < 500,000M"),
     ("Apple's shareholders equity was less than $100 billion in fiscal year 2024",
      "sec/operator", "strict", "SUPPORTS", "56,950M < 100,000M"),
-    ("Apple's revenue was between $380 billion and $400 billion in fiscal year 2024",
-     "sec/operator", "strict", "SUPPORTS", "391,035M inside the band"),
-
-    # -- malformed range -> parser reject -------------------------------
-    ("Apple's revenue was between $400 billion and $300 billion in fiscal year 2024",
-     "parser/range", "strict", "REJECTED", "inverted bounds are declined, not swapped"),
 
     # -- Q4 derivation, declined ----------------------------------------
     ("Apple's Q4 2024 revenue was $94 billion",

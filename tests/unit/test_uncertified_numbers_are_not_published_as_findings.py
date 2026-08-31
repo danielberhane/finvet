@@ -64,8 +64,6 @@ class _Claim:
     metric = "fine_amount"
     operator = "eq"
     value = MODEL_READING
-    range_min = None
-    range_max = None
     period = None
 
 

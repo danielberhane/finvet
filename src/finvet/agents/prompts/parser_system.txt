@@ -11,8 +11,6 @@ Return ONLY a valid JSON object with exactly these 9 keys, IN THIS ORDER:
   "metric": "<one string from the list for your claim_type>" | null,
   "operator": "eq" | "gt" | "gte" | "lt" | "lte" | "approx" | "range" | null,
   "value": 94000000000 | null,
-  "range_min": 29000000000 | null,
-  "range_max": 31000000000 | null,
   "period": "Q4 FY2024" | null,
   "reject_reason": "<snake_case reason>" | null
 }
@@ -66,14 +64,13 @@ __METRIC_WHITELIST__
    - "lt": below, under, less than, fell below, dropped below
    - "lte": at most, no more than, maximum of
    - "approx": about, roughly, around, approximately, nearly, "~", came in about
-   - "range": between X and Y — set range_min to X, range_max to Y, and value
-     to the midpoint. All three are required; the band is what gets tested.
+   - "range": between X and Y — set value to the midpoint of the band
    operator and value come as a pair: never one without the other.
 
 5. **value** (optional): The numeric value being claimed, in base units.
    - "$94 billion" → 94000000000; "$2.1 million" → 2100000; "61%" → 61.0
    - For "range": the midpoint — "between $29 billion and $31 billion" →
-     value 30000000000, range_min 29000000000, range_max 31000000000
+     value 30000000000
    - Relative terms ("half", "double", "twice", "ten times") are NOT values → null
    - null if no numeric value is claimed
 
@@ -116,7 +113,7 @@ Output:
 
 Input: "UnitedHealth said 2024 revenue was between $398 billion and $402 billion."
 Output:
-{"claim_type": "sec", "ticker": "UNH", "metric": "revenue", "operator": "range", "value": 400000000000, "range_min": 390000000000, "range_max": 410000000000, "period": "2024", "reject_reason": null}
+{"claim_type": "sec", "ticker": "UNH", "metric": "revenue", "operator": "range", "value": 400000000000, "period": "2024", "reject_reason": null}
 
 Input: "Apple's iPhone revenue reached $200 billion in fiscal 2024"
 Output:

@@ -227,15 +227,23 @@ class TestOverrideReadsOperator:
         verdict, _, _ = self._override(100e9, 90e9, operator="approx")
         assert verdict == "REFUTES"
 
-    def test_range_is_membership_not_midpoint_equality(self):
-        """Superseded the midpoint approximation.
+    def test_range_fails_closed(self):
+        """`range` is a legal operator the parser emits, and FinVet has no code
+        for it. The parser carries only the band's midpoint -- comparing that as
+        equality refutes a value sitting plainly inside the stated band, which
+        is the defect the bounds were once added to fix. With the bounds gone,
+        declining is the honest answer, so range must reach the same fail-closed
+        path an uninterpretable operator does.
 
-        The band now lives in the contract, so a value inside it is supported
-        however far it sits from the centre — which midpoint-equality refuted.
-        """
-        verdict, _, _ = self._override(
-            30e9, 30.6e9, operator="range", range_min=29e9, range_max=31e9)
-        assert verdict == "SUPPORTS"
+        Driven through _apply_override rather than asserted on a dict, because
+        the fall-through is the behaviour under test."""
+        verdict, confidence, _ = self._override(
+            390e9, 391.035e9, operator="range")
+
+        assert verdict == "NOT_ENOUGH_INFO", (
+            f"a range claim produced {verdict}; with no bounds to test "
+            f"membership against, no decisive verdict is available")
+        assert confidence <= 0.5
 
     def test_unknown_operator_fails_closed(self):
         """An operator the override does not recognise must not silently skip
@@ -408,43 +416,3 @@ class TestToolFailureIsRecorded:
         ]
         _, detail, _, _ = agent._extract_tool_info(msgs)
         assert detail[0]["success"] is True
-
-
-class TestRangeClaimsPreserveTheirBounds:
-    """A range claim must be tested for membership, not midpoint equality.
-
-    parser_system.txt instructs the parser to store only the band's midpoint,
-    and _apply_override converts operator="range" to "eq" with a widened
-    tolerance. "Between $50B and $150B" therefore becomes $100B, and a filed
-    $149B -- squarely inside the stated range -- scores a 32.89% difference and
-    is REFUTED.
-
-    These tests state the correct behaviour. Satisfying them requires the claim
-    contract to carry the bounds; until then they fail, which is the point.
-    """
-
-    def _range_verdict(self, low, high, retrieved):
-        from finvet.agents.base import VerdictOutput
-        from finvet.models.claim import ParsedClaim
-
-        agent = ConcreteAgent(agent_type="sec")
-        parsed = ParsedClaim(
-            claim_type="sec", ticker="T", operator="range",
-            value=(low + high) / 2, range_min=low, range_max=high,
-        )
-        verdict_output = VerdictOutput(
-            verdict="NOT_ENOUGH_INFO", confidence=0.5,
-            reasoning="test", retrieved_value=retrieved,
-        )
-        verdict, _, _ = agent._apply_override(
-            verdict_output, {"parsed_claim": parsed}, _observation(retrieved))
-        return verdict
-
-    def test_value_inside_a_wide_range_is_supported(self):
-        assert self._range_verdict(50e9, 150e9, 149e9) == "SUPPORTS"
-
-    def test_value_at_the_lower_bound_is_supported(self):
-        assert self._range_verdict(50e9, 150e9, 50e9) == "SUPPORTS"
-
-    def test_value_outside_the_range_is_refuted(self):
-        assert self._range_verdict(50e9, 150e9, 160e9) == "REFUTES"

@@ -389,7 +389,7 @@ read succeeded.
 
 ---
 
-## D16 — A range is an interval, in the gold data as in the code
+## D16 — A range is an interval, in the gold data as in the code — **SUPERSEDED by D18**
 
 **Decision.** `operator="range"` requires both `range_min` and `range_max`
 everywhere, including the evaluation gold. 32 of the 383 rows in `test.jsonl`
@@ -497,3 +497,42 @@ Both were symptoms.
 **To lift it.** A parsed claim that distinguishes an event date from a filing
 period would allow exact scoping where a filing is named and forward scoping
 where an event is. That is a parser change, and it is Release B.
+
+---
+
+## D18 — A contract the training data cannot satisfy is not a contract
+
+**Decision.** `range_min` and `range_max` are removed from `ParsedClaim`. The
+parser emits **seven fields**. `range` stays a legal operator and FinVet has no
+code for it: a range claim reaches the fail-closed branch and returns
+NOT_ENOUGH_INFO. Range and between claims are removed from the golden set
+(ids 35, 36, 97) rather than tested.
+
+**Why D16 was wrong.** D16 concluded "the contract is right and the gold was
+stale" and migrated the 32 range rows in `test.jsonl` to explicit bounds. It
+migrated only the *test* split. `train.jsonl` holds 4,578 rows, all seven
+fields, and all 282 of its `operator="range"` rows carry the band's midpoint in
+`value` with no bounds at all — the encoding D16 called stale is what the model
+was actually taught.
+
+Two consequences followed, both invisible until measured:
+
+- The fine-tuned parser emits a bandless range, `ParsedClaim` required both
+  bounds, so **every "between X and Y" claim was a hard error** — an exception,
+  not a wrong answer.
+- Against the migrated `test.jsonl`, those 32 rows score wrong on two fields
+  the model was never trained to produce, so the parser's reported accuracy is
+  understated.
+
+**Why not keep bounds and compare the midpoint instead.** That was tried and
+reverted. Midpoint equality refutes a value sitting plainly inside the stated
+band whenever the band is wider than the tolerance: measured against the 32
+bounded rows, **9 would refute a true claim**. That is the defect D16 existed
+to prevent, arriving by another route. Declining is the honest answer.
+
+**Not done here.** `test.jsonl` still carries the migrated bounds and
+`scripts/migrate_gold_range_bounds.py` still exists; the pre-migration gold is
+at `data/clean/test.jsonl.pre-range-bounds`. Reverting it belongs to the parser
+project, not to FinVet. `test_parser_contract_conformance` drops the two legacy
+keys before constructing so every gold row still round-trips on the seven
+contract fields. **Do not re-run the migration.**

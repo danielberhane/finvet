@@ -316,47 +316,24 @@ def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
             data["operator"] = None
             operator_decision = "dropped_operator_without_value"
 
-    # Range bounds. A band that cannot be read as stated is declined, not
-    # repaired: both repairs this code used to perform answered a question
-    # nobody asked. Swapping inverted bounds picks one of two readings of
-    # "between $100B and $50B" and then returns a decisive verdict on the
-    # guess. Downgrading a bandless range to approx turns a membership
-    # question into a point comparison, so a filed value squarely inside the
-    # intended band can come back REFUTES. Stray bounds on a non-range
-    # operator are different -- nothing was asserted about an interval, so
-    # dropping them removes noise rather than changing the claim.
-    range_decision = "none"
-    if data.get("claim_type") != "reject":
-        has_bounds = (data.get("range_min") is not None
-                      and data.get("range_max") is not None)
-        rejection = None
-        if data.get("operator") == "range" and not has_bounds:
-            rejection = ("range_without_bounds_rejected",
-                         "the stated range is missing one or both bounds")
-        elif data.get("operator") != "range" and (
-                data.get("range_min") is not None
-                or data.get("range_max") is not None):
-            data["range_min"] = data["range_max"] = None
-            range_decision = "dropped_bounds_without_range"
-        elif has_bounds and data["range_min"] > data["range_max"]:
-            rejection = ("inverted_bounds_rejected",
-                         "the stated range's lower bound exceeds its upper bound")
-
-        if rejection:
-            range_decision, reason = rejection
-            logger.info(f"Declining claim: {reason}")
-            # A reject carries nothing but its reason.
-            data = {"claim_type": "reject", "reject_reason": reason}
+    # Range bounds are gone. The parser emits operator="range" with `value`
+    # set to the midpoint of the stated band and no bounds -- that is what the
+    # fine-tuned model was trained on (282 of 4,578 training rows carry
+    # operator="range", every one of them seven fields with the midpoint and
+    # no bounds). Carrying range_min/range_max meant ParsedClaim rejected that
+    # output outright, so every "between X and Y" claim was a hard error.
+    # Downstream, range is compared like approx: the midpoint at a widened
+    # tolerance.
 
     return data, {"reject": reject_decision, "metric": metric_decision,
-                  "operator": operator_decision, "range": range_decision}
+                  "operator": operator_decision}
 
 
 def claim_parser(state: VerificationState) -> Dict:
     """
     Parse natural language claim into simplified 6-field structure.
 
-    Uses DeepSeek to extract:
+    Uses the LLM configured for the `parser` role to extract:
     - claim_type: Routing category
     - ticker: Company identifier
     - value: Numeric claim

@@ -103,17 +103,10 @@ def compare_observation(parsed_claim, observation, agent_type="sec") -> tuple:
     comparison = getattr(parsed_claim, "operator", None) or "eq"
     tolerance = _tolerance_for(claimed, agent_type)
 
-    if comparison == "range":
-        lower = getattr(parsed_claim, "range_min", None)
-        upper = getattr(parsed_claim, "range_max", None)
-        if lower is None or upper is None:
-            return "NOT_ENOUGH_INFO", 0.5, magnitude_diff
-        margin = tolerance / 100.0
-        lo = lower - abs(lower) * margin
-        hi = upper + abs(upper) * margin
-        return ("SUPPORTS" if lo <= retrieved <= hi else "REFUTES",
-                0.90, magnitude_diff)
-
+    # No branch for "range". The parser emits it with only a midpoint, so
+    # there is no interval to test membership against, and comparing the
+    # midpoint as equality refutes a value that sits plainly inside the stated
+    # band. Range falls through to the fail-closed return below.
     if comparison == "approx":
         tolerance *= TOLERANCE_APPROX_MULTIPLIER
         comparison = "eq"
@@ -714,36 +707,9 @@ class BaseVerificationAgent(ABC):
             comparison = getattr(parsed_claim, "operator", None) or "eq"
             tolerance = self._get_tolerance(claimed_val)
 
-            # A range is an interval, tested for membership. It used to be
-            # collapsed to its midpoint and compared as equality, which
-            # refutes any value far from the centre however clearly it sits
-            # inside the stated band: "between $50B and $150B" became $100B,
-            # and a filed $149B scored a 32.89% difference and was REFUTED.
-            if comparison == "range":
-                lower = getattr(parsed_claim, "range_min", None)
-                upper = getattr(parsed_claim, "range_max", None)
-                if lower is None or upper is None:
-                    # ParsedClaim forbids this; reachable only through drift.
-                    logger.error(
-                        f"{self.agent_type} range claim without bounds; "
-                        f"failing closed to NOT_ENOUGH_INFO")
-                    return "NOT_ENOUGH_INFO", min(confidence, 0.5), magnitude_diff
-
-                # Tolerance applies to the edges, not the midpoint: a stated
-                # band already expresses the claimant's imprecision, so only
-                # rounding at the boundary needs slack.
-                margin = tolerance / 100.0
-                lo = lower - abs(lower) * margin
-                hi = upper + abs(upper) * margin
-                verdict = "SUPPORTS" if lo <= retrieved_value <= hi else "REFUTES"
-                confidence = max(confidence, 0.90)
-                logger.info(
-                    f"{self.agent_type} range check: {retrieved_value:,.0f} "
-                    f"in [{lower:,.0f}, {upper:,.0f}] -> {verdict}")
-                return verdict, confidence, magnitude_diff
-
             # approx is equality with stated imprecision: no band exists, so
-            # widen the tolerance by the measured multiplier.
+            # widen the tolerance by the measured multiplier. "range" is
+            # deliberately absent -- see _compare above; it fails closed.
             if comparison == "approx":
                 tolerance *= TOLERANCE_APPROX_MULTIPLIER
                 comparison = "eq"
