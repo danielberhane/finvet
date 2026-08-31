@@ -257,6 +257,8 @@ def _corroborate(
             confidence=ev.get("confidence", 0.0),
             reasoning=ev.get("reasoning", ""),
             retrieved_value=ev.get("retrieved_value"),
+            # Carried so an adopting parent can say where the number came from.
+            trusted_observation=ev.get("trusted_observation"),
             sources=sources,
             provenance=ev.get("provenance", []) or [],
             tools_used=ev.get("tools_called", []) or [],

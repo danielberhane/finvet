@@ -286,3 +286,79 @@ class TestTheStatusIsARealStatus:
         undeclared = {n: v for n, v in constants.items() if v not in declared}
 
         assert not undeclared, f"status constants outside A2AStatus: {undeclared}"
+
+
+class TestAnAdoptedVerdictCarriesItsSource:
+    """A number with no recorded source is indistinguishable from a
+    hallucination in the audit trail.
+
+    Found by Layer 3, which scored decisive numeric verdicts at 96.6% rather
+    than the expected 100%. Rows 49 and 50 publish `retrieved_value`
+    500,000,000 with `observation_tool` null: `_adopt_filing_verdict` copies
+    the delegation's number onto the parent evidence and leaves the
+    TrustedObservation behind.
+
+    The observation exists -- `_penalty_observation` built it from the 10-K
+    Legal Proceedings passage, with the chunk's evidence_id as `source_id`. It
+    just never crosses from the delegation result to the evidence the response
+    and the audit record are built from. A reviewer sees a figure asserted with
+    no source field, which is the shape the trust boundary exists to make
+    impossible.
+    """
+
+    def _adopt(self, monkeypatch, observation):
+        from finvet.graph.nodes import domain_agents as node
+
+        a2a = {"success": True, "status": "PENDING_CLASSIFICATION",
+               "verdict": "SUPPORTS", "confidence": 0.95,
+               "retrieved_value": 500_000_000.0,
+               "trusted_observation": observation,
+               "provenance": [{"tool": "search_filing_text",
+                               "result": {"success": True,
+                                          "chunks": [{"chunk_id": "c1"}]}}]}
+        evidence = {"agent": "news", "verdict": "NOT_ENOUGH_INFO",
+                    "llm_original_verdict": "SUPPORTS", "confidence": 0.5,
+                    "provenance": [{"tool": "corroborate_with_filing",
+                                    "args": {}, "result": a2a}]}
+        monkeypatch.setattr(node, "_run_agent",
+                            lambda *a, **k: {"agent_evidence": evidence})
+        monkeypatch.setattr(node, "_unsupported_claim", lambda s: None)
+
+        class _Claim:
+            claim_type = "news"
+            metric = "fine_amount"
+            ticker = "AAPL"
+            value = 500_000_000.0
+            operator = "eq"
+            period = None
+
+        out = node.run_news_agent({"parsed_claim": _Claim(), "request_id": "r",
+                                   "claim_raw": "c"})
+        return out["agent_evidence"]
+
+    def test_the_observation_travels_with_the_number(self, monkeypatch):
+        observation = {"tool": "search_filing_text", "metric": "fine_amount",
+                       "value": 500_000_000.0, "units": "EUR",
+                       "source_id": "34a357b3a177"}
+
+        evidence = self._adopt(monkeypatch, observation)
+
+        assert evidence["retrieved_value"] == 500_000_000.0
+        assert evidence.get("trusted_observation") == observation, (
+            "the number crossed over and its source did not")
+
+    def test_the_source_names_where_the_figure_came_from(self, monkeypatch):
+        observation = {"tool": "search_filing_text", "value": 500_000_000.0,
+                       "source_id": "34a357b3a177"}
+
+        evidence = self._adopt(monkeypatch, observation)
+        recorded = evidence.get("trusted_observation") or {}
+
+        assert recorded.get("tool") == "search_filing_text"
+        assert recorded.get("source_id"), "no way back to the filing passage"
+
+    def test_a_delegation_without_an_observation_adopts_nothing(self, monkeypatch):
+        """Nothing to carry is not the same as failing to carry it."""
+        evidence = self._adopt(monkeypatch, None)
+
+        assert evidence.get("trusted_observation") is None

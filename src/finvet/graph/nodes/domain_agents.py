@@ -233,6 +233,10 @@ def _adopt_filing_verdict(evidence: Dict, corroboration: Dict) -> Dict:
     evidence["verdict"] = verdict
     evidence["confidence"] = corroboration.get("confidence") or evidence.get("confidence")
     evidence["retrieved_value"] = retrieved
+    # The source travels with the figure. Without it the response asserts a
+    # number and names nothing that produced it -- Layer 3 scored exactly this
+    # at 96.6% instead of 100%, on rows 49 and 50.
+    evidence["trusted_observation"] = corroboration.get("trusted_observation")
     # The filing answered it, so the decline no longer applies. Left in place
     # it would suppress review reasoning for a verdict that now stands on a
     # trusted number.
