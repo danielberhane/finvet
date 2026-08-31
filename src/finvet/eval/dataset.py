@@ -35,6 +35,6 @@ def golden_data_dir() -> Optional[Path]:
     return Path(p).expanduser() if p else None
 
 
-def golden_data_file(name: str = "golden_100.jsonl") -> Optional[Path]:
+def golden_data_file(name: str = "golden_c.jsonl") -> Optional[Path]:
     d = golden_data_dir()
     return d / name if d else None
