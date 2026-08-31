@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from pydantic import BaseModel, Field
 
+from ..config.constants import FINNHUB_TIMEOUT_SECONDS
 from ..config.settings import settings
 from ..utils.logging import get_logger
 
@@ -131,7 +132,7 @@ class FinnhubClient:
                 "FINNHUB_API_KEY required. Get free key at https://finnhub.io/register"
             )
 
-        self._client = httpx.Client(timeout=30.0)
+        self._client = httpx.Client(timeout=FINNHUB_TIMEOUT_SECONDS)
 
         if self.mock_mode:
             logger.info("Finnhub client running in MOCK MODE")

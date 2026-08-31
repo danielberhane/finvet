@@ -40,6 +40,13 @@ CONSENSUS_MAX_CONFIDENCE = 0.95         # confidence cap
 AGENT_MAX_ITERATIONS = 5
 AGENT_MAX_RESULT_CHARS = 50000  # ~12K tokens, safe for 131K context
 
+# How long to wait for a Finnhub quote before giving up. It was 30s, which is
+# the wait multiplied by every retry: when Finnhub returned read timeouts during
+# a benchmark, the tool reported an error, the agent tried again, and single
+# claims took 600s. A quote endpoint that has not answered in 10s is not about
+# to; the cost of being wrong is one NOT_ENOUGH_INFO on a live-price claim.
+FINNHUB_TIMEOUT_SECONDS = 10.0
+
 # News claims whose truth an issuer's own filing can settle, so the News agent
 # delegates to SEC even when the model does not think to. Deliberately narrow:
 # fines and settlements land in Legal Proceedings and contingency notes, which
