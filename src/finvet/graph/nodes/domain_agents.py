@@ -1,8 +1,8 @@
 """Domain agent nodes for running ReAct verification agents.
 
 These nodes wrap the SEC, Market, and News ReAct agents and integrate them
-into the LangGraph workflow. Each agent uses DeepSeek to reason about
-which tools to call and returns structured evidence.
+into the LangGraph workflow. Each agent reasons with the LLM configured for
+the `agent` role about which tools to call, and returns structured evidence.
 """
 
 import re

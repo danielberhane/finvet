@@ -1,6 +1,7 @@
 """Domain verification agents using ReAct pattern.
 
-Each agent uses DeepSeek as the LLM brain and has access to domain-specific
+Each agent uses the LLM configured for the `agent` role and has access to
+domain-specific
 tools for retrieving evidence. Agents use the ReAct (Reasoning + Acting)
 pattern to intelligently select tools and verify claims.
 

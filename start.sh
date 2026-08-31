@@ -60,26 +60,55 @@ else
     wait_for_port 5432 "PostgreSQL" 15
 fi
 
-# --- 2. DeepSeek API ---
-echo "[2/6] DeepSeek API"
+# --- 2. LLM provider ---
+# Checks whichever provider the three roles are configured for, rather than
+# assuming DeepSeek: any role can be pointed elsewhere with LLM_<ROLE>__MODEL,
+# __BASE_URL and __API_KEY_ENV, and this used to fail a MiniMax run for a
+# missing DeepSeek key nothing would have used.
+echo "[2/6] LLM provider"
 set -a; source "$ROOT/.env" 2>/dev/null || true; set +a
-if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
-    echo "  FAIL: DEEPSEEK_API_KEY is not set. Add it to .env"
-    exit 1
-fi
-if "$ROOT/.venv/bin/python" -c "
-import httpx, os
-r = httpx.post(
-    'https://api.deepseek.com/chat/completions',
-    headers={'Authorization': f'Bearer {os.environ[\"DEEPSEEK_API_KEY\"]}'},
-    json={'model': 'deepseek-chat', 'messages': [{'role': 'user', 'content': 'hi'}], 'max_tokens': 1},
-    timeout=10,
-)
-r.raise_for_status()
-" 2>/dev/null; then
-    echo "  OK: DeepSeek API reachable"
+if "$ROOT/.venv/bin/python" - <<'PY'
+import os, sys
+sys.path.insert(0, "src")
+import httpx
+from finvet.config.settings import settings
+
+# settings is the single source of truth for which variable each role reads.
+# Re-deriving it here from the env would hardcode the default a second time,
+# and the two would drift the first time it changed.
+roles = {r: getattr(settings, f"llm_{r}") for r in ("parser", "agent", "verdict")}
+for name, cfg in roles.items():
+    print(f"  {name:<8}: {cfg.model} @ {cfg.base_url}  (key: {cfg.api_key_env})")
+
+missing = sorted({c.api_key_env for c in roles.values()
+                  if not os.environ.get(c.api_key_env)})
+if missing:
+    print(f"  FAIL: not set in .env: {', '.join(missing)}")
+    sys.exit(1)
+
+# Reachability and auth for the agent role, which is the one that does the
+# work. GET /models rather than a completion: it proves the same two things
+# without generating a token, so a warm-up delay on the provider does not fail
+# startup. A 15s completion probe timed out against a gateway that was fine.
+agent = roles["agent"]
+try:
+    r = httpx.get(
+        agent.base_url.rstrip("/") + "/models",
+        headers={"Authorization": "Bearer " + os.environ[agent.api_key_env]},
+        timeout=15,
+    )
+    r.raise_for_status()
+except Exception as exc:
+    # The reason, not a traceback. This runs at startup, where the useful
+    # output is one line naming what could not be reached.
+    print(f"  FAIL: {agent.base_url} did not answer: "
+          f"{type(exc).__name__}: {exc}")
+    sys.exit(1)
+PY
+then
+    echo "  OK: LLM provider reachable"
 else
-    echo "  FAIL: DeepSeek API unreachable or key invalid"
+    echo "  Fix the above, or point the roles elsewhere with LLM_<ROLE>__BASE_URL."
     exit 1
 fi
 

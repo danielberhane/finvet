@@ -215,7 +215,7 @@ class VerificationState(TypedDict, total=False):
     # ===================================================================
     # NODE 2: CLAIM PARSER
     # Written by: claim_parser node (src/finvet/graph/nodes/claim_parser.py)
-    # Runs: DeepSeek LLM with structured output → ParsedClaim
+    # Runs: the `parser` role LLM with structured output → ParsedClaim
     # ===================================================================
 
     # The structured extraction of the claim. This is the MOST IMPORTANT

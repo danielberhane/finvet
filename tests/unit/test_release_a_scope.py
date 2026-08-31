@@ -16,10 +16,9 @@ import pytest
 
 from finvet.config.settings import Settings
 
-# Three secrets are required and normally come from .env. Supply them so these
+# Two secrets are required and normally come from .env. Supply them so these
 # tests measure the flags they are about and nothing else.
-_REQUIRED = {"deepseek_api_key": "x", "tavily_api_key": "x",
-             "postgres_password": "x"}
+_REQUIRED = {"tavily_api_key": "x", "postgres_password": "x"}
 
 
 def _settings(**overrides):
