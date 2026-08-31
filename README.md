@@ -173,7 +173,7 @@ the same container but stays off unless you set `ENABLE_LLAMA_GUARD=true` and pu
 
 | Key | Powers | Without it |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | **required** — nothing runs |
+| `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | the default provider fails to start; point the roles elsewhere and it is not needed |
 | `TAVILY_API_KEY` | news search | **required** — nothing runs |
 | `FINNHUB_API_KEY` | market quotes, tickers | market claims → NOT_ENOUGH_INFO |
 | *(none)* | embeddings → RAG + claim memory | served locally by Ollama — no key, no per-call cost |
@@ -242,6 +242,48 @@ number that disagrees with the filing — is treated as the failure that matters
 Retrieval falls back from SEC's period-targeted `companyconcept` read to the `frames`
 endpoint when the first is empty for a company/concept — that fallback took accuracy from
 ~91% to 99.5%.
+
+### Cross-model benchmark
+
+The same 97 claims through two different models, on identical code and dataset — so any
+difference is the model, not the scaffolding. Each of the three LLM roles (parser, agent,
+verdict) is pointed at one provider; the model recorded in each run artifact is read from the
+serving process, not from the client.
+
+| | DeepSeek V4-Flash | MiniMax-M2.7 |
+|---|---|---|
+| requested as | `deepseek-chat` (alias) | `MiniMax-M2.7` |
+| actually served | `deepseek-v4-flash` | `MiniMax-M2.7` |
+| parameters | 284B total, ~13B active/token | 230B total, ~10B active/token |
+| architecture | sparse MoE, top-6 of 256 routed experts + 1 shared | sparse MoE, 8 of 256 experts, 62 layers |
+| context | 1M tokens | 200K tokens |
+| endpoint | hosted API | self-hosted LiteLLM gateway |
+| wall clock, 97 claims | **17.2 min** | 47.7 min |
+
+| Layer | DeepSeek | MiniMax |
+|---|---|---|
+| Verdict accuracy (excl. live market, n=86) | **96.5%** | **96.5%** |
+| Confidently-wrong verdicts | **0** / 94 | **0** / 94 |
+| Decisive numbers traceable to a tool call | **100%** (42/42) | **100%** (42/42) |
+| Tool-path correctness (DeepEval) | 98.4% | 94.8% |
+| Calibration, decisive ECE | 0.039 | 0.046 |
+| Evidence-path match | 97.9% | 96.8% |
+
+Five properties held identically under both: zero confidently-wrong verdicts, full grounding,
+zero out-of-lane tool calls, correct zero-tool discipline on all 26 claims that should spend
+nothing, and perfect accuracy in the top confidence bin. Those are enforced by the
+deterministic layer rather than the model, and their invariance across two very different
+models is the evidence for that claim.
+
+One caveat stated plainly: this is a single run per model. The raw accuracy including live
+market data reads 96.8% vs 93.5%, but that gap is a market-data outage during the MiniMax run,
+not model quality. Separating a real difference from run-to-run noise would take roughly three
+runs each — the measured noise floor over four earlier runs was pass^4 = 0.975.
+
+Run artifacts, the computed layer summaries, and the full write-up are committed alongside
+the dataset. Reproduce with `scripts/run_golden.py` then `scripts/eval_layers.py` — the
+harness records and asserts nothing, so the layers can be recomputed from a saved run without
+spending API calls again.
 
 ---
 
