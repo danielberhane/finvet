@@ -130,7 +130,7 @@ class TestDocumentedDefaultsMatchTheCode:
     def test_the_documented_memory_default_is_the_real_one(self):
         from finvet.config.settings import Settings
 
-        actual = Settings(_env_file=None, deepseek_api_key="x",
+        actual = Settings(_env_file=None,
                           tavily_api_key="x",
                           postgres_password="x").enable_claim_memory
         assert actual is False
