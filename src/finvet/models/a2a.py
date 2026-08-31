@@ -152,6 +152,11 @@ class A2AResult(BaseModel):
     temporal_scope: Literal["event_date", "claim_period", "unknown"] = Field(
         "unknown", description="How the event date was established"
     )
+    # The observation the target actually compared, not just its value. A
+    # verdict adopted from a delegation used to carry the number and leave this
+    # behind, so the audit record showed a figure with no source -- which is
+    # indistinguishable from a hallucination to anyone reading it.
+    trusted_observation: Optional[Dict[str, Any]] = Field(None)
     error: Optional[str] = Field(None)
 
 
