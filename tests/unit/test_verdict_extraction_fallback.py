@@ -44,8 +44,6 @@ class _Claim:
     operator = "lt"
     value = 100_000_000_000.0
     period = "fiscal year 2024"
-    range_min = None
-    range_max = None
 
 
 def _observation(value=56_950_000_000.0):

@@ -3,7 +3,7 @@
 Every verdict rests on an interpretation: which company, which metric, which
 period, what number, which comparison. That interpretation was scattered across
 metadata as loose keys -- `metric`, `operator`, `claimed_value` -- and the rest
-of it (ticker, claim_type, range bounds, reject_reason) never surfaced at all.
+of it (ticker, claim_type, the parsed fields, reject_reason) never surfaced at all.
 
 A reader debugging a surprising verdict is almost always asking a parsing
 question: did it understand "fiscal 2024"? did it take this as a range? did it
@@ -24,8 +24,6 @@ class _Claim:
     metric = "revenue"
     operator = "eq"
     value = 391_000_000_000.0
-    range_min = None
-    range_max = None
     period = "fiscal year 2024"
     reject_reason = None
 
@@ -51,17 +49,6 @@ class TestASuccessfulRunShowsItsParse:
     ])
     def test_every_field_the_parser_produced_is_shown(self, field, expected):
         assert self._metadata()["parsed_claim"][field] == expected
-
-    def test_range_bounds_are_shown_when_present(self):
-        """A range read as a midpoint is a classic parsing surprise; the bounds
-        are how a reader sees which happened."""
-        claim = _Claim()
-        claim.operator = "range"
-        claim.range_min, claim.range_max = 380e9, 400e9
-
-        parsed = self._metadata(claim)["parsed_claim"]
-        assert parsed["range_min"] == 380e9
-        assert parsed["range_max"] == 400e9
 
     def test_a_qualitative_claim_shows_its_null_metric(self):
         """metric null + value null is what routes a claim to filing text, so
@@ -197,7 +184,6 @@ class TestTheParseIsRenderedAsATable:
     def _view(self, **overrides):
         base = {"claim_type": "sec", "ticker": "AAPL", "metric": "revenue",
                 "operator": "eq", "value": 391_000_000_000.0,
-                "range_min": None, "range_max": None,
                 "period": "fiscal year 2024", "reject_reason": None}
         base.update(overrides)
         return base
@@ -229,12 +215,6 @@ class TestTheParseIsRenderedAsATable:
                                           operator=None)))
 
         assert rows.get("Metric") == "none — routed to filing text"
-
-    def test_a_range_shows_both_bounds(self):
-        rows = dict(self._rows(self._view(operator="range", value=390e9,
-                                          range_min=380e9, range_max=400e9)))
-
-        assert rows["Range"] == "$380.00B – $400.00B"
 
     def test_a_rejection_shows_its_reason_in_words(self):
         rows = dict(self._rows(self._view(

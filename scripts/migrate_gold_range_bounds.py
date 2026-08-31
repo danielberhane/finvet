@@ -1,4 +1,20 @@
-"""Give every gold `operator="range"` row the bounds the contract requires.
+"""SUPERSEDED -- DO NOT RUN. See RELEASE_A_DECISIONS.md D18.
+
+This script added `range_min`/`range_max` to the 32 range rows of test.jsonl
+(decision D16). It migrated only that split: train.jsonl's 4,578 rows,
+including all 282 range rows, still carry the midpoint encoding with no
+bounds. The model is therefore trained to emit a bandless range and graded
+against bounds it was never taught, understating its accuracy.
+
+FinVet has since removed range_min/range_max from ParsedClaim entirely, so
+re-running this would produce gold that no longer matches the contract. The
+pre-migration file is preserved at data/clean/test.jsonl.pre-range-bounds.
+
+Kept for the record, not for use.
+
+--- original description follows ---
+
+Give every gold `operator="range"` row the bounds the contract requires.
 
 32 of the 383 rows in test.jsonl encode a range as `operator="range"` plus a
 single `value` holding the midpoint, and carry no `range_min`/`range_max`.
