@@ -68,3 +68,4 @@ docs/PROMPT_*.md
 # Agent instructions: used by tooling on this machine, not published
 CLAUDE.md
 AGENTS.md
+.env.minimax

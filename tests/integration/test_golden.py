@@ -111,7 +111,6 @@ class TestStrictRowsMustMatch:
     def test_every_strict_row_reaches_its_expected_verdict(self):
         failures = []
         for row in _rows(strength="strict"):
-            actual = row.get("actual") or {}
             expected = row["expected"].get("verdict")
             if expected is None:
                 continue

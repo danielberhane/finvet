@@ -33,7 +33,11 @@ from finvet.eval.measures import (  # noqa: E402
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dir", default=os.environ.get("FINVET_GOLDEN_DIR"))
-    parser.add_argument("--json", dest="json_path")
+    parser.add_argument("--json", dest="json_path",
+                        help="write the layer summary here (an OUTPUT path)")
+    parser.add_argument("--label", action="append", default=[],
+                        help="measure only runs whose label contains this; "
+                             "repeatable. Default: every complete run.")
     args = parser.parse_args()
 
     if not args.dir:
@@ -41,17 +45,44 @@ def main() -> int:
         return 2
 
     paths = artifacts.find_runs(Path(args.dir))
+
+    # --json is an output path. Pointed at a run artifact -- which reads as the
+    # natural way to say "measure this one file" -- it overwrote 100 recorded
+    # rows with this summary, and those rows cost real API spend and cannot be
+    # rebuilt. Refusing costs one comparison; the alternative is silent loss.
+    if args.json_path:
+        out = Path(args.json_path).resolve()
+        if out in {p.resolve() for p in paths}:
+            print(f"--json would overwrite the run artifact {out.name}. It is an "
+                  f"output path, not a selector -- use --label to choose runs.",
+                  file=sys.stderr)
+            return 2
+
     runs = [r for r in artifacts.load_runs(paths) if r.complete]
+    if args.label:
+        runs = [r for r in runs
+                if any(sub in (r.label or "") for sub in args.label)]
     # Probe and resilience artifacts are partial slices of the set; including
-    # them would compare rows that were never run against each other.
-    runs = [r for r in runs if len(r) >= 80]
+    # them would compare rows that were never run against each other. Naming a
+    # run explicitly overrides that -- a caller who asks for a 40-row segment
+    # by label has said which rows they mean.
+    if not args.label:
+        runs = [r for r in runs if len(r) >= 80]
     if not runs:
         print(f"No complete runs in {args.dir}", file=sys.stderr)
         return 2
 
-    print(f"\n  runs: {len(runs)}   model: {runs[-1].model}")
+    # Per run, not one summary line. These layers pool rows across runs, and
+    # pooling two models reads as one -- a segment run under a different model
+    # than its label suggests was invisible until the model was printed beside
+    # every artifact.
+    models = {r.model for r in runs}
+    print(f"\n  runs: {len(runs)}")
     for r in runs:
-        print(f"    {r.label or r.started_utc:<24} {len(r):>3} rows")
+        print(f"    {r.label or r.started_utc:<24} {len(r):>3} rows   {r.model}")
+    if len(models) > 1:
+        print(f"    NOTE: {len(models)} models pooled {sorted(models)} -- "
+              f"these layers mix them. Use --label to separate.")
 
     rel = reliability.measure(runs)
     cal = calibration.measure(runs)

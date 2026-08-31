@@ -1,6 +1,6 @@
 """Pydantic request/response models for the FinVet API."""
 
-from typing import Literal, Optional
+from typing import Any, Dict, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -75,3 +75,9 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     timestamp: str
+    # Which model stands behind each role, read from the serving process. A
+    # benchmark client runs in its own process and cannot know this: a run
+    # launched with one provider's env, against an API started with another's,
+    # recorded the client's answer and mislabelled 56 rows. No API key is
+    # included -- see active_llm_config.
+    llm: Optional[Dict[str, Any]] = None
