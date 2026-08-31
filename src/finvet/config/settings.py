@@ -26,9 +26,6 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
     )
 
-    # DeepSeek Configuration
-    deepseek_api_key: str
-
     # LangSmith Configuration (Optional - for debugging)
     langchain_api_key: Optional[str] = None
     langchain_tracing_v2: bool = False
