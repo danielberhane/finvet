@@ -19,6 +19,7 @@ Every measure is a pure function of saved artifacts: no API calls, no cost, and
 a run paid for once can be re-analysed indefinitely.
 """
 
-from . import artifacts, calibration, grounding, reliability, risk
+from . import artifacts, calibration, grounding, reliability, risk, trajectory
 
-__all__ = ["artifacts", "calibration", "grounding", "reliability", "risk"]
+__all__ = ["artifacts", "calibration", "grounding", "reliability",
+           "risk", "trajectory"]
