@@ -31,7 +31,7 @@ _REJECT_REASON_LABELS = {
 
 
 _PARSED_CLAIM_FIELDS = ("claim_type", "ticker", "metric", "operator", "value",
-                        "range_min", "range_max", "period", "reject_reason")
+                        "period", "reject_reason")
 
 
 def _parsed_claim_view(parsed_claim) -> Optional[Dict[str, Any]]:

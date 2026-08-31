@@ -152,9 +152,7 @@ class TestComparisonOperators:
          "REFUTES"),
         ("Apple's shareholders equity was less than $100 billion in fiscal year 2024",
          "SUPPORTS"),
-        ("Apple's revenue was between $380 billion and $400 billion in fiscal year 2024",
-         "SUPPORTS"),
-    ], ids=["gt-true", "gt-false", "lt-true", "range-inside"])
+    ], ids=["gt-true", "gt-false", "lt-true"])
     def test_operator(self, api_base_url, claim, expected):
         verdict, _ = verify(api_base_url, claim)
         assert verdict == expected
@@ -341,21 +339,6 @@ class TestDelegationDoesNotEscalateOnSilence:
 # ---------------------------------------------------------------------------
 
 class TestKnownDefects:
-
-    @pytest.mark.xfail(strict=True, reason=(
-        "An inverted range is repaired instead of declined. "
-        "RELEASE_A_DECISIONS.md D5 says bounds that read backwards reject the "
-        "claim, and normalize_parser_output does reject them -- but the LLM "
-        "parser orders them first, emitting a valid range with the midpoint as "
-        "its value (350,000M for 'between $400bn and $300bn'). The guard sits "
-        "downstream of where the repair happens, so the system answers a "
-        "question nobody asked and the decision record is wrong."))
-    def test_an_inverted_range_is_declined(self, api_base_url):
-        verdict, _ = verify(
-            api_base_url,
-            "Apple's revenue was between $400 billion and $300 billion "
-            "in fiscal year 2024")
-        assert verdict == "REJECTED"
 
     def test_an_absent_disclosure_is_not_refuted(self, api_base_url):
         """Fixed. This ran as a strict xfail while the claim returned REFUTES

@@ -123,7 +123,7 @@ class TestNormalizeParserOutput:
         data, decisions = normalize_parser_output(raw, "x")
         assert data["metric"] == "revenue"
         assert decisions == {"reject": "none", "metric": "whitelist",
-                             "operator": "none", "range": "none"}
+                             "operator": "none"}
 
     def test_raw_input_is_not_mutated(self):
         raw = {"claim_type": "sec", "metric": "iphone_revenue", "value": 1.0}

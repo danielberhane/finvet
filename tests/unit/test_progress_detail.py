@@ -28,8 +28,6 @@ class _Claim:
     metric = "revenue"
     operator = "eq"
     value = 391_000_000_000.0
-    range_min = None
-    range_max = None
     period = "fiscal year 2024"
     reject_reason = None
 

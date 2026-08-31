@@ -155,10 +155,7 @@ def parsed_claim_rows(parsed):
         # The routing decision, stated rather than left as a blank.
         rows.append(("Metric", "none — routed to filing text"))
 
-    low, high = parsed.get("range_min"), parsed.get("range_max")
-    if low is not None and high is not None:
-        add("Range", f"{format_value(low)} – {format_value(high)}")
-    elif value is not None:
+    if value is not None:
         add("Value", format_value(value))
 
     add("Comparison", humanize(parsed.get("operator"))

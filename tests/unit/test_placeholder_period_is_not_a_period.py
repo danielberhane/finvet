@@ -58,8 +58,6 @@ class _Claim:
     metric = "revenue"
     operator = "eq"
     value = 391_000_000_000.0
-    range_min = None
-    range_max = None
 
     def __init__(self, period):
         self.period = period
