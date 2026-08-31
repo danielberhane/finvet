@@ -42,6 +42,14 @@ memory = [
     "langgraph-checkpoint-postgres>=3.0.4",
     "psycopg[binary]>=3.1.0",
 ]
+# Trajectory scoring only (Layer 2). DeepEval's ToolCorrectnessMetric is a
+# deterministic set comparison -- no judge, no API key -- and it is imported
+# from exactly one place, `eval/measures/trajectory.py`, which falls back to the
+# same comparison inline when it is absent. Nothing in the pipeline imports it.
+#   uv sync --extra evaluation
+evaluation = [
+    "deepeval>=4.0.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",

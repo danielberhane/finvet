@@ -26,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from finvet.eval.measures import (  # noqa: E402
-    artifacts, calibration, grounding, reliability, risk,
+    artifacts, calibration, grounding, reliability, risk, trajectory,
 )
 
 
@@ -57,11 +57,25 @@ def main() -> int:
     cal = calibration.measure(runs)
     gnd = grounding.measure(runs)
     rsk = risk.measure(runs)
+    trj = trajectory.measure(runs)
 
     print(f"\n  LAYER 6  reliability   pass@1 {rel.pass_at_1:.3f}   "
           f"pass^{rel.k} {rel.pass_hat_k:.3f}   n={rel.n}")
     if rel.unstable:
         print(f"           unstable rows: {rel.unstable}")
+
+    print(f"\n  LAYER 2  trajectory    tool correctness "
+          f"{trj.required_met}/{trj.scored} ({trj.correctness:.1%})"
+          f"   [{trj.scorer}]")
+    print(f"           lane violations {len(trj.lane_violations)}   "
+          f"zero-tool {trj.zero_tool_actual}/{trj.zero_tool_expected - trj.not_executed} "
+          f"executed ({trj.not_executed} blocked before execution)")
+    for row_id, why in trj.missing_required[:6]:
+        print(f"           MISSING  id {row_id}: {why}")
+    for row_id, why in trj.lane_violations[:6]:
+        print(f"           OUT OF LANE  id {row_id}: {why}")
+    if trj.zero_tool_breaches:
+        print(f"           SPENT WHEN IT SHOULD NOT: {trj.zero_tool_breaches}")
 
     print(f"\n  LAYER 4  calibration   ECE {cal.ece:.4f} over {cal.n} predictions")
     print(f"           decisive only:  ECE {cal.decisive_ece:.4f} "
@@ -88,6 +102,7 @@ def main() -> int:
             "runs": [r.label or r.started_utc for r in runs],
             "reliability": asdict(rel), "calibration": asdict(cal),
             "grounding": asdict(gnd), "risk": asdict(rsk),
+            "trajectory": asdict(trj),
         }, indent=1, default=str))
         print(f"\n  written to {args.json_path}")
     return 0

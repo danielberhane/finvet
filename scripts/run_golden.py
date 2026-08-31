@@ -112,6 +112,18 @@ def run_one(row: dict) -> dict:
             "retrieved_value": meta.get("retrieved_value"),
             "observation_tool": observation.get("tool"),
             "observation_period_end": observation.get("period_end"),
+            # Every tool the run called. Layer 2 scores the path taken, and an
+            # artifact recording only the answer cannot say whether a correct
+            # answer was reached soundly. Kept here so the artifact stays
+            # self-contained -- otherwise trajectory scoring needs this
+            # machine's audit database. `metadata.tools_called` is already a
+            # flat list of names on both the success and pending paths.
+            "tools_called": list(meta.get("tools_called") or []),
+            # What the parser decided. Trajectory expectations key on the
+            # routing strategy, and the strategy follows claim_type + metric --
+            # not the dataset category. Two `a2a` rows parse as sec claims
+            # about what a filing says, so category is the wrong proxy.
+            "parsed_claim": meta.get("parsed_claim"),
             "data_sources": sorted((meta.get("data_sources") or {}).keys()),
             "a2a_status": ((meta.get("data_sources") or {}).get("a2a")
                            or {}).get("status"),
