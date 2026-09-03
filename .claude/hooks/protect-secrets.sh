@@ -32,11 +32,11 @@ case "$tool" in
       echo "BLOCKED by protect-secrets.sh: this would print an env file raw" >&2
       echo "into the transcript. Keys have leaked this way before. Use" >&2
       echo "grep for the specific NON-secret line you need, or pipe through" >&2
-      echo "a redaction (sed 's/=.*/=<redacted>/')." >&2
+      echo "a redaction: sed 's/=.*/=REDACTED/' <file>." >&2
       exit 2
     fi
     # Writes/deletes aimed at secret files via shell.
-    if echo "$cmd" | grep -qE '(>|>>|\brm\b|\bmv\b|\bcp\b[^|]*\s|sed -i)[^|;&]*\.env' ; then
+    if echo "$cmd" | grep -qE '(>{1,2}[[:space:]]*[^ |;&]*\.env|(\brm\b|\bmv\b|\bcp\b|sed -i)[^|;&]*\.env)' ; then
       echo "BLOCKED by protect-secrets.sh: shell modification of an env file." >&2
       echo "Ask the user to make this change themselves." >&2
       exit 2
