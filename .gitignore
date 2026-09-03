@@ -65,7 +65,7 @@ RAGagentic/
 # Prompts addressed to the author, not to a reader of the repo
 docs/PROMPT_*.md
 
-# Agent instructions: used by tooling on this machine, not published
-CLAUDE.md
+# Agent instructions for other tools; CLAUDE.md is committed deliberately --
+# it orients sessions on the hooks and encodes the project's failure history
 AGENTS.md
 .env.minimax
