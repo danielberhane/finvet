@@ -75,29 +75,21 @@ reading of it can never become the number a verdict rests on. Every passage is t
 `evidence_role="supporting"`, and the trust boundary rejects a retrieval result as a numeric
 observation regardless of shape. XBRL remains the authoritative numeric source for GAAP figures.
 
-One narrow exception, because a penalty is not a financial-statement line item and has no XBRL
-concept: for `fine_amount` and `settlement_amount`, **Python** — not the model — extracts the
-amount from the filing, and only when it can do so unambiguously. The passage must come from
-Legal Proceedings, the figure must sit beside penalty language, and exactly one candidate must
-be present or the extraction declines. What changes is who reads the filing, not whether prose
-is trusted: a model's reading is still never the number.
+One narrow exception, because a penalty has no XBRL concept: for `fine_amount` and
+`settlement_amount`, **Python** — not the model — extracts the amount from Legal Proceedings
+text, and only when exactly one unambiguous candidate sits beside penalty language. What
+changes is who reads the filing, not whether prose is trusted.
 
-Retrieval over filing text is hybrid: Postgres full-text relevance (`ts_rank` over a
-`tsvector` column) plus pgvector cosine similarity, fused with reciprocal rank fusion.
-Embeddings come from `nomic-embed-text` served locally, so no API key sits in the embedding
-path. Both 10-K and 10-Q narrative text are indexed; sections are keyed by form part and item,
-because a 10-Q restarts its numbering in each part and "Item 1" means different things in
-Part I and Part II. Retrieval is scoped to the resolved period, and the dense arm has a relevance floor
-calibrated against a labelled set rather than chosen — below it, the tool returns no evidence
-instead of the nearest available passage.
+Retrieval over filing text is hybrid (full-text relevance + local embeddings, rank-fused),
+scoped to the resolved period, with a relevance floor calibrated against a labelled set —
+below it the tool returns nothing rather than the nearest available passage. Mechanics in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 **What retrieval may and may not decide.** A claim about what a filing *says* —
 "Apple's annual report discusses risks from supplier concentration" — is
 answered from retrieved filing text and returns a verdict with the passages
-cited. A claim naming a **number** is not: filing prose can never become a
-trusted observation, so a figure read out of a filing table cannot settle a
-numeric claim, and such a claim falls back to XBRL or declines. Absence of a
-passage is never treated as refutation.
+cited. A claim naming a **number** is not: it falls back to XBRL or declines.
+Absence of a passage is never treated as refutation.
 
 Deeper dives: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
 [`docs/RAG_AND_AGENTIC_RAG_GUIDE.md`](docs/RAG_AND_AGENTIC_RAG_GUIDE.md).
@@ -190,22 +182,13 @@ not a dependency on any provider.
 
 ## Features
 
-- **Deterministic verdict override** — Python recomputes numeric comparisons; the LLM never
-  has the final say on a number.
 - **Model-directed ReAct agents in a deterministic workflow** — routing, period resolution,
   consensus and guardrails are fixed pipeline stages; within the selected agent the model
   chooses its own tools and iterations.
-- **Hybrid retrieval over filings** — Postgres full-text relevance plus pgvector similarity,
-  fused with RRF, scoped forward from the claimed period, with a calibrated relevance floor. Measured
-  at the tool boundary
-  on 30 positive and 30 negative queries over a 1,398-chunk corpus: zero irrelevant results
-  accepted at full recall. Ten further near-miss queries — on topic but aimed at a period or
-  form the corpus does not hold — return nothing, which the floor alone cannot achieve.
-  Every case and its retrieval evidence is recorded in
+- **Measured retrieval** — 30 positive and 30 negative queries over a 1,398-chunk corpus:
+  zero irrelevant results accepted at full recall, and ten near-miss queries (right topic,
+  wrong period or form) return nothing. Every case recorded in
   [`tests/accuracy/rag_release_a_manifest.json`](tests/accuracy/rag_release_a_manifest.json).
-- **Bounded, in-process News-to-SEC delegation** — one hop, one direction. Not a network
-  agent-to-agent protocol; the SEC agent holds no delegation tool, which is what makes the
-  call terminate by construction.
 - **Layered guardrails** — always-on regex/PII checks, plus an optional Llama Guard semantic
   layer, on both input and output. Safety is the guards' job; verifiability is the parser's.
 - **Human-in-the-loop** — LangGraph `interrupt_before` pauses low-confidence or flagged
@@ -217,9 +200,10 @@ not a dependency on any provider.
   source persisted to Postgres, with a SHA-256 checksum over the stored execution envelope
   that the API re-verifies on read. It detects a record altered without its checksum being
   recomputed; it is not tamper-proof against a writer who can change both.
-- **Bounded agent delegation** — the news agent can ask SEC whether the issuer's own filing
-  discloses a reported fine or settlement, and where the filing states an amount the verdict
-  follows the filing rather than the press. Only a conflict between the two sends the claim to
+- **Bounded agent delegation** — the News agent can ask SEC whether the issuer's own filing
+  discloses a reported fine or settlement; one hop, one direction, in process, and the SEC
+  agent holds no delegation tool, so the call terminates by construction. Where the filing
+  states an amount the verdict follows the filing rather than the press. Only a conflict between the two sends the claim to
   a human; filing silence does not, and silence is only reported when an applicable filing was
   actually searched *and came back empty*. When passages were read but no amount could be
   extracted from them, that is recorded as `FOUND_UNCERTIFIED` rather than as silence.
@@ -230,18 +214,6 @@ not a dependency on any provider.
 ---
 
 ## Evaluation
-
-Measured against SEC primary-source values, not self-reported. *Silently wrong* — a confident
-number that disagrees with the filing — is treated as the failure that matters.
-
-| Metric | Result |
-|---|---|
-| XBRL retrieval accuracy | **198/199 (99.5%)**, zero silently-wrong (the one miss returns NOT_ENOUGH_INFO) |
-| Reject classification (refusing unverifiable claims) | **64.2% recall at 100% precision** — never rejects a verifiable claim |
-
-Retrieval falls back from SEC's period-targeted `companyconcept` read to the `frames`
-endpoint when the first is empty for a company/concept — that fallback took accuracy from
-~91% to 99.5%.
 
 ### Cross-model benchmark
 
@@ -287,6 +259,20 @@ spending API calls again.
 
 ---
 
+### Retrieval and rejection accuracy
+
+Measured against SEC primary-source values, not self-reported. *Silently wrong* — a confident
+number that disagrees with the filing — is treated as the failure that matters.
+
+| Metric | Result |
+|---|---|
+| XBRL retrieval accuracy | **198/199 (99.5%)**, zero silently-wrong (the one miss returns NOT_ENOUGH_INFO) |
+| Reject classification (refusing unverifiable claims) | **64.2% recall at 100% precision** — never rejects a verifiable claim *(measured under the pre-September parser prompt; re-measure before quoting)* |
+
+Retrieval falls back from SEC's period-targeted `companyconcept` read to the `frames`
+endpoint when the first is empty for a company/concept — that fallback took accuracy from
+~91% to 99.5%.
+
 ## Security & operations
 
 Packaged for **local / demo use, not public hosting as-is.**
@@ -312,10 +298,16 @@ Postgres, and an LLM cost budget.
 - **US equities only** · **point-in-time claims** (no time series) · **latency 15–40s/claim**
   (one ReAct agent making real tool calls, plus an optional delegated run).
 - **A numeric verdict requires a structured source.** Values are compared only when they come
-  from an XBRL fact or a market quote field. A number the model read out of
-  prose is not evidence, so claims whose metric has no structured source — fines,
-  settlements, analyst targets and 38 others the parser can emit — return NOT_ENOUGH_INFO
-  rather than a verdict resting on an LLM's reading.
+  from an XBRL fact, a market quote field, or — for fines and settlements only — a
+  deterministic extraction from the filing's Legal Proceedings text (Python, not the model;
+  the amount must sit beside penalty language and be the only candidate, or it declines). A
+  number the model read out of prose is never evidence, so the remaining 45 metrics the
+  parser can accept — analyst price targets among them — are declined up front with a stated
+  limitation rather than answered from an LLM's reading.
+- **Range claims are declined.** "Revenue was between X and Y" parses — the operator is
+  legal — but is not compared: the parser carries only the band's midpoint, and comparing a
+  midpoint refutes true claims whose band exceeds the tolerance. Such claims return
+  NOT_ENOUGH_INFO and typically route to review.
 - **Q4 numeric derivation is unsupported.** Q4 is not filed separately, and deriving it needs
   a 12-month fact minus a nine-month one; retrieval is scoped to a single resolved period per
   request, so that pair cannot be requested. Such claims are declined explicitly rather than
