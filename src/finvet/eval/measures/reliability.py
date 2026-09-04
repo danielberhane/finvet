@@ -7,7 +7,7 @@ that a 90% pass@1 agent is typically only ~57% consistent by k=8.
 
 Measured on FinVet's four runs, the drop is 1.2 points:
 
-    pass@1 = 0.940      pass^4 = 0.928      n = 83
+    pass@1 = 0.987      pass^4 = 0.975      n = 79
 
 Only rows present in every run are counted, and row 88 is excluded because a
 code change moved it mid-series -- a difference with a known cause is not
