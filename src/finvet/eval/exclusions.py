@@ -23,6 +23,11 @@ BURNED_ROWS: dict[str, dict[int, str]] = {
         12: "claim text appeared in a committed test fixture (2026-08-20); "
             "retrieval-gold use unaffected — deterministic",
     },
+    "golden_c.jsonl": {
+        1: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+        68: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+        88: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+    },
 }
 
 

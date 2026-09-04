@@ -252,10 +252,12 @@ market data reads 96.8% vs 93.5%, but that gap is a market-data outage during th
 not model quality. Separating a real difference from run-to-run noise would take roughly three
 runs each — the measured noise floor over four earlier runs was pass^4 = 0.975.
 
-Run artifacts, the computed layer summaries, and the full write-up are committed alongside
-the dataset. Reproduce with `scripts/run_golden.py` then `scripts/eval_layers.py` — the
-harness records and asserts nothing, so the layers can be recomputed from a saved run without
-spending API calls again.
+The evidence is in [`docs/eval/`](docs/eval/): redacted run artifacts (claim text withheld —
+the 97-claim dataset is held out privately, and the
+[dataset card](docs/eval/DATASET_CARD.md) records its composition, SHA-256, labelling rules,
+and three fully published sample rows), the computed layer summaries, and the full write-up.
+Every cell in the tables above recomputes from those files without an API call; the dataset
+itself is available privately to reviewers against the published hash.
 
 ---
 
