@@ -13,7 +13,7 @@ Give it a claim — *"Tesla's 2024 annual revenue was $150 billion"* — and it 
 audit trail of every step that produced the answer.
 
 <p align="center">
-  <img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim, with retrieved value, tolerance, and tool calls" width="800">
+  <img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim, with retrieved value, tolerance, and tool calls" width="1000">
 </p>
 
 > **Not financial advice.** A research and demonstration system; outputs may be wrong and must
