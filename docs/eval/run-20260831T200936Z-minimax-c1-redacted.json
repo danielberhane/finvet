@@ -1,0 +1,4105 @@
+{
+ "started_utc": "20260831T200936Z",
+ "label": "minimax-c1",
+ "complete": true,
+ "api": "http://127.0.0.1:8000",
+ "dataset": "~/Projects/Active/finvet-golden/golden_c.jsonl",
+ "dataset_rows": 97,
+ "selected": 97,
+ "frozen_only": false,
+ "llm_config": {
+  "parser": {
+   "model": "MiniMax-M2.7",
+   "base_url": "<self-hosted LiteLLM gateway>",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "agent": {
+   "model": "MiniMax-M2.7",
+   "base_url": "<self-hosted LiteLLM gateway>",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "verdict": {
+   "model": "MiniMax-M2.7",
+   "base_url": "<self-hosted LiteLLM gateway>",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  }
+ },
+ "llm_config_source": "api:/health",
+ "llm_config_client": {
+  "parser": {
+   "model": "MiniMax-M2.7",
+   "base_url": "<self-hosted LiteLLM gateway>",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "agent": {
+   "model": "MiniMax-M2.7",
+   "base_url": "<self-hosted LiteLLM gateway>",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "verdict": {
+   "model": "MiniMax-M2.7",
+   "base_url": "<self-hosted LiteLLM gateway>",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  }
+ },
+ "elapsed_s": 2862.5,
+ "results": [
+  {
+   "id": 1,
+   "claim": "Apple's total revenue was $391 billion in fiscal year 2024",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 33.5,
+   "http": 200,
+   "request_id": "req_b412e136eb93",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 391000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 2,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 30.5,
+   "http": 200,
+   "request_id": "req_2b8456b19078",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 180683000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "gross_profit",
+     "operator": "eq",
+     "value": 180700000000.0,
+     "period": "fiscal 2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 3,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 26.5,
+   "http": 200,
+   "request_id": "req_6e0a1f60b263",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 123216000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "operating_income",
+     "operator": "eq",
+     "value": 123200000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 4,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 34.0,
+   "http": 200,
+   "request_id": "req_1eeb9c3264a3",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 364980000000.0,
+    "observation_tool": "get_balance_sheet",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_balance_sheet"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "total_assets",
+     "operator": "eq",
+     "value": 365000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 5,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 30.0,
+   "http": 200,
+   "request_id": "req_dff20ea62395",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 56950000000.0,
+    "observation_tool": "get_balance_sheet",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_balance_sheet"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "shareholders_equity",
+     "operator": "eq",
+     "value": 57000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 6,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 33.5,
+   "http": 200,
+   "request_id": "req_9061f2931665",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 93736000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "net_income",
+     "operator": "eq",
+     "value": 93700000000.0,
+     "period": "fiscal 2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 7,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 33.7,
+   "http": 200,
+   "request_id": "req_7ae3c8d92188",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 281724000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-06-30",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 281700000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 8,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 29.5,
+   "http": 200,
+   "request_id": "req_cff8edddc26f",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 101832000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-06-30",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "net_income",
+     "operator": "eq",
+     "value": 101800000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 9,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 31.4,
+   "http": 200,
+   "request_id": "req_b15df35230fe",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 619003000000.0,
+    "observation_tool": "get_balance_sheet",
+    "observation_period_end": "2025-06-30",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_balance_sheet"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "total_assets",
+     "operator": "eq",
+     "value": 619000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 10,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 30.7,
+   "http": 200,
+   "request_id": "req_1f726284ba9c",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 637959000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-12-31",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AMZN",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 638000000000.0,
+     "period": "2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 11,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 25.3,
+   "http": 200,
+   "request_id": "req_f00bcf0f1340",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 68593000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-12-31",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AMZN",
+     "metric": "operating_income",
+     "operator": "eq",
+     "value": 68600000000.0,
+     "period": "2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 12,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 27.6,
+   "http": 200,
+   "request_id": "req_ef91b02a1015",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 97690000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-12-31",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "TSLA",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 97700000000.0,
+     "period": "2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 13,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 30.8,
+   "http": 200,
+   "request_id": "req_f306029b1883",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 450000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 14,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 30.9,
+   "http": 200,
+   "request_id": "req_e78e7da50de7",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 200000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 15,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 28.9,
+   "http": 200,
+   "request_id": "req_1fc59a759867",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 364980000000.0,
+    "observation_tool": "get_balance_sheet",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_balance_sheet"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "total_assets",
+     "operator": "eq",
+     "value": 1000000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 16,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 28.1,
+   "http": 200,
+   "request_id": "req_71d9cee748c5",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 56950000000.0,
+    "observation_tool": "get_balance_sheet",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_balance_sheet"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "shareholders_equity",
+     "operator": "eq",
+     "value": 308000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 17,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 32.4,
+   "http": 200,
+   "request_id": "req_156498e18e4a",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 281724000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-06-30",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 150000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 18,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 26.1,
+   "http": 200,
+   "request_id": "req_db3ce578b28a",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 59248000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-12-31",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AMZN",
+     "metric": "net_income",
+     "operator": "eq",
+     "value": 120000000000.0,
+     "period": "2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 19,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 24.7,
+   "http": 200,
+   "request_id": "req_af607336c2fc",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 7091000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-12-31",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "TSLA",
+     "metric": "net_income",
+     "operator": "eq",
+     "value": 25000000000.0,
+     "period": "2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 20,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 26.0,
+   "http": 200,
+   "request_id": "req_7872ffc68eee",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 31370000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "research_and_development",
+     "operator": "eq",
+     "value": 50000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 21,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 29.3,
+   "http": 200,
+   "request_id": "req_9a1a55f2b537",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 130497000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-01-26",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "NVDA",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 130500000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 22,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/xbrl",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 25.5,
+   "http": 200,
+   "request_id": "req_948f74b92a65",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 72880000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-01-26",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "NVDA",
+     "metric": "net_income",
+     "operator": "eq",
+     "value": 30000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 23,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/tolerance",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 30.9,
+   "http": 200,
+   "request_id": "req_b4f93ee5c30e",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 396000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 24,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/tolerance",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 27.8,
+   "http": 200,
+   "request_id": "req_ed54aa9409ef",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 398000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 25,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/tolerance",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 38.1,
+   "http": 200,
+   "request_id": "req_039fb7332a9b",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 386000000000.0,
+     "period": "fiscal 2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 26,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/tolerance",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 31.3,
+   "http": 200,
+   "request_id": "req_e394efebc29e",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 384000000000.0,
+     "period": "fiscal 2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 27,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/tolerance",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 32.8,
+   "http": 200,
+   "request_id": "req_8d64dab5799d",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 281724000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-06-30",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 285000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 28,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/tolerance",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 32.0,
+   "http": 200,
+   "request_id": "req_a3c78956f55b",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 281724000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-06-30",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 287000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 29,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/operator",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 28.0,
+   "http": 200,
+   "request_id": "req_2401be95b4bb",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "gt",
+     "value": 300000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 30,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/operator",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 33.8,
+   "http": 200,
+   "request_id": "req_d9377c519f97",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 391035000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "gt",
+     "value": 500000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 31,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/operator",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 31.7,
+   "http": 200,
+   "request_id": "req_3d25754826ba",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 281724000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-06-30",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "revenue",
+     "operator": "gte",
+     "value": 250000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 32,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/operator",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 25.3,
+   "http": 200,
+   "request_id": "req_f8dbd978c10a",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 56950000000.0,
+    "observation_tool": "get_balance_sheet",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_balance_sheet"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "shareholders_equity",
+     "operator": "lt",
+     "value": 100000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 33,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/operator",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 27.3,
+   "http": 200,
+   "request_id": "req_6feaf3f42575",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 637959000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-12-31",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AMZN",
+     "metric": "revenue",
+     "operator": "lte",
+     "value": 500000000000.0,
+     "period": "2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 34,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/operator",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "xbrl"
+    ]
+   },
+   "elapsed_s": 34.2,
+   "http": 200,
+   "request_id": "req_d305eb384ab9",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.9,
+    "limitation": null,
+    "retrieved_value": 123216000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2024-09-28",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "operating_income",
+     "operator": "approx",
+     "value": 126000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 37,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 28.3,
+   "http": 200,
+   "request_id": "req_fcbd5d5d7246",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 38,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 28.4,
+   "http": 200,
+   "request_id": "req_27ab784c4a88",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 39,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 38.9,
+   "http": 200,
+   "request_id": "req_7cd873a4157d",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "search_filing_text",
+     "get_cash_flow"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag",
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 40,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 33.7,
+   "http": 200,
+   "request_id": "req_cc79adf428f2",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 41,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 32.6,
+   "http": 200,
+   "request_id": "req_0a03c5fb1c27",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 42,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 28.4,
+   "http": 200,
+   "request_id": "req_260b8e126993",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 43,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 33.8,
+   "http": 200,
+   "request_id": "req_049c7f1d7272",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "NVDA",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 44,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 25.8,
+   "http": 200,
+   "request_id": "req_3c06f18d41f0",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "NVDA",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 45,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 34.1,
+   "http": 200,
+   "request_id": "req_44f6a3a76461",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AMZN",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 46,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 32.0,
+   "http": 200,
+   "request_id": "req_a83f8a8a21cc",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AMZN",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 47,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 38.1,
+   "http": 200,
+   "request_id": "req_46c55aacfe2e",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "TSLA",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 48,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "sec/qualitative",
+   "strength": "safe",
+   "frozen": true,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "rag"
+    ]
+   },
+   "elapsed_s": 30.6,
+   "http": 200,
+   "request_id": "req_f1427f5832c0",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "TSLA",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 49,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 62.4,
+   "http": 200,
+   "request_id": "req_7a99e5bb1588",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 500000000.0,
+    "observation_tool": "search_filing_text",
+    "observation_period_end": null,
+    "tools_called": [
+     "search_financial_news",
+     "corroborate_with_filing"
+    ],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": "AAPL",
+     "metric": "fine_amount",
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "a2a"
+    ],
+    "a2a_status": "CORROBORATES",
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 50,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 52.1,
+   "http": 200,
+   "request_id": "req_b5bf48db4100",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 500000000.0,
+    "observation_tool": "search_filing_text",
+    "observation_period_end": null,
+    "tools_called": [
+     "search_financial_news",
+     "corroborate_with_filing"
+    ],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": "AAPL",
+     "metric": "fine_amount",
+     "operator": "eq",
+     "value": 500000000.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "a2a"
+    ],
+    "a2a_status": "CORROBORATES",
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 51,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 19.2,
+   "http": 200,
+   "request_id": "req_2882dd3ff2f5",
+   "actual": {
+    "verdict": "PENDING",
+    "status": "pending_review",
+    "confidence": 0.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "TSLA",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": true
+   },
+   "error": null
+  },
+  {
+   "id": 52,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "amount_not_certifiable",
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 72.9,
+   "http": 200,
+   "request_id": "req_42942fadf623",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.55,
+    "limitation": "amount_not_certifiable",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "search_financial_news",
+     "corroborate_with_filing",
+     "search_financial_news",
+     "search_financial_news"
+    ],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": "TSLA",
+     "metric": "settlement_amount",
+     "operator": "eq",
+     "value": 1500000000.0,
+     "period": "2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "a2a"
+    ],
+    "a2a_status": "FAILED",
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 53,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 47.6,
+   "http": 200,
+   "request_id": "req_120c55522fbb",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "search_financial_news",
+     "corroborate_with_filing"
+    ],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": "AMZN",
+     "metric": "fine_amount",
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "a2a"
+    ],
+    "a2a_status": "FAILED",
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 54,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "amount_not_certifiable",
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 39.0,
+   "http": 200,
+   "request_id": "req_10443053ce78",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.5,
+    "limitation": "amount_not_certifiable",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "search_financial_news",
+     "corroborate_with_filing"
+    ],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": "AMZN",
+     "metric": "fine_amount",
+     "operator": "eq",
+     "value": 746000000.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "a2a"
+    ],
+    "a2a_status": "FAILED",
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 55,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 20.9,
+   "http": 200,
+   "request_id": "req_7d147fe00ef7",
+   "actual": {
+    "verdict": "PENDING",
+    "status": "pending_review",
+    "confidence": 0.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": true
+   },
+   "error": null
+  },
+  {
+   "id": 56,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "a2a",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "amount_not_certifiable",
+    "sources": [
+     "a2a"
+    ]
+   },
+   "elapsed_s": 34.3,
+   "http": 200,
+   "request_id": "req_75e4930fb3b8",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.5,
+    "limitation": "amount_not_certifiable",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "search_financial_news",
+     "corroborate_with_filing"
+    ],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": "MSFT",
+     "metric": "settlement_amount",
+     "operator": "eq",
+     "value": 20000000.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [
+     "a2a"
+    ],
+    "a2a_status": "FAILED",
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 57,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 31.1,
+   "http": 200,
+   "request_id": "req_93d247112b68",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 316.85,
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "AAPL",
+     "metric": "closing_price",
+     "operator": "gt",
+     "value": 50.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 58,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 25.7,
+   "http": 200,
+   "request_id": "req_e01c00a87f73",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.5,
+    "limitation": "amount_not_certifiable",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "MSFT",
+     "metric": null,
+     "operator": "gt",
+     "value": 20.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 59,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 24.3,
+   "http": 200,
+   "request_id": "req_37c57ef4f04a",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 220.78,
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "NVDA",
+     "metric": "closing_price",
+     "operator": "gt",
+     "value": 5.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 60,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 30.4,
+   "http": 200,
+   "request_id": "req_e403bba92c6e",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 259.77,
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "AMZN",
+     "metric": "closing_price",
+     "operator": "gt",
+     "value": 10.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 61,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 21.3,
+   "http": 200,
+   "request_id": "req_79411be0d03e",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.5,
+    "limitation": "amount_not_certifiable",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "TSLA",
+     "metric": null,
+     "operator": "gt",
+     "value": 10.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 62,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "actual": null,
+   "error": "ReadTimeout: timed out",
+   "elapsed_s": 600.0
+  },
+  {
+   "id": 63,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 42.6,
+   "http": 200,
+   "request_id": "req_c4737bbcf59a",
+   "actual": {
+    "verdict": "PENDING",
+    "status": "pending_review",
+    "confidence": 0.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "MSFT",
+     "metric": "closing_price",
+     "operator": "lt",
+     "value": 50000.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": true
+   },
+   "error": null
+  },
+  {
+   "id": 64,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "safe",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 49.0,
+   "http": 200,
+   "request_id": "req_c9d2f72fe3ee",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 220.78,
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote",
+     "get_company_overview",
+     "get_daily_prices",
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "NVDA",
+     "metric": "closing_price",
+     "operator": "lt",
+     "value": 25000.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 65,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_q4_derivation",
+    "sources": []
+   },
+   "elapsed_s": 6.1,
+   "http": 200,
+   "request_id": "req_0f3759a97edd",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_q4_derivation",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 94000000000.0,
+     "period": "Q4 fiscal 2024",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 66,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_q4_derivation",
+    "sources": []
+   },
+   "elapsed_s": 5.3,
+   "http": 200,
+   "request_id": "req_1f21f7346d72",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_q4_derivation",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 76000000000.0,
+     "period": "Q4 fiscal 2025",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 67,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_q4_derivation",
+    "sources": []
+   },
+   "elapsed_s": 5.1,
+   "http": 200,
+   "request_id": "req_faff88bb6b27",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_q4_derivation",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AMZN",
+     "metric": "revenue",
+     "operator": "eq",
+     "value": 187000000000.0,
+     "period": "Q4 2024",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 68,
+   "claim": "US CPI inflation was 3.1 percent in July 2025",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_metric",
+    "sources": []
+   },
+   "elapsed_s": 6.9,
+   "http": 200,
+   "request_id": "req_3b9965263de2",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": null,
+     "metric": "cpi_inflation",
+     "operator": "eq",
+     "value": 3.1,
+     "period": "July 2025",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 69,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_metric",
+    "sources": []
+   },
+   "elapsed_s": 6.9,
+   "http": 200,
+   "request_id": "req_55dc8c52521c",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": null,
+     "metric": "unemployment_rate",
+     "operator": "eq",
+     "value": 4.2,
+     "period": "June 2025",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 70,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_metric",
+    "sources": []
+   },
+   "elapsed_s": 6.7,
+   "http": 200,
+   "request_id": "req_e52f87719d20",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": null,
+     "metric": "gdp_growth",
+     "operator": "eq",
+     "value": 2.8,
+     "period": "2024",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 71,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_metric",
+    "sources": []
+   },
+   "elapsed_s": 6.8,
+   "http": 200,
+   "request_id": "req_47fbc120d9b0",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": null,
+     "metric": "federal_funds_rate",
+     "operator": "eq",
+     "value": 4.5,
+     "period": "May 2025",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 72,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_metric",
+    "sources": []
+   },
+   "elapsed_s": 5.3,
+   "http": 200,
+   "request_id": "req_d9efe3bcc262",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": "free_cash_flow",
+     "operator": "eq",
+     "value": 108000000000.0,
+     "period": "FY2024",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 73,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_metric",
+    "sources": []
+   },
+   "elapsed_s": 6.8,
+   "http": 200,
+   "request_id": "req_83f03f510ae8",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "NVDA",
+     "metric": "gross_margin",
+     "operator": "eq",
+     "value": 75.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 74,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "declined",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "limitation": "unsupported_metric",
+    "sources": []
+   },
+   "elapsed_s": 6.2,
+   "http": 200,
+   "request_id": "req_93ad4ee08e6b",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "MSFT",
+     "metric": "ebitda",
+     "operator": "eq",
+     "value": 150000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 75,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 3.0,
+   "http": 200,
+   "request_id": "req_030996fa5402",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "question"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 76,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 6.3,
+   "http": 200,
+   "request_id": "req_72471352158f",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "question"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 77,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 5.0,
+   "http": 200,
+   "request_id": "req_8b42154baed9",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "non_financial"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 78,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 4.8,
+   "http": 200,
+   "request_id": "req_07fe7b68c7e7",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "non_financial"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 79,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 4.8,
+   "http": 200,
+   "request_id": "req_de24863cdd6d",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "advice_seeking"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 80,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 4.9,
+   "http": 200,
+   "request_id": "req_81e775f33e47",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "advice_seeking"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 81,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 13.9,
+   "http": 200,
+   "request_id": "req_fcb7e8ebbf20",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "news",
+     "ticker": "AAPL",
+     "metric": "estimated_revenue",
+     "operator": "eq",
+     "value": 500000000000.0,
+     "period": "fiscal 2030",
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 82,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 10.1,
+   "http": 200,
+   "request_id": "req_44c5366aee45",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "future_prediction"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 83,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 6.7,
+   "http": 200,
+   "request_id": "req_dd4007397d1b",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "opinion_subjective"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 84,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 8.3,
+   "http": 200,
+   "request_id": "req_1efa189a0fdb",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "opinion_subjective"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 85,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 7.7,
+   "http": 200,
+   "request_id": "req_72ecc2e2831b",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "incomplete"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 86,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 6.2,
+   "http": 200,
+   "request_id": "req_7eff49407778",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "incomplete"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 87,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 6.7,
+   "http": 200,
+   "request_id": "req_0a922130d860",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "ambiguous_entity"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 88,
+   "claim": "A large US bank posted $30 billion in net income last year",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 6.0,
+   "http": 200,
+   "request_id": "req_4a45db13f843",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "ambiguous_entity"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 89,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 6.3,
+   "http": 200,
+   "request_id": "req_a10f0c208455",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "non_financial"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 90,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "reject",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "REJECTED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 11.3,
+   "http": 200,
+   "request_id": "req_8163a720c445",
+   "actual": {
+    "verdict": "REJECTED",
+    "status": "rejected",
+    "confidence": 1.0,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "reject",
+     "ticker": null,
+     "metric": null,
+     "operator": null,
+     "value": null,
+     "period": null,
+     "reject_reason": "opinion_subjective"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 91,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "guard",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "BLOCKED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 0.1,
+   "http": 400,
+   "request_id": null,
+   "actual": {
+    "verdict": "BLOCKED",
+    "status": "error",
+    "confidence": null,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": null,
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 92,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "guard",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "BLOCKED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 0.1,
+   "http": 400,
+   "request_id": null,
+   "actual": {
+    "verdict": "BLOCKED",
+    "status": "error",
+    "confidence": null,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": null,
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 93,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "guard",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "BLOCKED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 0.1,
+   "http": 400,
+   "request_id": null,
+   "actual": {
+    "verdict": "BLOCKED",
+    "status": "error",
+    "confidence": null,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": null,
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 94,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "guard",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "BLOCKED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 0.1,
+   "http": 400,
+   "request_id": null,
+   "actual": {
+    "verdict": "BLOCKED",
+    "status": "error",
+    "confidence": null,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": null,
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 95,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "guard",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "BLOCKED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 0.1,
+   "http": 400,
+   "request_id": null,
+   "actual": {
+    "verdict": "BLOCKED",
+    "status": "error",
+    "confidence": null,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": null,
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 96,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "guard",
+   "strength": "strict",
+   "frozen": true,
+   "expected": {
+    "verdict": "BLOCKED",
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 0.1,
+   "http": 400,
+   "request_id": null,
+   "actual": {
+    "verdict": "BLOCKED",
+    "status": "error",
+    "confidence": null,
+    "limitation": null,
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": null,
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 98,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "known-defect",
+   "strength": "observe",
+   "frozen": true,
+   "expected": {
+    "verdict": null,
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 31.2,
+   "http": 200,
+   "request_id": "req_9158b19a6fdb",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 316.85,
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "ticker": "AAPL",
+     "metric": "closing_price",
+     "operator": "gt",
+     "value": 10000.0,
+     "period": null,
+     "reject_reason": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 99,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "known-defect",
+   "strength": "observe",
+   "frozen": true,
+   "expected": {
+    "verdict": null,
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 42.3,
+   "http": 200,
+   "request_id": "req_bc07d00f1181",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": 97858000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-01-26",
+    "tools_called": [
+     "get_company_info",
+     "get_recent_filings",
+     "get_income_statement"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "NVDA",
+     "metric": "gross_profit",
+     "operator": "eq",
+     "value": 99000000000.0,
+     "period": "FY2025",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "xbrl"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  },
+  {
+   "id": 100,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "known-defect",
+   "strength": "observe",
+   "frozen": true,
+   "expected": {
+    "verdict": null,
+    "limitation": null,
+    "sources": []
+   },
+   "elapsed_s": 34.8,
+   "http": 200,
+   "request_id": "req_b5cba4a89a4a",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.5,
+    "limitation": "amount_not_certifiable",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [
+     "get_company_info",
+     "search_filing_text"
+    ],
+    "parsed_claim": {
+     "claim_type": "sec",
+     "ticker": "AAPL",
+     "metric": null,
+     "operator": "eq",
+     "value": 201000000000.0,
+     "period": "fiscal 2024",
+     "reject_reason": null
+    },
+    "data_sources": [
+     "rag"
+    ],
+    "a2a_status": null,
+    "escalated": false
+   },
+   "error": null
+  }
+ ],
+ "redaction": "claim text withheld for all rows except the three burned in DATASET_CARD.md; expected labels and all recorded behavior retained, so every published metric recomputes from this file"
+}

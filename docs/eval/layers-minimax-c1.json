@@ -1,0 +1,114 @@
+{
+ "runs": [
+  "minimax-c1"
+ ],
+ "reliability": {
+  "n": 93,
+  "k": 1,
+  "pass_at_1": 0.9247311827956989,
+  "pass_hat_k": 0.9247311827956989,
+  "unstable": [],
+  "per_run": {
+   "minimax-c1": 0.9247311827956989
+  }
+ },
+ "calibration": {
+  "n": 87,
+  "ece": 0.13045977011494217,
+  "decisive_ece": 0.04558823529411715,
+  "decisive_n": 68,
+  "bins": [
+   {
+    "lower": 0.0,
+    "n": 3,
+    "accuracy": 0.0,
+    "mean_confidence": 0.0
+   },
+   {
+    "lower": 0.2,
+    "n": 11,
+    "accuracy": 0.9090909090909091,
+    "mean_confidence": 0.19999999999999998
+   },
+   {
+    "lower": 0.5,
+    "n": 5,
+    "accuracy": 0.6,
+    "mean_confidence": 0.51
+   },
+   {
+    "lower": 0.9,
+    "n": 68,
+    "accuracy": 1.0,
+    "mean_confidence": 0.9544117647058828
+   }
+  ]
+ },
+ "grounding": {
+  "decisive_numeric": 42,
+  "traceable": 42,
+  "untraceable": []
+ },
+ "risk": {
+  "scored": 94,
+  "correct": 87,
+  "declined": 7,
+  "dangerous": []
+ },
+ "trajectory": {
+  "scored": 58,
+  "required_met": 55,
+  "lane_violations": [],
+  "missing_required": [
+   [
+    51,
+    "minimax-c1: filing_rag needs one of ['search_filing_text'], called []"
+   ],
+   [
+    55,
+    "minimax-c1: filing_rag needs one of ['search_filing_text'], called []"
+   ],
+   [
+    63,
+    "minimax-c1: market needs one of ['get_stock_quote'], called []"
+   ]
+  ],
+  "zero_tool_expected": 32,
+  "zero_tool_actual": 26,
+  "zero_tool_breaches": [],
+  "not_executed": 6,
+  "scorer": "deepeval"
+ },
+ "routing": {
+  "scored": 93,
+  "matched": 90,
+  "mismatches": {
+   "39": [
+    [
+     "rag"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "51": [
+    [
+     "a2a"
+    ],
+    []
+   ],
+   "55": [
+    [
+     "a2a"
+    ],
+    []
+   ]
+  },
+  "skipped_unlabelled": [
+   98,
+   99,
+   100
+  ]
+ }
+}
