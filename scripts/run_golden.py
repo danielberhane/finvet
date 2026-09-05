@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import httpx  # noqa: E402
 
+from finvet.eval import exclusions  # noqa: E402
 from finvet.eval.dataset import golden_data_file  # noqa: E402
 from finvet.llm.factory import active_llm_config  # noqa: E402
 
@@ -175,10 +176,16 @@ def main() -> int:
         return 2
 
     rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    # A burned row's claim text is public (DATASET_CARD.md publishes it), so it
+    # never counts in a scored run again -- and running it is spend that buys
+    # nothing. The card promises this exclusion; enforce it where rows are chosen.
+    burned = exclusions.burned_ids(path.name)
     selected = [r for r in rows if args.start <= r.get("id", 0) <= args.end
-                and (not args.frozen_only or is_frozen(r))]
+                and (not args.frozen_only or is_frozen(r))
+                and r.get("id") not in burned]
 
-    print(f"  dataset : {path}  ({len(rows)} rows, {len(selected)} selected)")
+    print(f"  dataset : {path}  ({len(rows)} rows, {len(selected)} selected, "
+          f"{len(burned)} burned ids skipped)")
     print(f"  api     : {API}")
 
     # What the *serving process* will use. Reading our own environment answers
