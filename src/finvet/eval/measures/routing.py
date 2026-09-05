@@ -13,8 +13,8 @@ should have fired, and id 55 recorded no source at all. Both returned the
 expected verdict in every run.
 
 Reported, not asserted. It is a measurement of routing, and a row failing it has
-not necessarily answered incorrectly -- see `docs/AGENTIC_EVAL_GUIDE.md` on
-separating what was concluded from how.
+not necessarily answered incorrectly -- what was concluded and how it was
+reached are separate questions, measured separately.
 
 **Observe rows are skipped.** A row with no expected verdict carries
 `sources: []` meaning "not labelled", not "no source may be used": the

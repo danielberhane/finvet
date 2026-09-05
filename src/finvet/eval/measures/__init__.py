@@ -1,7 +1,7 @@
 """Measurement layers for an agentic system, one module per layer.
 
-The layers are defined in `docs/AGENTIC_EVAL_GUIDE.md` §1.2. Each module here
-implements exactly one of them, exposes a single `measure(runs)` function, and
+Each module here
+implements exactly one layer, exposes a single `measure(runs)` function, and
 imports nothing from its siblings -- only `artifacts`, which loads a recorded
 run and decides what "correct" means.
 
