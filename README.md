@@ -79,8 +79,8 @@ outage during the MiniMax run, not the model.
 withheld; every table cell recomputes from them), the layer summaries, the benchmark
 write-up, and the [dataset card](docs/eval/DATASET_CARD.md) — composition, SHA-256,
 labelling rules, disclosed biases, and three fully published sample rows. The dataset itself
-is held out privately ([why](docs/EVAL_DATA_POLICY.md)) and is available to reviewers
-against the published hash.
+is held out privately — a published test set enters training corpora and stops measuring
+anything — and is available to reviewers against the published hash.
 
 ### Retrieval accuracy
 

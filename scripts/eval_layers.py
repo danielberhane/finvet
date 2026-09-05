@@ -5,7 +5,8 @@ Reads artifacts written by `scripts/run_golden.py`. Calls no API, spends
 nothing, and can be re-run against the same artifacts indefinitely -- the runs
 were paid for once.
 
-The seven layers are defined in `docs/AGENTIC_EVAL_GUIDE.md` §1.2. Five are
+The seven layers: outcome, trajectory, grounding, calibration, asymmetric risk,
+reliability, reachability. Five are
 statistics over runs and are computed here. Layer 1 (outcome) is asserted by
 `tests/integration/test_golden.py`, and Layer 7 (reachability) asks whether a
 behaviour can occur at all, which no statistic answers.

@@ -10,8 +10,7 @@ financial claims carries three labels: the verdict the system should reach,
 the evidence path it should take, and the parse its claim parser should emit.
 
 The claims and labels are **not published** — a released test enters training
-corpora and stops measuring anything
-([`EVAL_DATA_POLICY.md`](../EVAL_DATA_POLICY.md)). This card is the public
+corpora and stops measuring anything. This card is the public
 record: what the set contains, how it was built and sealed, and how its
 results can be checked without seeing it. Three rows are published in full
 below and permanently retired from scoring.
