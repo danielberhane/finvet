@@ -105,7 +105,7 @@ per claim, so consensus passes its verdict through and adjusts confidence rather
 reconciling several opinions.
 
 <p align="center">
-  <a href="docs/diagrams/finvet-linkedin.png"><img src="docs/diagrams/finvet-linkedin.png" alt="Architecture"></a>
+  <a href="docs/diagrams/finvet-linkedin.png"><img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="800"></a>
   <br><sub>Click the diagram for full resolution.</sub>
 </p>
 
