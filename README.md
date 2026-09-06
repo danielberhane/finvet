@@ -105,7 +105,8 @@ per claim, so consensus passes its verdict through and adjusts confidence rather
 reconciling several opinions.
 
 <p align="center">
-  <img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="800">
+  <a href="docs/diagrams/finvet-linkedin.png"><img src="docs/diagrams/finvet-linkedin.png" alt="Architecture"></a>
+  <br><sub>Click the diagram for full resolution.</sub>
 </p>
 
 | Agent | Handles | Sources | Can delegate to |
