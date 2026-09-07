@@ -50,3 +50,16 @@ class TestTimeoutIsApplied:
         with patch("finvet.mcp.mcp_client.httpx.Client") as fake:
             MCPClient("http://localhost:9870", timeout=42)
         assert fake.call_args.kwargs["timeout"].connect == 42
+
+    def test_default_timeout_reaches_httpx(self):
+        """Every production caller is `MCPClient(base_url)` with no timeout.
+
+        The constructor once handed its raw argument -- None -- to httpx, which
+        httpx reads as "wait forever": sec_mcp_timeout_s was dead code, the
+        TimeoutException handler could never fire, and a stalled server hung a
+        request for hours. The explicit-timeout test above passed throughout,
+        because it never exercised the default path.
+        """
+        with patch("finvet.mcp.mcp_client.httpx.Client") as fake:
+            MCPClient("http://localhost:9870")
+        assert fake.call_args.kwargs["timeout"].connect == settings.sec_mcp_timeout_s
