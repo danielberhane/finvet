@@ -15,6 +15,10 @@ __pycache__
 !.env.example
 data/
 plans/
+.claude/
+.agents/
+.codex/
+notes/
 
 # Dev-only / large artifacts not needed at runtime
 tests/
