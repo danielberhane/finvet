@@ -76,4 +76,5 @@ def create_llm(purpose: Literal["parser", "agent", "verdict"]) -> BaseChatModel:
         base_url=config.base_url,
         api_key=api_key,
         temperature=config.temperature,
+        timeout=config.timeout_s,
     )

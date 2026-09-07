@@ -13,6 +13,10 @@ class LLMConfig(BaseModel):
     api_key_env: str = "DEEPSEEK_API_KEY"
     temperature: float = 0.0
     structured_output_method: str = "json_mode"
+    # Request bound. Without one, ChatOpenAI forwards None to the OpenAI SDK,
+    # which disables the SDK's own 600 s default, and a stalled provider hangs
+    # the request indefinitely.
+    timeout_s: float = 120.0
 
 
 class Settings(BaseSettings):

@@ -41,3 +41,14 @@ class TestLLMFactory:
 
     def test_structured_output_method_default(self):
         assert settings.llm_verdict.structured_output_method == "json_mode"
+
+    def test_default_timeout_is_bounded(self):
+        """ChatOpenAI built without a timeout forwards None to the OpenAI SDK,
+        which disables the SDK's own 600 s default -- a stalled provider then
+        hangs the request indefinitely. The role config carries the bound."""
+        assert settings.llm_agent.timeout_s == 120.0
+
+    @pytest.mark.parametrize("purpose", ["parser", "agent", "verdict"])
+    def test_request_timeout_is_applied(self, purpose):
+        llm = create_llm(purpose)
+        assert llm.request_timeout == getattr(settings, f"llm_{purpose}").timeout_s
