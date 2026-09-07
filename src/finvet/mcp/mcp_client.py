@@ -29,7 +29,7 @@ class MCPClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = settings.sec_mcp_timeout_s if timeout is None else timeout
         self.session_id: Optional[str] = None
-        self._client = httpx.Client(timeout=httpx.Timeout(timeout))
+        self._client = httpx.Client(timeout=httpx.Timeout(self.timeout))
 
     def initialize(self) -> None:
         """Send JSON-RPC 'initialize' + 'notifications/initialized' to start a session."""
