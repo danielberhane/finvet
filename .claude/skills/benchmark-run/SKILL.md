@@ -12,10 +12,10 @@ skip steps, and do not reorder them.
 
 ## 1. Freeze check — refuse to run on uncommitted state
 ```
-git -C ~/Projects/Active/finvet-v2.0.9 status --short    # must be empty
-git -C ~/Projects/Active/finvet-golden  status --short   # must be empty
-git -C ~/Projects/Active/finvet-v2.0.9 log -1 --format=%h
-git -C ~/Projects/Active/finvet-golden  log -1 --format=%h
+git status --short                          # code repo: must be empty
+git -C "$FINVET_GOLDEN_DIR" status --short  # data repo: must be empty
+git log -1 --format=%h
+git -C "$FINVET_GOLDEN_DIR" log -1 --format=%h
 ```
 Record both SHAs — they go in the final commit message. If either repo is
 dirty: STOP and tell the user. Runs are only comparable when produced by
@@ -33,7 +33,7 @@ the client shell's belief about the model is not evidence; /health is.
 ## 3. Launch, in the background, with a monitor
 From a shell that sourced ONLY the intended env file:
 ```
-export FINVET_GOLDEN_DIR=~/Projects/Active/finvet-golden
+export FINVET_GOLDEN_DIR=/path/to/the/private/golden/repo
 export LANGCHAIN_TRACING_V2=false
 .venv/bin/python scripts/run_golden.py --label <label>
 ```

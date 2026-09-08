@@ -1,146 +1,78 @@
-# FinVet Test Suite
+# FinVet test suite
 
-## Quick Start
+## Run
 
-### Install Test Dependencies
 ```bash
-pip install pytest pytest-asyncio pytest-cov httpx faker
+.venv/bin/python -m pytest tests/unit -q          # ~1,560 tests, well under a minute, no services
+.venv/bin/python -m pytest tests -q               # same: integration is excluded by default
+.venv/bin/python -m pytest tests/integration -q -m integration   # opt in; needs live services
 ```
 
-### Run All Tests
+Always use `.venv/bin/python`, never bare `python`. Run from a clean shell:
+sourcing `.env.minimax` (or any non-default env file) leaks `LLM_*__MODEL`
+into the test environment and fails the tests that assert the DeepSeek
+defaults.
+
+The CI command, which is also the release gate:
+
 ```bash
-# From project root
-pytest tests/ -v
-
-# With coverage
-pytest tests/ --cov=src/finvet --cov-report=html
-
-# Run specific test file
-pytest tests/unit/test_database_connection.py -v
-
-# Run specific test
-pytest tests/unit/test_api_keys.py::test_generate_api_key_format -v
+uv run pytest tests/unit -q --cov=src/finvet --cov-report=json:coverage.json --cov-fail-under=75
+uv run python scripts/check_critical_coverage.py coverage.json   # per-file floors on six modules
 ```
 
-### Run Tests by Category
-```bash
-# Unit tests only
-pytest tests/unit/ -v
-
-# Integration tests
-pytest tests/integration/ -v
-
-# Fast tests (skip slow integration)
-pytest tests/ -m "not slow" -v
-```
-
-## Test Structure
+## Layout
 
 ```
 tests/
-├── conftest.py              # Pytest configuration & fixtures
-├── unit/                    # Unit tests (fast, isolated)
-│   ├── test_database_connection.py
-│   ├── test_api_keys.py
-│   └── ...
-├── integration/             # Integration tests (slower)
-│   ├── test_api_verify.py
-│   └── ...
-├── performance/             # Performance & load tests
-├── accuracy/                # Accuracy benchmark tests
-└── security/                # Security & penetration tests
+├── conftest.py          # sets DEEPSEEK_API_KEY / TAVILY_API_KEY / POSTGRES_PASSWORD
+│                        # defaults so Settings constructs without a .env; no fixtures
+├── unit/                # 84 files; no network, no database
+├── integration/         # 11 files, all marked `integration`; each self-skips when
+│   └── conftest.py      # its service is absent. Loads the repo .env (override=True)
+│                        # so real keys beat the root conftest's dummies
+├── golden/              # empty scaffold — the real harness is described below
+├── accuracy/            # RAG relevance cases + the Release A manifest (data only)
+├── fixtures/            # XBRL concept table, filing chunks, two sample filings
+├── performance/         # empty
+└── security/            # empty
 ```
 
-## Current Tests
+Registered markers: `integration` only. `addopts = -m 'not integration'` in
+`pyproject.toml` keeps it out of a default run.
 
-### ✅ Database Connection Tests
-- PostgreSQL connection health
-- Connection pooling
-- Table existence verification
+## What each integration file needs
 
-### ✅ API Key Tests  
-- Key generation format
-- Hash determinism
-- Format validation
-- Uniqueness & entropy
+| File | Needs |
+|---|---|
+| `test_database_connection.py`, `test_review_race.py` | Postgres |
+| `test_rag_retrieval.py`, `test_rag_release_a.py` | Postgres with ingested chunks + Ollama embedder |
+| `test_api.py`, `test_qualitative_filing_claims.py` | a running API (`FINVET_API_URL`, default `http://localhost:8000`) |
+| `test_claim_matrix.py` | a running API with the full live stack — it re-spends on every run |
+| `test_output_guard_false_positive.py` | Ollama + Llama Guard |
+| `test_reject_classification.py` | DeepSeek key + Ollama + `FINVET_EVAL_DATA_DIR` |
+| `test_xbrl_retrieval.py` | the SEC EDGAR MCP server + network + `FINVET_EVAL_DATA_DIR` |
+| `test_golden.py` | nothing live: a recorded run artifact via `FINVET_GOLDEN_RUN` or `FINVET_GOLDEN_DIR` |
 
-## Next Steps
+Two `xfail(strict=True)` markers document one live defect (a Llama Guard
+S6 false positive on a factual refutation).
 
-See **TEST_PLAN.md** for comprehensive test plan covering:
-- Authentication tests
-- Agent tests (SEC, News, Market)
-- Graph/workflow tests
-- API endpoint tests
-- Performance tests
-- Accuracy tests
-- Security tests
+## The golden benchmark
 
-## Writing New Tests
+`scripts/run_golden.py` runs the held-out set through a live API and
+records; it asserts nothing. `tests/integration/test_golden.py` reads the
+recorded artifact and judges it under the strict / safe / observe strength
+contract. `scripts/eval_layers.py` reports the measurement layers over
+recorded runs. The dataset is private; redacted run artifacts and the
+dataset card live in `docs/eval/`.
 
-### Example Unit Test
-```python
-def test_my_feature():
-    """Test description."""
-    from src.finvet.module import my_function
-    
-    result = my_function(input_data)
-    
-    assert result == expected_output
-```
+## The one rule
 
-### Example Integration Test
-```python
-@pytest.mark.asyncio
-async def test_api_endpoint(test_api_key):
-    """Test API endpoint."""
-    from httpx import AsyncClient
-    
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.post(
-            "/verify",
-            json={"claim": "test claim"},
-            headers={"Authorization": f"Bearer {test_api_key}"}
-        )
-    
-    assert response.status_code == 200
-```
-
-## Test Fixtures
-
-Available fixtures from `conftest.py`:
-- `test_db_engine` - Test database engine
-- `test_db_session` - Database session for test
-- `test_api_key` - Valid API key for testing
-- `sample_claim` - Sample claim text
-
-## CI/CD
-
-Tests run automatically on:
-- Every commit (GitHub Actions)
-- Pull requests
-- Before deployment
-
-Minimum requirements:
-- All tests must pass
-- Code coverage > 70% (measured 72% on 2026-08-25)
-- No security vulnerabilities
-
-## Troubleshooting
-
-**Tests fail with database error:**
-```bash
-# Make sure PostgreSQL is running
-docker-compose up -d
-```
-
-The schema is created on API startup — `init_db()` runs in the lifespan hook,
-so there is no separate initialisation step.
-
-**Import errors:**
-```bash
-# Make sure you're in the virtual environment
-source .venv/bin/activate
-
-# Install in development mode
-pip install -e .
-```
+**Tests must drive the producer.** A test that covers a verdict, an
+escalation, or a persistence path needs at least one case whose entry point
+is a route callable, a graph node, or a decorated tool, not a hand-built
+dict. Three defects once survived a suite of hundreds of tests because their
+tests constructed their own inputs; a fixture asserts the shape you
+remembered, not the shape the system emits. The timeout tests in
+`test_mcp_timeout.py` and `test_llm_factory.py` are recent examples: the
+original test passed an explicit value and never saw the default path that
+was broken.
