@@ -78,7 +78,7 @@ rather than publishing the model's reading.
    DeepSeek defaults). Run tests from a clean shell.
 
 ## Evaluation
-- Golden dataset: `~/Projects/Active/finvet-golden/golden_c.jsonl`
+- Golden dataset: `$FINVET_GOLDEN_DIR/golden_c.jsonl`
   (97 rows, frozen, its own private git repo; set `FINVET_GOLDEN_DIR` to
   it). Ids have gaps at 35/36/97 — never renumber.
   `src/finvet/eval/exclusions.py` registers burned rows (1/68/88, published
