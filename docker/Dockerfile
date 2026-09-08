@@ -24,7 +24,7 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
-# Install the finvet package itself. README is referenced by pyproject metadata.
+# Install the finvet package itself. README.md is the `readme` in pyproject metadata.
 COPY src ./src
 COPY README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \

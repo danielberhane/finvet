@@ -1,7 +1,11 @@
 [project]
 name = "finvet"
 version = "2.0.9"
-description = "Financial claim verification system"
+description = "Agentic financial claim verification with a deterministic verdict override"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "Daniel Berhane Araya" }]
+keywords = ["financial-claims", "fact-checking", "sec-edgar", "xbrl", "langgraph", "agents", "evaluation"]
 # CI tests 3.11, 3.12 and 3.13. An unbounded floor advertises support for
 # versions nothing has ever run.
 requires-python = ">=3.11,<3.14"
@@ -32,6 +36,11 @@ dependencies = [
     "pandas>=2.0.0",
     "requests>=2.32.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/danielberhane/finvet"
+Repository = "https://github.com/danielberhane/finvet"
+Issues = "https://github.com/danielberhane/finvet/issues"
 
 [project.optional-dependencies]
 # Claim memory only. It ships disabled (RELEASE_A_DECISIONS.md, D8), so a

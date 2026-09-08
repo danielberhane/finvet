@@ -1,8 +1,9 @@
 # RAG and Agentic RAG — A Complete Guide, Grounded in FinVet
 
 Every claim in this document was verified against the code, the database, or a live
-experiment on 2026-08-24. Line references point at
-`finvet-v2.0.9/.claude/worktrees/rag-fix`.
+experiment on 2026-08-24. Line references were taken on that date from the
+`rag-fix` branch, since merged into this tree; file paths are current, line
+numbers may have drifted.
 
 ---
 
@@ -787,13 +788,13 @@ precision and recall computable.
 
 ---
 
-*Compiled 2026-08-24. Code references: `finvet-v2.0.9/.claude/worktrees/rag-fix`.*
+*Compiled 2026-08-24 against the `rag-fix` branch, since merged into this tree.*
 
 ---
 
 # APPENDIX — Complete file inventory for the agentic RAG path
 
-Root: `~/Projects/Active/finvet-v2.0.9/.claude/worktrees/rag-fix`
+Root: the repository root (paths below are relative to it)
 
 ## 1. Ingestion — offline: HTML → sections → chunks → vectors
 

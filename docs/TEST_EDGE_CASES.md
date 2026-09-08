@@ -192,7 +192,7 @@ filings -- not a prompt instruction asking the model to subtract.
 **Test pair value:** These two claims together prove the issue is NOT pre-XBRL vs post-XBRL. It's company-specific extraction failure.
 
 **Affected components:**
-- `../SEC-MCP/sec-edgar-mcp/` — `_extract_xbrl_concept_value()` fails on Coca-Cola's XBRL format
+- the `sec-edgar-mcp` server (PyPI `sec-edgar-mcp==1.1.0`, see `docker/Dockerfile.sec`) — `_extract_xbrl_concept_value()` fails on Coca-Cola's XBRL format
 - `mcp/sec_edgar.py` — XBRL extraction returns empty, no fallback
 - `rag/` — filing text not ingested into vector store as backup
 - `base.py` — no fallback when XBRL extraction returns empty but filing exists

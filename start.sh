@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# FinVet — Start all services
+# FinVet — Start all services (maintainer script)
 # Usage: ./start.sh
 # Stop:  Ctrl+C (kills all background processes)
+#
+# Expects a checkout of the SEC EDGAR MCP server as a sibling directory
+# (../sec-edgar-mcp) or SEC_MCP_DIR pointing at one, kills whatever holds
+# ports 8000/8501, and exits if the configured LLM provider does not answer.
+# For a fresh clone, `docker compose --profile sec up --build` (README) needs
+# none of that.
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SEC_MCP_DIR="${SEC_MCP_DIR:-$ROOT/../sec-edgar-mcp}"
