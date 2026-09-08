@@ -7,7 +7,7 @@ Same 97 claims, same code, same dataset. Nothing changed between the two runs.
 
 | | MiniMax-M2.7 | deepseek-chat |
 |---|---|---|
-| artifact | `run-20260831T200936Z-minimax-c1.json` | `run-20260831T210242Z-deepseek-c1.json` |
+| artifact | `run-20260831T200936Z-minimax-c1-redacted.json` | `run-20260831T210242Z-deepseek-c1-redacted.json` |
 | endpoint | self-hosted LiteLLM gateway | api.deepseek.com |
 | elapsed | 47.7 min | 17.2 min |
 | outcome, all scored (n=93) | 87 (93.5%) | 90 (96.8%) |
@@ -56,9 +56,32 @@ Id 55 fails under both: `search_filing_text` is never called.
 ## What this does not establish
 
 One run per model. `pass^1` is pass@1 restated and says nothing about
-stability; the measured noise floor from four earlier runs was pass^4 = 0.975,
-so a four-row difference across 86 sits inside it. Ranking the models would take
-roughly three runs each.
+stability. The noise floor available at the time (pass^4 = 0.975) came from
+four 2026-08-30 runs on the pre-freeze 100-row set, two of them after code
+fixes, so it was neither the same data nor the same code; it is superseded
+by the series below. Ranking the models would take roughly three runs each.
+
+## Later runs (2026-09-05/06)
+
+DeepSeek was re-run three times on the frozen set at code `0cdce16` (c1 was
+at `94f1ec9`, the same tree before the burned-row skip), with ids 1/68/88
+excluded as burned. Pooled over c1–c4 by `scripts/eval_layers.py`, from the
+redacted artifacts beside this file
+(`layers-deepseek-c1-c4.json`):
+
+| Measure | c1–c4 pooled |
+|---|---|
+| pass@1 (latest run), 91 shared rows | 98.9% |
+| **pass^4**, 91 shared rows | **94.5%** (86 passed all four) |
+| unstable ids | 17, 22 (sec/xbrl), 51 (a2a), 62 (market/quote) |
+| dangerous errors | 0 / 367 |
+| grounding | 171/171 |
+| decisive ECE | 0.039 |
+| routing | 359/367 (97.8%) |
+
+The shared population is the 94 non-burned rows minus the three
+known-defect rows with no expected verdict, and it includes the live-market
+rows. MiniMax has one complete run; its stability is unmeasured.
 
 ## Known environmental defect
 
