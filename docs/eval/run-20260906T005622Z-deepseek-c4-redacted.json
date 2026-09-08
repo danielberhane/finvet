@@ -1,11 +1,11 @@
 {
- "started_utc": "20260831T210242Z",
- "label": "deepseek-c1",
+ "started_utc": "20260906T005622Z",
+ "label": "deepseek-c4",
  "complete": true,
  "api": "http://127.0.0.1:8000",
  "dataset": "golden_c.jsonl",
  "dataset_rows": 97,
- "selected": 97,
+ "selected": 94,
  "frozen_only": false,
  "llm_config": {
   "parser": {
@@ -48,54 +48,8 @@
    "structured_output_method": "json_mode"
   }
  },
- "elapsed_s": 1033.1,
+ "elapsed_s": 859.8,
  "results": [
-  {
-   "id": 1,
-   "claim": "Apple's total revenue was $391 billion in fiscal year 2024",
-   "category": "sec/xbrl",
-   "strength": "strict",
-   "frozen": true,
-   "expected": {
-    "verdict": "SUPPORTS",
-    "limitation": null,
-    "sources": [
-     "xbrl"
-    ]
-   },
-   "elapsed_s": 20.7,
-   "http": 200,
-   "request_id": "req_abf6027f5ad9",
-   "actual": {
-    "verdict": "SUPPORTS",
-    "status": "success",
-    "confidence": 0.95,
-    "limitation": null,
-    "retrieved_value": 391035000000.0,
-    "observation_tool": "get_income_statement",
-    "observation_period_end": "2024-09-28",
-    "tools_called": [
-     "get_company_info",
-     "get_recent_filings",
-     "get_income_statement"
-    ],
-    "parsed_claim": {
-     "claim_type": "sec",
-     "ticker": "AAPL",
-     "metric": "revenue",
-     "operator": "eq",
-     "value": 391000000000.0,
-     "period": "fiscal year 2024",
-     "reject_reason": null
-    },
-    "data_sources": [
-     "xbrl"
-    ],
-    "a2a_status": null,
-    "escalated": false
-   },
-   "error": null
-  },
   {
    "id": 2,
    "claim": "[withheld \u2014 see DATASET_CARD.md]",
@@ -109,9 +63,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.8,
+   "elapsed_s": 18.0,
    "http": 200,
-   "request_id": "req_2e256405e5c7",
+   "request_id": "req_b7f5a7d2ffd9",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -155,9 +109,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 12.6,
+   "elapsed_s": 13.2,
    "http": 200,
-   "request_id": "req_7f1255a9626f",
+   "request_id": "req_1e4f90592e63",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -201,9 +155,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 21.1,
+   "elapsed_s": 11.6,
    "http": 200,
-   "request_id": "req_1e103366e8fa",
+   "request_id": "req_b94326c829f9",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -247,9 +201,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 12.9,
+   "elapsed_s": 12.2,
    "http": 200,
-   "request_id": "req_6bc8a0c7cc30",
+   "request_id": "req_4f6a5e8dd72e",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -293,9 +247,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.9,
+   "elapsed_s": 11.9,
    "http": 200,
-   "request_id": "req_7b4decfcf913",
+   "request_id": "req_9b5d395339b7",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -339,9 +293,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 23.0,
+   "elapsed_s": 12.9,
    "http": 200,
-   "request_id": "req_655a243c31ae",
+   "request_id": "req_cb2e78125b07",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -385,9 +339,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.9,
+   "elapsed_s": 13.1,
    "http": 200,
-   "request_id": "req_e1f024f0ea00",
+   "request_id": "req_8542a83adf0e",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -398,6 +352,7 @@
     "observation_period_end": "2025-06-30",
     "tools_called": [
      "get_company_info",
+     "search_past_verifications",
      "get_recent_filings",
      "get_income_statement"
     ],
@@ -431,9 +386,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 25.2,
+   "elapsed_s": 12.8,
    "http": 200,
-   "request_id": "req_c5664ed5f525",
+   "request_id": "req_cedef5678ba4",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -477,9 +432,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 16.7,
+   "elapsed_s": 11.9,
    "http": 200,
-   "request_id": "req_2bd4fbcc3612",
+   "request_id": "req_a79825de9ecd",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -523,9 +478,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.7,
+   "elapsed_s": 12.6,
    "http": 200,
-   "request_id": "req_43c80a2c083b",
+   "request_id": "req_34cac3046ba5",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -569,9 +524,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 18.5,
+   "elapsed_s": 12.5,
    "http": 200,
-   "request_id": "req_a82c8c030427",
+   "request_id": "req_c003bc2d8fe3",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -615,9 +570,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.6,
+   "elapsed_s": 12.1,
    "http": 200,
-   "request_id": "req_494f78c5f842",
+   "request_id": "req_241a15f24c92",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -661,9 +616,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.1,
+   "elapsed_s": 12.3,
    "http": 200,
-   "request_id": "req_92b9865fa4cc",
+   "request_id": "req_55b3e335c379",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -707,9 +662,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 13.6,
+   "elapsed_s": 12.2,
    "http": 200,
-   "request_id": "req_6660cfa5a2e3",
+   "request_id": "req_8e471025468e",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -753,9 +708,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.8,
+   "elapsed_s": 12.9,
    "http": 200,
-   "request_id": "req_c1f7da909d31",
+   "request_id": "req_174b3e66f54b",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -799,17 +754,17 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 15.9,
+   "elapsed_s": 13.6,
    "http": 200,
-   "request_id": "req_4f9dabab2615",
+   "request_id": "req_75a160ec7fa4",
    "actual": {
-    "verdict": "PENDING",
-    "status": "pending_review",
-    "confidence": 0.0,
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": null,
-    "observation_tool": null,
-    "observation_period_end": null,
+    "retrieved_value": 281724000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-06-30",
     "tools_called": [
      "get_company_info",
      "get_recent_filings",
@@ -828,7 +783,7 @@
      "xbrl"
     ],
     "a2a_status": null,
-    "escalated": true
+    "escalated": false
    },
    "error": null
   },
@@ -845,9 +800,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 13.2,
+   "elapsed_s": 12.2,
    "http": 200,
-   "request_id": "req_8c84674ad159",
+   "request_id": "req_e9de73dc9a5f",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -891,9 +846,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 15.7,
+   "elapsed_s": 15.4,
    "http": 200,
-   "request_id": "req_18284dc9625b",
+   "request_id": "req_03b867236c14",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -937,9 +892,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.3,
+   "elapsed_s": 14.2,
    "http": 200,
-   "request_id": "req_ebb17dd32350",
+   "request_id": "req_832131aec3a4",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -983,9 +938,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 18.6,
+   "elapsed_s": 13.9,
    "http": 200,
-   "request_id": "req_a22eaf8d0d36",
+   "request_id": "req_71e00b9a4c50",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1029,17 +984,17 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 15.9,
+   "elapsed_s": 13.8,
    "http": 200,
-   "request_id": "req_37a1f5af7c50",
+   "request_id": "req_74adf6983a79",
    "actual": {
-    "verdict": "PENDING",
-    "status": "pending_review",
-    "confidence": 0.0,
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": null,
-    "observation_tool": null,
-    "observation_period_end": null,
+    "retrieved_value": 72880000000.0,
+    "observation_tool": "get_income_statement",
+    "observation_period_end": "2025-01-26",
     "tools_called": [
      "get_company_info",
      "get_recent_filings",
@@ -1058,7 +1013,7 @@
      "xbrl"
     ],
     "a2a_status": null,
-    "escalated": true
+    "escalated": false
    },
    "error": null
   },
@@ -1075,9 +1030,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.2,
+   "elapsed_s": 13.1,
    "http": 200,
-   "request_id": "req_950d2ddba28e",
+   "request_id": "req_b9e4b1fe3e51",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1123,7 +1078,7 @@
    },
    "elapsed_s": 13.7,
    "http": 200,
-   "request_id": "req_3a8a4768e4cc",
+   "request_id": "req_a43333d90598",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -1167,9 +1122,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.5,
+   "elapsed_s": 13.7,
    "http": 200,
-   "request_id": "req_7801c9f2eee3",
+   "request_id": "req_698b579b244e",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1213,9 +1168,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 15.1,
+   "elapsed_s": 13.4,
    "http": 200,
-   "request_id": "req_a189005eb959",
+   "request_id": "req_115a80d10339",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -1259,9 +1214,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.9,
+   "elapsed_s": 13.9,
    "http": 200,
-   "request_id": "req_e21c333383bb",
+   "request_id": "req_d82e2041a267",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1305,9 +1260,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 16.1,
+   "elapsed_s": 14.5,
    "http": 200,
-   "request_id": "req_8c1599e3ef64",
+   "request_id": "req_63264861a225",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -1351,9 +1306,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.4,
+   "elapsed_s": 13.4,
    "http": 200,
-   "request_id": "req_bbfe9bf9aeb3",
+   "request_id": "req_dd88d2bb601a",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1397,9 +1352,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 15.4,
+   "elapsed_s": 12.5,
    "http": 200,
-   "request_id": "req_24dfc1b99e66",
+   "request_id": "req_530b9e4aa233",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -1443,9 +1398,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.8,
+   "elapsed_s": 14.3,
    "http": 200,
-   "request_id": "req_51982555761e",
+   "request_id": "req_73def90a96d6",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1489,9 +1444,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 22.3,
+   "elapsed_s": 14.1,
    "http": 200,
-   "request_id": "req_a8d561c74668",
+   "request_id": "req_e2fa13ad6189",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1535,9 +1490,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 14.7,
+   "elapsed_s": 13.4,
    "http": 200,
-   "request_id": "req_0929ce9df7e1",
+   "request_id": "req_a1596b949e3b",
    "actual": {
     "verdict": "REFUTES",
     "status": "success",
@@ -1581,9 +1536,9 @@
      "xbrl"
     ]
    },
-   "elapsed_s": 15.0,
+   "elapsed_s": 12.3,
    "http": 200,
-   "request_id": "req_e3e6b342751a",
+   "request_id": "req_38619a4108cb",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1627,9 +1582,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 12.7,
+   "elapsed_s": 11.4,
    "http": 200,
-   "request_id": "req_6688059a475c",
+   "request_id": "req_a4c8ebd62a8d",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1640,7 +1595,7 @@
     "observation_period_end": null,
     "tools_called": [
      "get_company_info",
-     "search_filing_text",
+     "get_recent_filings",
      "search_filing_text"
     ],
     "parsed_claim": {
@@ -1673,9 +1628,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 12.8,
+   "elapsed_s": 10.1,
    "http": 200,
-   "request_id": "req_f34bbe4e7f5f",
+   "request_id": "req_317c4244b40e",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1686,7 +1641,7 @@
     "observation_period_end": null,
     "tools_called": [
      "get_company_info",
-     "search_filing_text",
+     "get_recent_filings",
      "search_filing_text"
     ],
     "parsed_claim": {
@@ -1719,9 +1674,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 13.3,
+   "elapsed_s": 13.1,
    "http": 200,
-   "request_id": "req_ae9550dd3ad9",
+   "request_id": "req_df03ea55e802",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1733,6 +1688,7 @@
     "tools_called": [
      "get_company_info",
      "get_recent_filings",
+     "search_past_verifications",
      "search_filing_text"
     ],
     "parsed_claim": {
@@ -1765,9 +1721,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 12.4,
+   "elapsed_s": 11.0,
    "http": 200,
-   "request_id": "req_d93b77661184",
+   "request_id": "req_80dc152e2f9c",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1811,9 +1767,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 11.8,
+   "elapsed_s": 12.1,
    "http": 200,
-   "request_id": "req_6a9417d28052",
+   "request_id": "req_afffc18341c1",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1824,7 +1780,7 @@
     "observation_period_end": null,
     "tools_called": [
      "get_company_info",
-     "search_filing_text",
+     "get_recent_filings",
      "search_filing_text"
     ],
     "parsed_claim": {
@@ -1857,9 +1813,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 12.3,
+   "elapsed_s": 10.5,
    "http": 200,
-   "request_id": "req_87f4acb1275e",
+   "request_id": "req_e036fe89656a",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1870,7 +1826,7 @@
     "observation_period_end": null,
     "tools_called": [
      "get_company_info",
-     "search_filing_text",
+     "get_recent_filings",
      "search_filing_text"
     ],
     "parsed_claim": {
@@ -1903,9 +1859,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 13.6,
+   "elapsed_s": 11.6,
    "http": 200,
-   "request_id": "req_b2c3e4d9ed2d",
+   "request_id": "req_1039a3af710f",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1949,9 +1905,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 12.4,
+   "elapsed_s": 10.7,
    "http": 200,
-   "request_id": "req_a37211872b0d",
+   "request_id": "req_06f196b6bf41",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -1995,9 +1951,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 14.3,
+   "elapsed_s": 12.6,
    "http": 200,
-   "request_id": "req_1979e576da66",
+   "request_id": "req_a8b698dbaae0",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -2042,9 +1998,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 12.1,
+   "elapsed_s": 10.4,
    "http": 200,
-   "request_id": "req_95f17fcf2d1a",
+   "request_id": "req_c4255d5d09c7",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -2055,7 +2011,7 @@
     "observation_period_end": null,
     "tools_called": [
      "get_company_info",
-     "get_recent_filings",
+     "search_filing_text",
      "search_filing_text"
     ],
     "parsed_claim": {
@@ -2088,9 +2044,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 13.1,
+   "elapsed_s": 10.1,
    "http": 200,
-   "request_id": "req_e53e2311b3ee",
+   "request_id": "req_a41cb7b178a5",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -2101,7 +2057,8 @@
     "observation_period_end": null,
     "tools_called": [
      "get_company_info",
-     "search_filing_text"
+     "search_filing_text",
+     "search_past_verifications"
     ],
     "parsed_claim": {
      "claim_type": "sec",
@@ -2133,9 +2090,9 @@
      "rag"
     ]
    },
-   "elapsed_s": 13.7,
+   "elapsed_s": 9.8,
    "http": 200,
-   "request_id": "req_f23ffbe1c862",
+   "request_id": "req_0894162a4c5e",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -2179,16 +2136,16 @@
      "a2a"
     ]
    },
-   "elapsed_s": 27.3,
+   "elapsed_s": 24.1,
    "http": 200,
-   "request_id": "req_e2b3324f2cce",
+   "request_id": "req_25fbea213256",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": null,
-    "observation_tool": null,
+    "retrieved_value": 500000000.0,
+    "observation_tool": "search_filing_text",
     "observation_period_end": null,
     "tools_called": [
      "search_financial_news",
@@ -2207,7 +2164,7 @@
     "data_sources": [
      "a2a"
     ],
-    "a2a_status": "FOUND_UNCERTIFIED",
+    "a2a_status": "CORROBORATES",
     "escalated": false
    },
    "error": null
@@ -2225,9 +2182,9 @@
      "a2a"
     ]
    },
-   "elapsed_s": 17.8,
+   "elapsed_s": 16.4,
    "http": 200,
-   "request_id": "req_6473a02ffae3",
+   "request_id": "req_f26c4ed2b05f",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -2238,8 +2195,8 @@
     "observation_period_end": null,
     "tools_called": [
      "search_financial_news",
-     "search_past_verifications",
-     "corroborate_with_filing"
+     "corroborate_with_filing",
+     "search_past_verifications"
     ],
     "parsed_claim": {
      "claim_type": "news",
@@ -2271,9 +2228,9 @@
      "a2a"
     ]
    },
-   "elapsed_s": 13.4,
+   "elapsed_s": 11.9,
    "http": 200,
-   "request_id": "req_ee056f6d3359",
+   "request_id": "req_60fad620be0b",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -2318,13 +2275,13 @@
      "a2a"
     ]
    },
-   "elapsed_s": 26.1,
+   "elapsed_s": 39.0,
    "http": 200,
-   "request_id": "req_4955d3473b24",
+   "request_id": "req_0f63e3e80c9d",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
-    "confidence": 0.35,
+    "confidence": 0.55,
     "limitation": "amount_not_certifiable",
     "retrieved_value": null,
     "observation_tool": null,
@@ -2334,7 +2291,10 @@
      "search_financial_news",
      "search_past_verifications",
      "search_financial_news",
-     "corroborate_with_filing"
+     "search_financial_news",
+     "corroborate_with_filing",
+     "search_financial_news",
+     "search_financial_news"
     ],
     "parsed_claim": {
      "claim_type": "news",
@@ -2366,9 +2326,9 @@
      "a2a"
     ]
    },
-   "elapsed_s": 22.2,
+   "elapsed_s": 29.0,
    "http": 200,
-   "request_id": "req_3588a4185808",
+   "request_id": "req_9c8a09bf0cd9",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -2382,7 +2342,8 @@
      "search_past_verifications",
      "verify_news_source",
      "verify_news_source",
-     "corroborate_with_filing"
+     "corroborate_with_filing",
+     "search_financial_news"
     ],
     "parsed_claim": {
      "claim_type": "news",
@@ -2414,9 +2375,9 @@
      "a2a"
     ]
    },
-   "elapsed_s": 17.3,
+   "elapsed_s": 18.0,
    "http": 200,
-   "request_id": "req_0d8b0ccabb12",
+   "request_id": "req_1b187143f74c",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -2459,9 +2420,9 @@
      "a2a"
     ]
    },
-   "elapsed_s": 16.5,
+   "elapsed_s": 12.4,
    "http": 200,
-   "request_id": "req_5c92fde1a88a",
+   "request_id": "req_3bb071ca0510",
    "actual": {
     "verdict": "PENDING",
     "status": "pending_review",
@@ -2499,9 +2460,9 @@
      "a2a"
     ]
    },
-   "elapsed_s": 26.5,
+   "elapsed_s": 20.1,
    "http": 200,
-   "request_id": "req_5d31493b41cc",
+   "request_id": "req_d933501a1760",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -2513,9 +2474,9 @@
     "tools_called": [
      "search_financial_news",
      "search_past_verifications",
+     "corroborate_with_filing",
      "verify_news_source",
-     "verify_news_source",
-     "corroborate_with_filing"
+     "search_financial_news"
     ],
     "parsed_claim": {
      "claim_type": "news",
@@ -2545,15 +2506,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 7.7,
+   "elapsed_s": 5.9,
    "http": 200,
-   "request_id": "req_f075fbf72978",
+   "request_id": "req_ac0e7280cc0c",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 316.85,
+    "retrieved_value": 319.97,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2585,15 +2546,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 8.1,
+   "elapsed_s": 6.4,
    "http": 200,
-   "request_id": "req_80e5713d2e16",
+   "request_id": "req_50ce6f9c1774",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 507.29,
+    "retrieved_value": 499.7,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2625,15 +2586,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 8.4,
+   "elapsed_s": 6.6,
    "http": 200,
-   "request_id": "req_5e0f3d68d40f",
+   "request_id": "req_965af532ba57",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 220.78,
+    "retrieved_value": 230.36,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2665,15 +2626,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 8.5,
+   "elapsed_s": 5.9,
    "http": 200,
-   "request_id": "req_14fdcc3ffa78",
+   "request_id": "req_0e0b238e3927",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 259.77,
+    "retrieved_value": 258.51,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2705,15 +2666,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 7.9,
+   "elapsed_s": 5.8,
    "http": 200,
-   "request_id": "req_40d138d24f58",
+   "request_id": "req_8eb4c7f6d4a3",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 367.95,
+    "retrieved_value": 354.08,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2745,15 +2706,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 11.5,
+   "elapsed_s": 6.6,
    "http": 200,
-   "request_id": "req_c461cf97f2ad",
+   "request_id": "req_fc7a60d3d248",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 316.85,
+    "retrieved_value": 319.97,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2785,15 +2746,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 8.7,
+   "elapsed_s": 6.1,
    "http": 200,
-   "request_id": "req_929db4378c2f",
+   "request_id": "req_bd1d8dd9f228",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 507.29,
+    "retrieved_value": 499.7,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2825,15 +2786,15 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 9.1,
+   "elapsed_s": 6.6,
    "http": 200,
-   "request_id": "req_3bdf2962fe37",
+   "request_id": "req_5ed77ccc6798",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
     "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": 220.78,
+    "retrieved_value": 230.36,
     "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
@@ -2865,9 +2826,9 @@
     "limitation": "unsupported_q4_derivation",
     "sources": []
    },
-   "elapsed_s": 2.2,
+   "elapsed_s": 1.7,
    "http": 200,
-   "request_id": "req_5540b9b4daaf",
+   "request_id": "req_35ef501b556c",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -2903,9 +2864,9 @@
     "limitation": "unsupported_q4_derivation",
     "sources": []
    },
-   "elapsed_s": 2.0,
+   "elapsed_s": 1.8,
    "http": 200,
-   "request_id": "req_92b55329b071",
+   "request_id": "req_cbfd6ed29834",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -2941,9 +2902,9 @@
     "limitation": "unsupported_q4_derivation",
     "sources": []
    },
-   "elapsed_s": 2.3,
+   "elapsed_s": 1.7,
    "http": 200,
-   "request_id": "req_8f1fb7e180f0",
+   "request_id": "req_f2e798e33e71",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -2969,44 +2930,6 @@
    "error": null
   },
   {
-   "id": 68,
-   "claim": "US CPI inflation was 3.1 percent in July 2025",
-   "category": "declined",
-   "strength": "strict",
-   "frozen": true,
-   "expected": {
-    "verdict": "NOT_ENOUGH_INFO",
-    "limitation": "unsupported_metric",
-    "sources": []
-   },
-   "elapsed_s": 1.8,
-   "http": 200,
-   "request_id": "req_9078a5413126",
-   "actual": {
-    "verdict": "NOT_ENOUGH_INFO",
-    "status": "success",
-    "confidence": 0.2,
-    "limitation": "unsupported_metric",
-    "retrieved_value": null,
-    "observation_tool": null,
-    "observation_period_end": null,
-    "tools_called": [],
-    "parsed_claim": {
-     "claim_type": "news",
-     "ticker": null,
-     "metric": "cpi_inflation",
-     "operator": "eq",
-     "value": 3.1,
-     "period": "July 2025",
-     "reject_reason": null
-    },
-    "data_sources": [],
-    "a2a_status": null,
-    "escalated": false
-   },
-   "error": null
-  },
-  {
    "id": 69,
    "claim": "[withheld \u2014 see DATASET_CARD.md]",
    "category": "declined",
@@ -3017,9 +2940,9 @@
     "limitation": "unsupported_metric",
     "sources": []
    },
-   "elapsed_s": 2.1,
+   "elapsed_s": 1.7,
    "http": 200,
-   "request_id": "req_4f26fa115250",
+   "request_id": "req_5360390ab7d4",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -3055,9 +2978,9 @@
     "limitation": "unsupported_metric",
     "sources": []
    },
-   "elapsed_s": 2.1,
+   "elapsed_s": 1.7,
    "http": 200,
-   "request_id": "req_e0bf5bb77031",
+   "request_id": "req_e6b12633668b",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -3093,9 +3016,9 @@
     "limitation": "unsupported_metric",
     "sources": []
    },
-   "elapsed_s": 2.3,
+   "elapsed_s": 2.0,
    "http": 200,
-   "request_id": "req_7bdb2c11e4b9",
+   "request_id": "req_023b0bca74c4",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -3131,9 +3054,9 @@
     "limitation": "unsupported_metric",
     "sources": []
    },
-   "elapsed_s": 2.3,
+   "elapsed_s": 1.7,
    "http": 200,
-   "request_id": "req_15790897a6a6",
+   "request_id": "req_af6a7017ceec",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -3169,9 +3092,9 @@
     "limitation": "unsupported_metric",
     "sources": []
    },
-   "elapsed_s": 2.5,
+   "elapsed_s": 1.8,
    "http": 200,
-   "request_id": "req_b6d2cf15cf63",
+   "request_id": "req_a950174e2f2a",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -3207,9 +3130,9 @@
     "limitation": "unsupported_metric",
     "sources": []
    },
-   "elapsed_s": 2.4,
+   "elapsed_s": 1.7,
    "http": 200,
-   "request_id": "req_83874735b547",
+   "request_id": "req_12cc03ab3c3d",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -3245,9 +3168,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.7,
+   "elapsed_s": 1.3,
    "http": 200,
-   "request_id": "req_df73e5f2338c",
+   "request_id": "req_2e887aabc363",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3283,9 +3206,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.4,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_347779156391",
+   "request_id": "req_537ddc8e8b18",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3321,9 +3244,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.5,
+   "elapsed_s": 1.6,
    "http": 200,
-   "request_id": "req_80eb60b6669f",
+   "request_id": "req_658bda85d197",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3359,9 +3282,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.7,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_3317323f1243",
+   "request_id": "req_11d25e3df1e6",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3397,9 +3320,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.7,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_9336a89e3536",
+   "request_id": "req_c26910ddbe24",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3435,9 +3358,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.8,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_e0d3a1ab9a6e",
+   "request_id": "req_afd059c7e558",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3473,9 +3396,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.4,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_2cbdd7172178",
+   "request_id": "req_f49825350954",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3511,9 +3434,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.4,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_3a58c90b0de2",
+   "request_id": "req_738d9a56252e",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3549,9 +3472,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.4,
+   "elapsed_s": 1.3,
    "http": 200,
-   "request_id": "req_0efa0c2e9b54",
+   "request_id": "req_7619179030d3",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3587,9 +3510,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.4,
+   "elapsed_s": 1.5,
    "http": 200,
-   "request_id": "req_800687ef62f4",
+   "request_id": "req_b71792b9ed20",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3625,9 +3548,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.5,
+   "elapsed_s": 1.4,
    "http": 200,
-   "request_id": "req_5af926a1e4fa",
+   "request_id": "req_7f69324369fb",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3663,9 +3586,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.5,
+   "elapsed_s": 1.4,
    "http": 200,
-   "request_id": "req_9a4eacf4757a",
+   "request_id": "req_ee1bb5574231",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3701,47 +3624,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.5,
+   "elapsed_s": 1.4,
    "http": 200,
-   "request_id": "req_92288b04edd2",
-   "actual": {
-    "verdict": "REJECTED",
-    "status": "rejected",
-    "confidence": 1.0,
-    "limitation": null,
-    "retrieved_value": null,
-    "observation_tool": null,
-    "observation_period_end": null,
-    "tools_called": [],
-    "parsed_claim": {
-     "claim_type": "reject",
-     "ticker": null,
-     "metric": null,
-     "operator": null,
-     "value": null,
-     "period": null,
-     "reject_reason": "ambiguous_entity"
-    },
-    "data_sources": [],
-    "a2a_status": null,
-    "escalated": false
-   },
-   "error": null
-  },
-  {
-   "id": 88,
-   "claim": "A large US bank posted $30 billion in net income last year",
-   "category": "reject",
-   "strength": "strict",
-   "frozen": true,
-   "expected": {
-    "verdict": "REJECTED",
-    "limitation": null,
-    "sources": []
-   },
-   "elapsed_s": 1.9,
-   "http": 200,
-   "request_id": "req_94ae12041afd",
+   "request_id": "req_84e16c73d3cc",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3777,9 +3662,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.6,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_d7d3b2f1a4d4",
+   "request_id": "req_8da7fde4ddbe",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -3815,9 +3700,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 1.6,
+   "elapsed_s": 1.2,
    "http": 200,
-   "request_id": "req_b13cee0d317d",
+   "request_id": "req_acadddb2dd9e",
    "actual": {
     "verdict": "REJECTED",
     "status": "rejected",
@@ -4033,16 +3918,16 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 7.7,
+   "elapsed_s": 6.8,
    "http": 200,
-   "request_id": "req_30ea4aaa8824",
+   "request_id": "req_e9c9affe2be7",
    "actual": {
-    "verdict": "PENDING",
-    "status": "pending_review",
-    "confidence": 0.0,
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
     "limitation": null,
-    "retrieved_value": null,
-    "observation_tool": null,
+    "retrieved_value": 319.97,
+    "observation_tool": "get_stock_quote",
     "observation_period_end": null,
     "tools_called": [
      "get_stock_quote"
@@ -4058,7 +3943,7 @@
     },
     "data_sources": [],
     "a2a_status": null,
-    "escalated": true
+    "escalated": false
    },
    "error": null
   },
@@ -4073,9 +3958,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 23.0,
+   "elapsed_s": 12.3,
    "http": 200,
-   "request_id": "req_74d541c635df",
+   "request_id": "req_eb1f17f9e02d",
    "actual": {
     "verdict": "SUPPORTS",
     "status": "success",
@@ -4117,9 +4002,9 @@
     "limitation": null,
     "sources": []
    },
-   "elapsed_s": 17.8,
+   "elapsed_s": 12.8,
    "http": 200,
-   "request_id": "req_b8b31162aa5a",
+   "request_id": "req_5b920fdf6390",
    "actual": {
     "verdict": "NOT_ENOUGH_INFO",
     "status": "success",
@@ -4131,7 +4016,6 @@
     "tools_called": [
      "get_company_info",
      "get_recent_filings",
-     "search_filing_text",
      "search_filing_text"
     ],
     "parsed_claim": {

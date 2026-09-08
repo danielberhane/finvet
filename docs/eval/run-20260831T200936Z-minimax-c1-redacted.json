@@ -3,7 +3,7 @@
  "label": "minimax-c1",
  "complete": true,
  "api": "http://127.0.0.1:8000",
- "dataset": "~/Projects/Active/finvet-golden/golden_c.jsonl",
+ "dataset": "golden_c.jsonl",
  "dataset_rows": 97,
  "selected": 97,
  "frozen_only": false,
@@ -4101,5 +4101,5 @@
    "error": null
   }
  ],
- "redaction": "claim text withheld for all rows except the three burned in DATASET_CARD.md; expected labels and all recorded behavior retained, so every published metric recomputes from this file"
+ "redaction": "claim text withheld for all rows except the ones burned in DATASET_CARD.md; expected labels and all recorded behavior retained, so every published metric recomputes from this file. Dataset path reduced to its basename; non-public base_url values replaced. Produced by scripts/redact_run.py."
 }

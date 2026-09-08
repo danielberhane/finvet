@@ -1,0 +1,136 @@
+{
+ "runs": [
+  "deepseek-c1",
+  "deepseek-c2",
+  "deepseek-c3",
+  "deepseek-c4"
+ ],
+ "reliability": {
+  "n": 91,
+  "k": 4,
+  "pass_at_1": 0.989010989010989,
+  "pass_hat_k": 0.945054945054945,
+  "unstable": [
+   17,
+   22,
+   51,
+   62
+  ],
+  "per_run": {
+   "deepseek-c1": 0.967032967032967,
+   "deepseek-c2": 0.945054945054945,
+   "deepseek-c3": 0.9560439560439561,
+   "deepseek-c4": 0.989010989010989
+  }
+ },
+ "calibration": {
+  "n": 343,
+  "ece": 0.13513119533528012,
+  "decisive_ece": 0.03914590747331348,
+  "decisive_n": 281,
+  "bins": [
+   {
+    "lower": 0.0,
+    "n": 13,
+    "accuracy": 0.0,
+    "mean_confidence": 0.0
+   },
+   {
+    "lower": 0.2,
+    "n": 37,
+    "accuracy": 1.0,
+    "mean_confidence": 0.2000000000000001
+   },
+   {
+    "lower": 0.3,
+    "n": 1,
+    "accuracy": 1.0,
+    "mean_confidence": 0.35
+   },
+   {
+    "lower": 0.5,
+    "n": 11,
+    "accuracy": 1.0,
+    "mean_confidence": 0.5363636363636363
+   },
+   {
+    "lower": 0.9,
+    "n": 281,
+    "accuracy": 1.0,
+    "mean_confidence": 0.9608540925266865
+   }
+  ]
+ },
+ "grounding": {
+  "decisive_numeric": 171,
+  "traceable": 171,
+  "untraceable": []
+ },
+ "risk": {
+  "scored": 367,
+  "correct": 354,
+  "declined": 13,
+  "dangerous": []
+ },
+ "trajectory": {
+  "scored": 242,
+  "required_met": 236,
+  "lane_violations": [],
+  "missing_required": [
+   [
+    51,
+    "deepseek-c2: filing_rag needs one of ['search_filing_text'], called []"
+   ],
+   [
+    55,
+    "deepseek-c1: filing_rag needs one of ['search_filing_text'], called []"
+   ],
+   [
+    55,
+    "deepseek-c2: filing_rag needs one of ['search_filing_text'], called []"
+   ],
+   [
+    55,
+    "deepseek-c3: filing_rag needs one of ['search_filing_text'], called []"
+   ],
+   [
+    55,
+    "deepseek-c4: filing_rag needs one of ['search_filing_text'], called []"
+   ],
+   [
+    100,
+    "deepseek-c2: filing_rag needs one of ['search_filing_text'], called []"
+   ]
+  ],
+  "zero_tool_expected": 122,
+  "zero_tool_actual": 98,
+  "zero_tool_breaches": [],
+  "not_executed": 24,
+  "scorer": "deepeval"
+ },
+ "routing": {
+  "scored": 367,
+  "matched": 359,
+  "mismatches": {
+   "51": [
+    [
+     "a2a"
+    ],
+    [
+     "rag"
+    ]
+   ],
+   "55": [
+    [
+     "a2a"
+    ],
+    []
+   ]
+  },
+  "skipped_unlabelled": [
+   98,
+   99,
+   100
+  ]
+ }
+}
