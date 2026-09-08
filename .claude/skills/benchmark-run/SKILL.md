@@ -69,5 +69,6 @@ states both SHAs from step 1 and the served model from step 2.
 - Exclude `market/quote` (live data — one run met a Finnhub outage, the
   next didn't; that difference is the vendor, not the model).
 - One run per model gives pass@1 only. Differences of ≤3 rows out of ~86
-  are within the measured noise floor (pass^4 = 0.975); claiming a model
+  are within the measured noise floor (DeepSeek pass^4 = 0.945 over c1–c4 on
+  the frozen set, `docs/eval/layers-deepseek-c1-c4.json`); claiming a model
   difference needs ~3 runs per model.

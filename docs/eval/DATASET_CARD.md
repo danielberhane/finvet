@@ -85,11 +85,14 @@ by a single annotator against primary sources.
 ## How results are checked without the data
 
 1. **Redacted run artifacts** (beside this card): every per-row record of
-   both benchmark runs — expected and actual verdicts, confidence, tools,
-   retrieved values, timings — with only the claim text withheld. Every
-   published metric recomputes from these files; verified for the headline
-   accuracy cells before commit.
-2. **Layer summaries** (`layers-*.json`) and the benchmark write-up, verbatim.
+   each published run (MiniMax c1; DeepSeek c1–c4) — expected and actual
+   verdicts, confidence, tools, retrieved values, timings — with the claim
+   text withheld. They are produced by `scripts/redact_run.py`, which also
+   reduces the dataset path to its basename, replaces any non-public
+   endpoint, and refuses to write a file that still carries a home path or an
+   IP address. Every published metric recomputes from these files.
+2. **Layer summaries** (`layers-*.json`, including the pooled
+   `layers-deepseek-c1-c4.json`) and the benchmark write-up, verbatim.
 3. **The recipe**: labels come from public primary sources under the rules
    above, so an equivalent set can be built independently and the pipeline
    re-scored on it.

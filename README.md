@@ -67,17 +67,23 @@ Two kinds of result, kept apart. **Enforced by construction**: zero out-of-lane 
 nothing (they short-circuit before any agent), and observation-source attribution (a decisive
 numeric verdict is unreachable without a trusted observation — the path fails closed).
 **Observed in these runs**: identical accuracy, zero confidently-wrong verdicts, and perfect
-accuracy in the top confidence bin. The first kind is a code property; the second held twice
-and would need repeated runs to call stable — across four earlier runs, 97.5% of claims
-passed on *all four* attempts (pass^4), so single-run differences of a few claims are within
-ordinary variation.
+accuracy in the top confidence bin. The first kind is a code property; the second held twice,
+and for DeepSeek it has since been measured across four runs on the frozen set (c1 at
+`94f1ec9`, c2–c4 at `0cdce16`): pass@1 98.9%, **pass^4 94.5%** — 86 of the 91 rows every run
+scores passed on *all four* attempts. The four that flickered are ids 17 and 22 (XBRL rows
+that a Llama Guard false positive sometimes escalates instead of answering), 51 (the
+News→SEC corroboration row) and 62 (a live market quote); the population includes the
+live-market rows. MiniMax has one complete run, so its column is pass@1 only. Single-run
+differences of a few claims sit inside this measured variation. Pooled summary:
+[`layers-deepseek-c1-c4.json`](docs/eval/layers-deepseek-c1-c4.json).
 
 Raw accuracy including live-market rows reads 96.8% vs 93.5%; the gap is a market-data
 outage during the MiniMax run, not the model.
 
-**Evidence:** [`docs/eval/`](docs/eval/) holds redacted per-claim run artifacts (claim text
-withheld; every table cell recomputes from them), the layer summaries, the benchmark
-write-up, and the [dataset card](docs/eval/DATASET_CARD.md) — composition, SHA-256,
+**Evidence:** [`docs/eval/`](docs/eval/) holds five redacted per-claim run artifacts (claim
+text withheld by [`scripts/redact_run.py`](scripts/redact_run.py); every table cell and the
+pass^4 figure recompute from them), the layer summaries, the benchmark write-up, and the
+[dataset card](docs/eval/DATASET_CARD.md) — composition, SHA-256,
 labelling rules, disclosed biases, and three fully published sample rows. The dataset itself
 is held out privately — a published test set enters training corpora and stops measuring
 anything — and is available to reviewers against the published hash.
@@ -87,6 +93,9 @@ anything — and is available to reviewers against the published hash.
 XBRL retrieval, measured against SEC primary-source values: **198/199 (99.5%)** with zero
 silently-wrong results — the one miss returns NOT_ENOUGH_INFO. A fallback from the
 period-targeted `companyconcept` endpoint to `frames` took accuracy from ~91% to 99.5%.
+This figure comes from `tests/integration/test_xbrl_retrieval.py` against a retrieval gold
+set held privately with the golden claims, so unlike the table above it is not recomputable
+from this repository (see [Known gaps](docs/VALIDATION_STRATEGY.md#known-gaps)).
 
 Filing-text retrieval, on the 70-case calibration set that also set the relevance floor: all
 30 on-topic queries retrieved, all 30 off-topic queries rejected, and 10 near-misses (right
@@ -155,7 +164,8 @@ docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 # UI → http://localhost:8501   API → http://localhost:8000
 ```
 
-Prebuilt images: `docker pull ghcr.io/danielberhane/finvet-api:latest` (and `finvet-ui`).
+Prebuilt images, published on tagged releases: `docker pull ghcr.io/danielberhane/finvet-api:latest`
+(and `finvet-ui`).
 Every published port binds to `127.0.0.1`; the API is unauthenticated and Postgres ships a
 dev password, so expose the stack deliberately (`FINVET_BIND_ADDR=0.0.0.0`) only after
 changing `POSTGRES_PASSWORD`. Real API keys are required — the system verifies against live
@@ -221,7 +231,8 @@ lint, tests and Docker builds on every push, and [release](.github/workflows/rel
 publishes images to GHCR on version tags.
 
 - **US large-cap equities, point-in-time claims only.** Latency measured on the benchmark
-  runs: p50 13s / p95 23s per claim (DeepSeek), p50 28s / p95 43s (MiniMax).
+  runs: p50 13s / p95 23s per claim (DeepSeek), p50 28s / p95 43s (MiniMax, excluding the
+  one row that errored at the 600s timeout during a market-data outage; p95 48s with it).
 - **A numeric verdict requires a structured source** — an XBRL fact, a market quote field,
   or the deterministic fine/settlement extraction. The remaining 45 metrics the parser can
   accept (analyst price targets among them) are declined up front with a stated limitation.
