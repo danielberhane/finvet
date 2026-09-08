@@ -257,6 +257,10 @@ Stated so they are findings, not surprises:
   persistent checkpointer.
 - **The consensus step is heuristic, not learned**, and single-agent
   routing means it adjusts confidence rather than reconciling opinions.
-- **Reliability coverage is partial**: pass^k is measured over repeated
-  runs per model; series beyond the published runs are added as they
-  are produced.
+- **Reliability coverage is uneven**: DeepSeek has four runs on the frozen
+  set (pass^4 0.945 over 91 shared rows, `docs/eval/layers-deepseek-c1-c4.json`);
+  MiniMax has one complete run, so its stability is unmeasured. Further
+  series are added as they are produced.
+- **The XBRL retrieval score (198/199) is not recomputable from the
+  repository.** It is measured by `tests/integration/test_xbrl_retrieval.py`
+  against a retrieval gold set held privately with the golden claims.
