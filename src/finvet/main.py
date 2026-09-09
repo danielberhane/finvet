@@ -1,5 +1,7 @@
 """FastAPI application for FinVet financial claim verification service."""
 
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 
 # Load .env and set LangSmith tracing BEFORE any LangChain imports
@@ -23,11 +25,46 @@ from .config.database import init_db
 setup_logging()
 logger = get_logger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown, as one hook.
+
+    These were two `@app.on_event` handlers, deprecated since FastAPI 0.93 and
+    slated for removal. A lifespan context manager is the supported form and
+    keeps the pair readable: everything before `yield` runs at boot, everything
+    after at shutdown.
+    """
+    logger.info("=" * 60)
+    logger.info(f"FinVet v{__version__} Starting Up")
+    logger.info("=" * 60)
+    logger.info(f"Log Level: {settings.log_level}")
+    logger.info("HITL Checkpointer: MemorySaver (in-memory)")
+    logger.info(f"HITL Confidence Threshold: {settings.confidence_threshold_hitl}")
+    logger.info("Graph compiled with interrupt support")
+    logger.info("=" * 60)
+
+    # Create the audit schema if missing (idempotent). Wrapped so a Postgres
+    # that is unreachable at boot logs and continues instead of crash-looping
+    # the container — audit writes degrade on their own, and the schema is
+    # created on the next boot once the database is up.
+    try:
+        init_db()
+        logger.info("Database schema initialized")
+    except Exception as e:
+        logger.warning(f"Could not initialize database schema at startup: {e}")
+
+    yield
+
+    logger.info("FinVet shutting down gracefully")
+
+
 # Create FastAPI app
 app = FastAPI(
     title="FinVet API",
     description="Financial claim verification system with explainable verdicts",
     version=__version__,
+    lifespan=lifespan,
 )
 
 # Create verification graph with MemorySaver for HITL interrupt/resume.
@@ -112,37 +149,6 @@ async def guardrail_violation_handler(request: Request, exc: GuardrailViolation)
             "details": exc.details,
         }
     )
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Run on application startup."""
-    logger.info("=" * 60)
-    logger.info(f"FinVet v{__version__} Starting Up")
-    logger.info("=" * 60)
-    logger.info(f"Log Level: {settings.log_level}")
-    logger.info("HITL Checkpointer: MemorySaver (in-memory)")
-    logger.info(f"HITL Confidence Threshold: {settings.confidence_threshold_hitl}")
-    logger.info("Graph compiled with interrupt support")
-    logger.info("=" * 60)
-
-    # Create the audit schema if missing (idempotent). Wrapped so a Postgres
-    # that is unreachable at boot logs and continues instead of crash-looping
-    # the container — audit writes degrade on their own, and the schema is
-    # created on the next boot once the database is up.
-    try:
-        init_db()
-        logger.info("Database schema initialized")
-    except Exception as e:
-        logger.warning(f"Could not initialize database schema at startup: {e}")
-
-
-# Shutdown event
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run on application shutdown."""
-    logger.info("FinVet shutting down gracefully")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Actions first: they run on every push, and a stale action is the update
+  # most likely to break CI without anyone touching the code.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Python deps are floor-pinned in pyproject and resolved by uv.lock, so these
+  # PRs edit the lock. Grouped and monthly on purpose: a solo project does not
+  # need a PR per package, and CI is the gate either way.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: monthly
