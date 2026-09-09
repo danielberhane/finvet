@@ -25,3 +25,12 @@ updates:
     directory: /docker
     schedule:
       interval: monthly
+    # Patch bumps of the base image only. pyproject caps requires-python below
+    # 3.14 and uv.lock enforces it, so a major or minor bump cannot resolve and
+    # the build fails by design -- correctly, but it would reopen every month.
+    # Raise the ceiling in pyproject first, then drop this ignore.
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor

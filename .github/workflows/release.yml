@@ -14,6 +14,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Build provenance: an attestation signed by the runner, linking each
+      # published image digest back to the commit and workflow that built it.
+      # A project whose thesis is that every number names its source should be
+      # able to say the same about its own artifacts.
+      attestations: write
+      id-token: write
     strategy:
       matrix:
         include:
@@ -38,10 +44,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          # `latest` must not move for a pre-release: without the enable guard,
+          # a rehearsal tag like v2.0.9-rc1 becomes the image everyone pulls by
+          # default. Comments live here, not inside the block scalar below,
+          # where they would be literal text rather than comments.
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest
-      - uses: docker/build-push-action@v6
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+      - id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.file }}
@@ -54,6 +65,11 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
   github-release:
     needs: images
