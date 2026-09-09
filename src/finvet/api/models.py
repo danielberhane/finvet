@@ -35,10 +35,26 @@ class MemoryCheckRequest(BaseModel):
 
 
 class MemoryAcceptRequest(BaseModel):
-    """Request model for accepting a cached verification result."""
-    original_request_id: str = Field(..., description="Request ID of the cached verification")
-    claim: str = Field(..., description="Current claim text")
-    similarity: float = Field(..., description="Cosine similarity score")
+    """Request model for accepting a cached verification result.
+
+    Bounded like every other request model, which this one was not. It writes
+    a row to the audit trail, `audit_events.request_id` carries no foreign
+    key, and the endpoint is reachable whether or not claim memory is enabled
+    -- so an unbounded claim string and a free-form identifier were an
+    unauthenticated write into the record the rest of the system treats as
+    evidence. The identifier now matches the format `/verify` issues, the same
+    pattern `memory_context_request_id` is already held to.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    original_request_id: str = Field(
+        ..., pattern=r"^req_[0-9a-f]{12}$",
+        description="Request ID of the cached verification")
+    claim: str = Field(..., min_length=10, max_length=2000,
+                       description="Current claim text")
+    similarity: float = Field(..., ge=0.0, le=1.0,
+                              description="Cosine similarity score")
 
 
 class HITLReviewRequest(BaseModel):
