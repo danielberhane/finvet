@@ -250,7 +250,13 @@ publishes images to GHCR on version tags.
 
 ---
 
-## Origins & license
+## Contributing, security, origins & license
+
+Bug reports and small focused fixes are welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for setup, what CI enforces, and the changes
+that will be declined. To report a vulnerability, or to read what this system does and
+does not defend against before deploying it, see [SECURITY.md](SECURITY.md).
+
 
 Evolved from [FinVet v1](https://github.com/danielberhane/finvet-acl-demo) (two RAG pipelines
 and vote-based verdicts); this version is a ground-up redesign as a multi-agent LangGraph
