@@ -5,7 +5,7 @@
 #   docker build -f docker/Dockerfile --target api -t finvet-api .
 #   docker build -f docker/Dockerfile --target ui  -t finvet-ui  .
 
-FROM python:3.13-slim AS base
+FROM python:3.14-slim AS base
 
 # Pinned uv (the version that resolved uv.lock) for reproducible installs.
 COPY --from=ghcr.io/astral-sh/uv:0.10.3 /uv /uvx /bin/
