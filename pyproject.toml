@@ -59,13 +59,10 @@ memory = [
 evaluation = [
     "deepeval>=4.0.0",
 ]
-dev = [
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=5.0.0",
-    "ruff>=0.7.0",
-    "mypy>=1.13.0",
-]
+# The dev tools are a dependency group, not an extra -- see [dependency-groups]
+# below. They were declared in both places with identical pins, which is two
+# sources of truth for one list and one edit away from disagreeing. `uv sync`
+# installs the group by default, which is what CI relies on.
 
 [build-system]
 requires = ["hatchling"]
