@@ -2,9 +2,7 @@
 
 **Agentic financial claim verification.**
 
-<!-- Restore after the first push, once CI has run once:
 [![ci](https://github.com/danielberhane/finvet/actions/workflows/ci.yml/badge.svg)](https://github.com/danielberhane/finvet/actions/workflows/ci.yml)
--->
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)
 
@@ -77,8 +75,9 @@ live-market rows. MiniMax has one complete run, so its column is pass@1 only. Si
 differences of a few claims sit inside this measured variation. Pooled summary:
 [`layers-deepseek-c1-c4.json`](docs/eval/layers-deepseek-c1-c4.json).
 
-Raw accuracy including live-market rows reads 96.8% vs 93.5%; the gap is a market-data
-outage during the MiniMax run, not the model.
+Raw accuracy including live-market rows reads 96.8% vs 93.5% (n=93: both columns drop the
+one row that errored at the 600s timeout under MiniMax, so the two models are scored on the
+same rows); the gap is a market-data outage during the MiniMax run, not the model.
 
 **Evidence:** [`docs/eval/`](docs/eval/) holds five redacted per-claim run artifacts (claim
 text withheld by [`scripts/redact_run.py`](scripts/redact_run.py); every table cell and the

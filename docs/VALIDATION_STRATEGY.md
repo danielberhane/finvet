@@ -9,14 +9,14 @@ its validation is not independent (see Known gaps).
 
 ## Test taxonomy, as built
 
-### Unit tests (`tests/unit/` — 84 files, ~1,550 tests, mocked LLMs)
+### Unit tests (`tests/unit/` — 84 test files, ~1,565 tests, mocked LLMs)
 
 Pure logic: tolerance thresholds, the verdict override, routing, guards,
 consensus adjustments, response assembly. One rule shapes the suite:
 **tests must drive the producer.** Any test covering a verdict, an
 escalation, or a persistence path enters through a route callable, a
 graph node, or a decorated tool — never a hand-built dict. Three defects
-once survived a 500-test suite because their tests constructed their own
+once survived a suite of hundreds of tests because their tests constructed their own
 inputs; a fixture asserts the shape you remembered, not the shape the
 system emits.
 
