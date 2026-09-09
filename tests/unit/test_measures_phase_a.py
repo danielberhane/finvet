@@ -7,7 +7,7 @@ only way to assert what each measure does at its boundaries.
 
 The real artifacts are scored by `scripts/eval_layers.py`, which reports:
 
-    pass@1 0.987 · pass^4 0.975 (n=79) · ECE 0.039 decisive · 0 dangerous errors
+    pass@1 0.989 · pass^4 0.945 (n=91) · ECE 0.039 decisive · 0 dangerous errors
 
 Those differ from the figures computed while planning, and the modules are
 right. Planning counted the four `observe` rows -- known defects whose
