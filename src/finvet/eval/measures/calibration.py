@@ -4,22 +4,24 @@ Measured as Expected Calibration Error. It matters here specifically because
 confidence *routes* claims: `output_guardrails` sends anything below the
 threshold to a human, so uncalibrated confidence makes that routing arbitrary.
 
-Measured over four runs, the aggregate and the shape disagree:
+Measured over the four DeepSeek runs of the frozen set, the aggregate and the
+shape disagree:
 
-    ECE = 0.1371 over 344 predictions
+    ECE = 0.1351 over 343 predictions
     ECE = 0.0391 over the 281 decisive ones
 
     bin    n    accuracy  avg_conf     gap
     0.0   13     0.000     0.000     +0.000
-    0.2   41     0.976     0.200     +0.776
-    0.5    8     1.000     0.537     +0.463
+    0.2   37     1.000     0.200     +0.800
+    0.3    1     1.000     0.350     +0.650
+    0.5   11     1.000     0.536     +0.464
     0.9  281     1.000     0.961     +0.039
 
 **The aggregate is misleading on its own.** Every decisive verdict held at 0.9
 or above was correct -- 281 of them -- against a stated 0.961, so the system is
 mildly *under*confident where it answers. Essentially all the aggregate error
-comes from the 0.2 band, where declines are almost always correct while
-reporting low confidence.
+comes from the low bands, where declines are correct while reporting low
+confidence.
 
 That is an overloaded scale rather than a miscalibrated one. `confidence`
 measures how strongly a verdict is held, not whether the outcome was right, and

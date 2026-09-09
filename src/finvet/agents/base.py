@@ -131,6 +131,29 @@ def compare_observation(parsed_claim, observation, agent_type="sec") -> tuple:
     return "NOT_ENOUGH_INFO", 0.5, magnitude_diff
 
 
+def settle_confidence(prior_verdict, new_verdict, prior_confidence,
+                      comparator_confidence) -> float:
+    """Whose confidence the answer carries once Python has compared.
+
+    When the comparator agrees with the model, taking the higher of the two is
+    harmless: both describe the same verdict.
+
+    When it overrules the model, the model's number describes the verdict that
+    was just disproven, and `max` published it anyway -- so the more
+    confidently wrong the model was, the more confident the corrected answer
+    looked. A claim 1.19% from the filed figure, which the comparator holds at
+    0.85, was released at 0.99 because the model had confidently said the
+    opposite. The comparison decided the verdict, so it states the confidence.
+
+    Escalation is unaffected either way: both comparator levels sit above the
+    review threshold, so an overridden decisive verdict never routed to a
+    human before this change and does not now.
+    """
+    if new_verdict != prior_verdict:
+        return comparator_confidence
+    return max(prior_confidence, comparator_confidence)
+
+
 def deterministic_reasoning(parsed_claim, observation, verdict) -> str:
     """Python's own account of a comparison it made.
 
@@ -575,7 +598,11 @@ class BaseVerificationAgent(ABC):
         # to prevent anchoring bias on a potentially wrong verdict
         verdict_messages = []
         for msg in messages:
-            if (msg == messages[-1]
+            # `is`, not `==`. Messages compare by value, so an earlier message
+            # identical to the last one was dropped too. Providers stamp a
+            # per-response id that makes this unreachable in practice; one that
+            # omits ids would make it reachable, and identity is what was meant.
+            if (msg is messages[-1]
                     and hasattr(msg, "tool_calls") and not msg.tool_calls
                     and hasattr(msg, "content") and msg.content):
                 continue
@@ -721,16 +748,19 @@ class BaseVerificationAgent(ABC):
                             f"{self.agent_type} override: {verdict} → SUPPORTS "
                             f"(diff {magnitude_diff:.2f}% <= tolerance {tolerance}%)"
                         )
+                    confidence = settle_confidence(
+                        verdict, "SUPPORTS", confidence,
+                        0.90 if magnitude_diff < tolerance / 2 else 0.85)
                     verdict = "SUPPORTS"
-                    confidence = max(confidence, 0.90 if magnitude_diff < tolerance / 2 else 0.85)
                 else:
                     if verdict != "REFUTES":
                         logger.info(
                             f"{self.agent_type} override: {verdict} → REFUTES "
                             f"(diff {magnitude_diff:.2f}% > tolerance {tolerance}%)"
                         )
+                    confidence = settle_confidence(
+                        verdict, "REFUTES", confidence, 0.90)
                     verdict = "REFUTES"
-                    confidence = max(confidence, 0.90)
             elif comparison in ("gt", "gte"):
                 passes = (
                     (comparison == "gt" and retrieved_value > claimed_val) or
@@ -742,8 +772,9 @@ class BaseVerificationAgent(ABC):
                         f"{self.agent_type} override: {verdict} → {new_verdict} "
                         f"(comparison={comparison}, claimed={claimed_val}, actual={retrieved_value})"
                     )
+                confidence = settle_confidence(
+                    verdict, new_verdict, confidence, 0.90)
                 verdict = new_verdict
-                confidence = max(confidence, 0.90)
             elif comparison in ("lt", "lte"):
                 passes = (
                     (comparison == "lt" and retrieved_value < claimed_val) or
@@ -755,8 +786,9 @@ class BaseVerificationAgent(ABC):
                         f"{self.agent_type} override: {verdict} → {new_verdict} "
                         f"(comparison={comparison}, claimed={claimed_val}, actual={retrieved_value})"
                     )
+                confidence = settle_confidence(
+                    verdict, new_verdict, confidence, 0.90)
                 verdict = new_verdict
-                confidence = max(confidence, 0.90)
             else:
                 # Fail closed. An operator we cannot interpret means we hold
                 # both numbers but no way to compare them — the deterministic
@@ -930,16 +962,18 @@ class BaseVerificationAgent(ABC):
         return "\n".join(context_parts)
 
     def _get_tolerance(self, claimed_value: Optional[float]) -> float:
-        """Get the tolerance threshold based on agent type and value magnitude."""
-        if self.agent_type == "market":
-            return TOLERANCE_MARKET
-        elif self.agent_type == "sec":
-            if claimed_value and abs(claimed_value) >= TOLERANCE_LARGE_VALUE_THRESHOLD:
-                return TOLERANCE_SEC_LARGE
-            return TOLERANCE_SEC_SMALL
-        elif self.agent_type == "news":
-            return TOLERANCE_NEWS
-        return TOLERANCE_DEFAULT
+        """Tolerance for this agent and magnitude — one implementation.
+
+        This used to repeat the branching in `_tolerance_for`, which is what
+        the fallback comparator uses. The two agreed for the three agent types
+        that exist only because TOLERANCE_SEC_SMALL and TOLERANCE_DEFAULT are
+        both 2.0; for any other agent type they already disagreed (2.0 here
+        against 1.5 there above the large-value threshold), and either
+        constant changing would have split them for every claim. A second
+        opinion about the tolerance is a second verdict path, which is exactly
+        what the module-level function was extracted to prevent.
+        """
+        return _tolerance_for(claimed_value, self.agent_type)
 
     @abstractmethod
     def _get_source_description(self) -> str:

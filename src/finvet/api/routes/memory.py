@@ -33,6 +33,16 @@ def memory_check(request: MemoryCheckRequest):
 @router.post("/memory-accept")
 def memory_accept(request: MemoryAcceptRequest):
     """Log that the user accepted a cached verification result."""
+    # Gated like its sibling above. Claim memory ships disabled, and with it
+    # disabled there is no cached result anyone could have accepted -- so a
+    # call here is not a decision to record. Without this the endpoint wrote
+    # audit rows for a feature that was switched off.
+    if not deps.claim_memory:
+        raise HTTPException(
+            status_code=404,
+            detail="Claim memory is disabled; there is no cached result to accept.",
+        )
+
     audit = get_audit_logger()
     # buffer_for_execution=False: this happens after the original run was
     # finalized and reuses its request_id, so buffering it would accumulate

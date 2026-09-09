@@ -147,6 +147,13 @@ def run_one(row: dict) -> dict:
                            or {}).get("status"),
             "escalated": status == "pending_review"
             or body.get("verdict") == "PENDING",
+            # The deterministic override, which is the system's central claim
+            # and was the one thing the artifact could not show. The API has
+            # always returned both fields; nothing copied them here, so across
+            # 476 published per-claim records there was no way to count how
+            # often Python overruled the model, or to demonstrate it ever did.
+            "override_applied": meta.get("override_applied"),
+            "llm_original_verdict": meta.get("llm_original_verdict"),
         },
         error=None,
     )
