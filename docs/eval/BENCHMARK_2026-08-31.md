@@ -10,7 +10,7 @@ Same 97 claims, same code, same dataset. Nothing changed between the two runs.
 | artifact | `run-20260831T200936Z-minimax-c1-redacted.json` | `run-20260831T210242Z-deepseek-c1-redacted.json` |
 | endpoint | self-hosted LiteLLM gateway | api.deepseek.com |
 | elapsed | 47.7 min | 17.2 min |
-| outcome, all scored (n=93) | 87 (93.5%) | 90 (96.8%) |
+| outcome, all scored (n=93)¹ | 87 (93.5%) | 90 (96.8%) |
 | **outcome, excl. live market (n=86)** | **83 (96.5%)** | **83 (96.5%)** |
 | dangerous errors | 0 / 94 | 0 / 94 |
 | grounding | 42/42 (100%) | 42/42 (100%) |
@@ -20,6 +20,12 @@ Same 97 claims, same code, same dataset. Nothing changed between the two runs.
 | calibration, decisive ECE | 0.0456 | 0.0389 |
 | routing | 90/93 (96.8%) | 92/94 (97.9%) |
 | declined | 7 (7.4%) | 3 (3.2%) |
+
+¹ 94 rows carry an expected verdict. Row 62 errored at the 600s timeout under
+MiniMax and is dropped from **both** columns so the models are scored on the
+same rows; scoring it as a failure instead gives MiniMax 87/94 (92.6%) and
+DeepSeek 91/94 (96.8%). The headline row above (n=86) is unaffected — row 62 is
+a live-market claim and already excluded there.
 
 ## Rows where the models disagree (live-market excluded)
 

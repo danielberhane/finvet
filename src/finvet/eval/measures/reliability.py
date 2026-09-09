@@ -5,9 +5,13 @@ lucky". tau-bench introduced **pass^k** -- the rate at which a case succeeds on
 *all* k attempts -- because production cares about the worst case, and reports
 that a 90% pass@1 agent is typically only ~57% consistent by k=8.
 
-Measured on FinVet's four runs, the drop is 1.2 points:
+Measured on the four DeepSeek runs of the frozen set, the drop is 4.4 points:
 
-    pass@1 = 0.987      pass^4 = 0.975      n = 79
+    pass@1 = 0.989      pass^4 = 0.945      n = 91
+
+Every one of the five rows that misses pass^4 escalated to human review on at
+least one attempt; none returned a wrong verdict. The instability is in whether
+the system asks for help, not in what it asserts.
 
 Only rows present in every run are counted, and row 88 is excluded because a
 code change moved it mid-series -- a difference with a known cause is not
