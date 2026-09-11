@@ -21,9 +21,11 @@ public hosting**, and the following are known and deliberate:
 - **Human-review checkpoints live in process memory.** A restart loses pending
   reviews, which the API reports as a `409 checkpoint_unavailable` rather than
   answering from the reviewer's own submission.
-- **The audit trail records what the pipeline did; it is not tamper-evident.**
-  Its checksum detects accidental corruption, not a motivated editor with
-  database access.
+- **The audit trail records what the pipeline did; it is not tamper-proof.**
+  Each record carries a checksum the API re-verifies on read, which detects a
+  row altered without the checksum being recomputed. A writer who can change
+  both defeats it, so treat the trail as a record of what happened, not as
+  proof that nobody edited it.
 
 ## What the design does defend against
 

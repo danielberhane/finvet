@@ -103,29 +103,23 @@ reconciling several opinions.
 | **Market** | Prices, valuation, market cap | Finnhub | — |
 | **News** | Events and announcements | Tavily search | SEC |
 
-**Delegation** runs one way — News asks SEC whether the issuer's own filing discloses a
-reported fine or settlement — and the SEC agent holds no delegation tool, so the call
-terminates by construction. Where the filing states an amount, the verdict follows the filing
-rather than the press; only the two sources *contradicting* each other sends the claim to a
-person. Filing silence does not: deciding an issuer *should* have disclosed something is a
-materiality judgment, and this release does not make one.
+**Delegation** runs one way: News asks SEC whether the issuer's own filing discloses a
+reported fine or settlement. The SEC agent holds no delegation tool, so the call cannot
+recurse. Where the filing states an amount, the verdict follows the filing rather than the
+press.
 
-**Trust boundary.** Retrieved filing text is supporting evidence: it shows what a company
-said, and a model's reading of it never becomes the number a verdict rests on — XBRL is the
-authoritative numeric source. A claim about what a filing *says* is answered from retrieved
-text with passages cited; absence of a passage is never treated as refutation. One narrow
-exception: for fines and settlements (`fine_amount`, `settlement_amount` — no XBRL
-concept exists), Python — not the model —
-extracts the amount from Legal Proceedings text, and only when exactly one unambiguous
-candidate is present.
+**Trust boundary.** XBRL is the authoritative numeric source. Retrieved filing text is
+supporting evidence, and a model's reading of it never becomes the number a verdict rests on;
+absence of a passage is never treated as refutation. The one exception is fines and
+settlements, which have no XBRL concept: Python extracts the amount from Legal Proceedings
+text, and only when exactly one unambiguous candidate is present.
 
-**Guardrails and review.** Always-on regex/PII checks plus an optional Llama Guard layer on
-input and output; the guards decide safety, and the parser — not the safety layer — decides
-whether a claim is verifiable. Human review triggers on low confidence, unsafe output, or a
-press-vs-filing conflict, pausing at a LangGraph checkpoint and resuming with the reviewer's
-decision merged in. Every tool call and verdict is persisted to Postgres with a checksum the
-API re-verifies on read — it detects a record altered without its checksum being recomputed;
-it is not tamper-proof against a writer who can change both.
+**Guardrails and review.** Regex and PII checks always run, with an optional Llama Guard layer
+on input and output. The guards decide safety; the parser decides whether a claim is
+verifiable. Review triggers on low confidence, unsafe output, or a press-versus-filing
+conflict, pausing at a LangGraph checkpoint and resuming with the reviewer's decision merged
+in. Every tool call and verdict is persisted with a checksum the API re-verifies on read; see
+[SECURITY.md](SECURITY.md) for what that does and does not guarantee.
 
 Mechanics — retrieval fusion, delegation states, review recovery:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
