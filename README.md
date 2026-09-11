@@ -65,7 +65,7 @@ seven layers:
 Layer 6, reliability, needs repeated runs, so it is reported below rather than per model.
 
 Three of those results are properties of the code rather than of a run: an agent cannot call
-another agent's tools, the 26 claims that must spend nothing short-circuit before any agent,
+another agent's tools, the 32 claims that must spend nothing never reach one,
 and a decisive numeric verdict is unreachable without a trusted observation.
 
 **Stability.** Four runs on one model: pass@1 98.9%, **pass^4 94.5%**. Every row that missed
