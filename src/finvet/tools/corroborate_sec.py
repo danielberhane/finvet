@@ -191,6 +191,7 @@ def _corroborate(
             state, max_iterations=A2A_MAX_ITERATIONS, scope_retrieval=False
         )
         ev = out.get("agent_evidence", {})
+        base["tokens_used"] = ev.get("tokens_used", 0)
 
         # run_sec_agent_scoped catches its own failures and returns
         # NOT_ENOUGH_INFO evidence, which is indistinguishable from an

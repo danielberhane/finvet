@@ -20,7 +20,8 @@ Pipeline flow (which node writes which fields):
     Node 2 (claim_parser)       → parsed_claim, total_tokens_used
     Node 3 (period_resolver)    → canonical_period
     Node 4 (domain_agent)       → agent_type, agent_evidence,
-                                   rag_chunks_retrieved, corroboration_result
+                                   rag_chunks_retrieved, corroboration_result,
+                                   total_tokens_used
     Node 5 (consensus)          → verdict, confidence, confidence_label,
                                    consensus_reasons, confidence_adjustments
     Node 6 (output_guardrails)  → hitl_required, hitl_triggers

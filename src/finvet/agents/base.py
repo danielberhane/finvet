@@ -10,6 +10,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Literal, Optional
 
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.prebuilt import create_react_agent
@@ -30,6 +31,7 @@ from ..config.constants import (
 from ..config.settings import settings
 from ..tools.sec_tools import _DATABLE_PERIOD_TYPES
 from ..llm import create_llm
+from ..llm.usage import tokens_of
 from ..config.metrics import verification_strategy_for
 from ..models.evidence import (
     ToolExecutionRecord,
@@ -191,6 +193,12 @@ def deterministic_reasoning(parsed_claim, observation, verdict) -> str:
     )
 
 
+def _usage_total(handler: UsageMetadataCallbackHandler) -> int:
+    """Total tokens the handler saw, across however many models answered."""
+    return sum(int(u.get("total_tokens") or 0)
+               for u in handler.usage_metadata.values())
+
+
 class VerdictOutput(BaseModel):
     """Structured verdict output from the LLM."""
     verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"]
@@ -275,19 +283,30 @@ class BaseVerificationAgent(ABC):
     def execute(self, state: VerificationState) -> Dict[str, Any]:
         """Execute verification using LangGraph's create_react_agent."""
         start_time = time.time()
+        # Tokens this execution consumed: every model call of the loop plus
+        # the verdict call. Every evidence dict below reports it; the node
+        # adds it to the state's running total. Counted by callback, not by
+        # summing the returned messages: a loop that hits its recursion limit
+        # raises with no messages to sum and had still spent its tokens.
+        self._tokens_used = 0
+        usage = UsageMetadataCallbackHandler()
         context = self._build_context(state)
 
         # Run LangGraph react agent (handles ReAct loop internally)
         try:
             agent_result = self.react_agent.invoke(
                 {"messages": [HumanMessage(content=context)]},
-                config={"recursion_limit": self.max_iterations * 2 + 1},
+                config={"recursion_limit": self.max_iterations * 2 + 1,
+                        "callbacks": [usage]},
             )
             messages = agent_result["messages"]
         except Exception as e:
+            self._tokens_used += _usage_total(usage)
             logger.error(f"{self.agent_type} react agent failed: {e}")
             execution_time_ms = int((time.time() - start_time) * 1000)
             return self._error_evidence(str(e), execution_time_ms)
+
+        self._tokens_used += _usage_total(usage)
 
         # Extract tools called and provenance from messages
         tools_called, tool_calls_detail, provenance, tool_records = \
@@ -486,6 +505,7 @@ class BaseVerificationAgent(ABC):
             "llm_original_verdict": original_verdict,
             "execution_status": "failed" if comparator_error else "completed",
             "error": comparator_error,
+            "tokens_used": self._tokens_used,
         }
 
     def _extract_tool_info(self, messages) -> tuple:
@@ -604,7 +624,8 @@ class BaseVerificationAgent(ABC):
         history so the verdict LLM isn't biased by the agent's conclusion.
         """
         verdict_llm = create_llm("verdict").with_structured_output(
-            VerdictOutput, method=settings.llm_verdict.structured_output_method
+            VerdictOutput, method=settings.llm_verdict.structured_output_method,
+            include_raw=True,
         )
 
         # Skip the final AI message if it's free-text reasoning (no tool calls)
@@ -650,7 +671,13 @@ class BaseVerificationAgent(ABC):
             )
         ))
 
-        verdict_output = verdict_llm.invoke(verdict_messages)
+        result = verdict_llm.invoke(verdict_messages)
+        self._tokens_used = getattr(self, "_tokens_used", 0) + tokens_of(result["raw"])
+        verdict_output = result["parsed"]
+        if verdict_output is None:
+            # include_raw swallows the parse failure; re-raise so the caller's
+            # deterministic fallback runs exactly as before.
+            raise result["parsing_error"] or ValueError("verdict did not parse")
         logger.info(
             f"{self.agent_type} LLM verdict: {verdict_output.verdict} "
             f"(confidence: {verdict_output.confidence:.2f})"
@@ -865,6 +892,7 @@ class BaseVerificationAgent(ABC):
             "verdict_extraction_error": extraction_error,
             "execution_status": "completed",
             "error": None,
+            "tokens_used": self._tokens_used,
         }
 
     def _error_evidence(
@@ -894,6 +922,7 @@ class BaseVerificationAgent(ABC):
             "llm_original_verdict": None,
             "execution_status": "failed",
             "error": error_msg,
+            "tokens_used": getattr(self, "_tokens_used", 0),
         }
 
     def _build_context(self, state: VerificationState) -> str:
