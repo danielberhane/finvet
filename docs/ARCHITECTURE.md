@@ -282,7 +282,10 @@ published description is "bounded agent delegation".
 
 Delegation runs **News -> SEC only**. A news claim about a fine or settlement is checked
 against the issuer's own filing: a 10-K's Legal Proceedings section is the primary source and
-press coverage is secondary. The reverse direction existed once and was removed — it fired 0
+press coverage is secondary. The two metrics that take this path are `fine_amount` and
+`settlement_amount`, the only numeric metrics with no XBRL concept behind them. Python, not
+the model, extracts the amount from the Legal Proceedings text, and only when exactly one
+unambiguous candidate is present. The reverse direction existed once and was removed — it fired 0
 times in 496 benchmark runs, because an audited filing is already the strongest source and the
 claims a filing cannot settle parse as `news` and never reach the SEC agent.
 
