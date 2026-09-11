@@ -173,7 +173,24 @@ def _handle_rejection(state: VerificationState) -> Dict:
 
 
 def _simple_consensus(state: VerificationState) -> Dict:
-    """Simple consensus for single-agent architecture."""
+    """Adjusts confidence. Does not overturn a verdict.
+
+    The name is a leftover from a design where three agents voted and their
+    answers had to be reconciled. One agent runs per claim now, so there is
+    nothing to reconcile: the agent's verdict is copied out and every branch
+    below touches only the confidence. The single exception is the first
+    guard -- if the agent produced no evidence at all there is no verdict to
+    carry, and NOT_ENOUGH_INFO is the honest answer rather than a judgement
+    about the claim. Anyone looking for where a verdict genuinely changes
+    should be reading `_apply_override` in the agent, or the human-review
+    node further down this file.
+
+    What it does do is nudge the agent's own confidence on three signals,
+    then cap it: a very close numeric match, a very large mismatch, and
+    whether the agent bothered to call several tools. The thresholds live in
+    `config/constants.py` rather than here so they can be read without
+    reading this function.
+    """
     agent_evidence = state.get("agent_evidence", {})
 
     if not agent_evidence:

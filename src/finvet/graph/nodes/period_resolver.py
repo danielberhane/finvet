@@ -195,7 +195,26 @@ def period_resolver(state: VerificationState) -> Dict:
 
 
 def _create_current_period(state: VerificationState) -> Dict:
-    """Create a current period when no specific period is given."""
+    """A placeholder for a claim that named no period at all.
+
+    Both dates are today, and that is not a window anyone should compare
+    against -- it means "we were never told". Two other modules rely on
+    reading it that way, and neither is visible from here:
+
+    - `tools/sec_tools._DATABLE_PERIOD_TYPES` excludes `current`, so XBRL
+      targeting skips it rather than matching today's date against a filing
+      and flagging every value unverified.
+    - `agents/base.execute` treats the same type as a placeholder and drops
+      the bounds before resolving a trusted observation. When it did not, a
+      real filed fact for 2024-09-28 was rejected against bounds of
+      today..today, and every numeric claim naming no period was forced to
+      NOT_ENOUGH_INFO by a date that means "unknown".
+
+    So the contract is the `period_type`, not the dates. Changing this to
+    emit something that looks more like a real window -- a trailing year,
+    say -- would silently re-enable both bugs, because the consumers would
+    no longer be able to tell they were handed a guess.
+    """
     today = datetime.utcnow().date().isoformat()
     canonical_period = CanonicalPeriod(
         period_type="current",
@@ -213,7 +232,18 @@ def _create_current_period(state: VerificationState) -> Dict:
 
 
 def _create_event_relative_period(state: VerificationState, period_str: str) -> Dict:
-    """Create a placeholder period for event-relative strings that cannot be resolved."""
+    """A placeholder for a period anchored to an event, not to the calendar.
+
+    "Since the acquisition closed", "after the restatement" -- the claim names
+    a real moment, but resolving it would mean knowing when that event
+    happened, which nothing here does. Today's date goes in the fields for the
+    same reason as `_create_current_period` above, and carries the same
+    contract: `event_relative` is excluded from the datable types, so no
+    consumer mistakes it for a resolved window. The difference is only that
+    this one records *why* it could not be resolved, because the reviewer
+    reading the assumption deserves better than "no period given" for a claim
+    that plainly gave one.
+    """
     today = datetime.utcnow().date().isoformat()
     assumption = (
         f"Period '{period_str}' references an external event and cannot be resolved "

@@ -57,6 +57,7 @@ _HOME = re.compile(r"/(?:Users|home)/[A-Za-z0-9_.-]+")
 
 
 def _host(url: str) -> str:
+    """Just the hostname, so a gateway on a non-standard port still matches."""
     return re.sub(r"^[a-z]+://", "", url).split("/")[0].split(":")[0]
 
 
@@ -92,6 +93,18 @@ def leaks(text: str) -> List[str]:
 
 
 def write_redacted(src: Path, out_dir: Path, force: bool = False) -> Path:
+    """Redact one artifact and write it somewhere it is safe to publish.
+
+    Three refusals, each cheaper than the mistake it prevents. It will not
+    write into the directory it read from, because the source is a paid
+    artifact that cannot be regenerated. It will not overwrite an existing
+    redaction without being told to, because a published file is something
+    a reader may already have cited. And it will not write at all if the
+    result still contains a home directory or a routable address -- the
+    rules above catch the two fields we know about, and `leaks` is the
+    backstop for the field nobody thought of, which is exactly how the
+    gateway address reached git history the first time.
+    """
     src = src.resolve()
     out_dir = out_dir.resolve()
     if out_dir == src.parent:
@@ -110,6 +123,15 @@ def write_redacted(src: Path, out_dir: Path, force: bool = False) -> Path:
 
 
 def _find_source(directory: Path, label: str) -> Path:
+    """The one complete run carrying this label, or an error naming the rest.
+
+    Incomplete runs share a label with the run that replaced them -- an
+    aborted attempt and its retry are both `deepseek-c2` -- so matching on
+    the label alone would pick whichever sorted first. Only complete runs
+    are candidates, and an ambiguous match refuses rather than guessing,
+    because publishing the wrong artifact under a label that already appears
+    in a benchmark write-up is not something a reader could detect.
+    """
     candidates = []
     for path in sorted(directory.glob(f"run-*-{label}.json")):
         try:
