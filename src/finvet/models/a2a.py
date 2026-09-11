@@ -138,6 +138,9 @@ class A2AResult(BaseModel):
     # metrics and ParsedClaim rejects them on a sec-typed claim. The audit trail
     # still needs to record what kind of assertion was being checked.
     metric: str = Field("", description="Metric of the claim under review")
+    # The nested agent's consumption. It runs inside a tool call, so nothing
+    # else on the parent's path can see it.
+    tokens_used: int = Field(0, description="Tokens the delegated run consumed")
 
     # How the temporal gate was applied, which decides whether the filing's
     # silence means anything.

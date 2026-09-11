@@ -40,6 +40,7 @@ def _error_evidence(agent_type: str, source_desc: str, error_msg: str) -> Dict:
         # and only one of them is evidence.
         "execution_status": "failed",
         "error": error_msg,
+        "tokens_used": 0,
     }
 
 
@@ -75,6 +76,8 @@ def _run_agent(
         return {
             "agent_evidence": evidence,
             "agent_type": agent_type,
+            "total_tokens_used": (state.get("total_tokens_used", 0)
+                                  + evidence.get("tokens_used", 0)),
         }
 
     except Exception as e:
@@ -82,6 +85,7 @@ def _run_agent(
         return {
             "agent_evidence": _error_evidence(agent_type, source_desc, str(e)),
             "agent_type": agent_type,
+            "total_tokens_used": state.get("total_tokens_used", 0),
         }
 
 
@@ -203,6 +207,11 @@ def run_news_agent(state: VerificationState) -> Dict:
             f"(trigger: {corroboration.get('trigger_mode')})"
         )
         result["corroboration_result"] = corroboration
+        # The delegated SEC run happened inside a tool call; its tokens ride
+        # on the A2A result rather than on any message the parent saw.
+        result["total_tokens_used"] = (
+            result.get("total_tokens_used", state.get("total_tokens_used", 0))
+            + int(corroboration.get("tokens_used") or 0))
 
     return result
 

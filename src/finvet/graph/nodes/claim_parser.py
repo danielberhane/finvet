@@ -18,6 +18,7 @@ from ...config.settings import settings
 from ...models.state import VerificationState
 from ...models.claim import ParsedClaim
 from ...llm import create_llm
+from ...llm.usage import tokens_of
 from ...audit import get_audit_logger
 from ...utils.exceptions import ParsingError
 from ...utils.logging import get_logger
@@ -423,11 +424,7 @@ def claim_parser(state: VerificationState) -> Dict:
             if normalized != parsed_claim.ticker:
                 parsed_claim = parsed_claim.model_copy(update={"ticker": normalized})
 
-        # Calculate tokens used
-        tokens_used = 0
-        if hasattr(response, "response_metadata"):
-            usage = response.response_metadata.get("usage", {})
-            tokens_used = usage.get("total_tokens", 0)
+        tokens_used = tokens_of(response)
 
         logger.info(
             f"Claim parsed: type={parsed_claim.claim_type}, "

@@ -139,7 +139,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 | **input_guardrails** | `claim_normalized`, `guard_result_input`, `guardrails_passed`, `guardrails_failed` |
 | **claim_parser** | `parsed_claim` (ParsedClaim), `parser_used`, `total_tokens_used` |
 | **period_resolver** | `canonical_period` (CanonicalPeriod), `period_assumptions` |
-| **domain_agents** | `agent_evidence` (AgentEvidence), `agent_type`, `rag_chunks_retrieved`, `corroboration_result` |
+| **domain_agents** | `agent_evidence` (AgentEvidence), `agent_type`, `rag_chunks_retrieved`, `corroboration_result`, `total_tokens_used` |
 | **consensus** | `verdict`, `confidence`, `confidence_label`, `confidence_adjustments`, `consensus_reasons` |
 | **output_guardrails** | `hitl_required`, `hitl_triggers`, `guard_result_output` |
 | **hitl_checkpoint** | `hitl_checkpoint_passed` |
