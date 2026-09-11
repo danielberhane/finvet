@@ -189,6 +189,26 @@ The LLM is pluggable ([`llm/factory.py`](src/finvet/llm/factory.py)): point any
 OpenAI-compatible chat-completions endpoint — Ollama, vLLM, LiteLLM, or a hosted vendor — at
 any of the three roles via env vars, no code change.
 
+### Tracing (LangSmith)
+
+Off by default. Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, and `LANGCHAIN_PROJECT`
+in `.env` and restart the API. Every verification then appears as one trace named
+`finvet-verify` (`finvet-verify-stream`, `finvet-review-resume`, `finvet-review-reconcile`
+for the other entry points) carrying the `request_id` in its metadata, so a trace joins to
+its audit row at `GET /audit/{request_id}`. A trace holds every graph node, model call, and
+tool call with latency and token counts. The same total is on every response as
+`metadata.total_tokens_used`, delegated runs included, so cost per claim needs no tracing.
+
+What three sample traces showed on the default provider: an SEC claim is ~20 s and ~20.8k
+tokens across six model calls (~7 s in total); the XBRL fetch behind `get_income_statement`
+was 11–15 s of that, so latency is dominated by the data source, not the model. A news claim
+that delegated to the SEC agent was ~21 s and ~38.9k tokens. Prompt tokens are ~96% of the
+total — the ReAct loop re-sends the growing context on each step.
+
+**Tracing is data egress.** The claim text, tool outputs (filing excerpts, quotes, news
+snippets), and model prompts leave the machine for LangSmith. Do not enable it on claims you
+would not send to a third party.
+
 </details>
 
 ---

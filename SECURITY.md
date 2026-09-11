@@ -50,5 +50,6 @@ worth reporting:
 ## Scope
 
 Third-party services FinVet calls (SEC EDGAR, the MCP server, Finnhub, Tavily,
-Ollama, and whichever LLM provider you configure) are outside this policy.
+Ollama, LangSmith when tracing is enabled, and whichever LLM provider you
+configure) are outside this policy.
 Report issues in those to their maintainers.

@@ -89,6 +89,8 @@ def submit_hitl_review(request_id: str, review: HITLReviewRequest):
         config = {
             "configurable": {"thread_id": request_id},
             "callbacks": [AuditCallbackHandler(audit, request_id)],
+            "run_name": "finvet-review-resume",
+            "metadata": {"request_id": request_id},
         }
 
         # -- Phase A: reversible. Nothing of the graph has run yet. ----------
@@ -302,6 +304,8 @@ def reconcile_review(request_id: str):
         config = {
             "configurable": {"thread_id": request_id},
             "callbacks": [AuditCallbackHandler(audit, request_id)],
+            "run_name": "finvet-review-reconcile",
+            "metadata": {"request_id": request_id},
         }
 
         try:

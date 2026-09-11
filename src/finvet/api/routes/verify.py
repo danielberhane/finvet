@@ -166,6 +166,10 @@ def verify_claim(request: VerifyClaimRequest):
         config = {
             "configurable": {"thread_id": request_id},
             "callbacks": [AuditCallbackHandler(audit, request_id)],
+            # LangSmith (when LANGCHAIN_TRACING_V2=true): name the trace and
+            # stamp the request_id so a trace joins to its audit row.
+            "run_name": "finvet-verify",
+            "metadata": {"request_id": request_id},
         }
 
         # Run the full LangGraph pipeline:
@@ -274,6 +278,8 @@ def verify_claim_stream(request: VerifyClaimRequest):
     config = {
         "configurable": {"thread_id": request_id},
         "callbacks": [AuditCallbackHandler(audit, request_id)],
+        "run_name": "finvet-verify-stream",
+        "metadata": {"request_id": request_id},
     }
 
     finalizer = ExecutionFinalizer(
