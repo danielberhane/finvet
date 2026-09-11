@@ -82,13 +82,26 @@ def _tolerance_for(claimed_value, agent_type) -> float:
 def compare_observation(parsed_claim, observation, agent_type="sec") -> tuple:
     """The numeric decision, with no model involved.
 
-    Extracted from `_apply_override` so the same arithmetic serves two callers:
-    the override, which corrects a model verdict, and the fallback used when
-    the verdict LLM never produced one. They must not drift -- a fallback that
-    compared differently would be a second, unreviewed verdict path.
+    This is the whole comparison in one place: it is what runs when the
+    verdict LLM never produced anything to correct, and it is the reference
+    for what `_apply_override` must do when there is a model verdict on the
+    table.
+
+    Be aware of what is and is not shared with that method today. Both now
+    read the tolerance from `_tolerance_for`, so a threshold cannot differ
+    between them. The branching -- approx widening, equality, the four
+    directional operators, the fail-closed default -- is still written out
+    twice. They agree, and there are tests on both, but two copies of the
+    decision this system exists to make is one copy too many, and folding
+    `_apply_override` onto this function is the obvious next change. It was
+    left alone here rather than refactored on the way out the door.
 
     Returns (verdict, confidence, magnitude_diff). Fails closed to
-    NOT_ENOUGH_INFO whenever the comparison cannot honestly be made.
+    NOT_ENOUGH_INFO whenever the comparison cannot honestly be made: no
+    claimed value, no observation, or an operator with no branch. `range` is
+    the operator that reaches that last case by design -- the parser emits it
+    with only a midpoint, and a midpoint compared as equality refutes a value
+    sitting plainly inside the stated band.
     """
     claimed = getattr(parsed_claim, "value", None) if parsed_claim else None
     retrieved = observation.value if observation else None

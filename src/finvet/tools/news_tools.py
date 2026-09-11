@@ -60,7 +60,24 @@ def _set_client(client: TavilyClient) -> None:
 
 
 def _calculate_credibility(url: str) -> float:
-    """Calculate credibility score based on source domain."""
+    """A domain allowlist wearing a score, and it decides nothing.
+
+    Three tiers by substring match: a wire service or major financial paper,
+    a recognised outlet, or anything else. The numbers are ordering, not
+    probability -- nobody measured that Reuters is 0.95 accurate. They exist
+    so search results sort with the better-known sources first and so the
+    model can cite a reason when it weighs two conflicting articles.
+
+    Worth being explicit about what this cannot touch: no numeric verdict
+    depends on it. The comparator reads a trusted observation and nothing
+    else, so a high score cannot promote a figure lifted from prose, and a
+    low one cannot suppress a filed fact. Treat it as presentation.
+
+    Substring matching is deliberately crude and will happily score a URL
+    that merely mentions a tier-one domain in its path. That is acceptable
+    for ordering; it would not be acceptable if anything downstream trusted
+    the number, which is the reason nothing does.
+    """
     url_lower = url.lower()
 
     for source in TIER_1_SOURCES:
