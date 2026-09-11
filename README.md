@@ -6,9 +6,11 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)
 
-Give it a claim — *"Tesla's 2024 annual revenue was $150 billion"* — and it returns a verdict
-(`SUPPORTS` / `REFUTES` / `NOT_ENOUGH_INFO`), a confidence score, the evidence chain, and an
-audit trail of every step that produced the answer.
+FinVet verifies one financial claim at a time. Given *"Microsoft's fiscal 2025 revenue was
+$282 billion,"* it returns a verdict of supported, refuted, or not enough information, a
+confidence score, and the number it compared the claim against. Each response also names the
+agent that answered, lists every tool call it made in order, and keeps an audit trail of the
+run.
 
 <p align="center">
   <img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim, with retrieved value, tolerance, and tool calls">
@@ -21,86 +23,64 @@ audit trail of every step that produced the answer.
 
 ## Deterministic verdict override
 
-LLMs are unreliable at numeric comparison, and in claim verification the task *is* comparing
-a claimed number to a filed one. When both values exist, FinVet recomputes the comparison in
-Python with source-appropriate tolerances and overrides the model when they disagree. Both
-results are recorded:
+Models are unreliable at comparing numbers, and that comparison decides the verdict. FinVet
+recomputes it in Python, with tolerances that depend on the source. Python's result stands
+when the two disagree, and both verdicts are kept in the response.
 
-```python
-{"verdict": "REFUTES", "llm_original_verdict": "SUPPORTS", "override_applied": True}
-```
-
-See [`_apply_override`](src/finvet/agents/base.py). For numeric claims, the final comparison
-uses only a trusted structured observation, so model-generated prose cannot override the
-arithmetic.
+The comparison uses only a structured value returned by a tool. A claim with no such value
+returns not enough information.
 
 ---
 
 ## Evaluation
 
+**Claim set.** 97 financial claims, held out and frozen, covering filing lookups, market
+quotes, News→SEC delegation, guardrail blocks, and claims the parser must refuse. Composition,
+labelling rules and disclosed biases are in the [dataset card](docs/eval/DATASET_CARD.md).
+
+**Protocol.** Two models, one run each on identical code; one of them repeated four times to
+measure stability. Retrieval is measured separately, on its own cases. Each run is scored on
+seven layers:
+
+1. **Outcome**: the verdict.
+2. **Tool trajectory**: the tools called.
+3. **Grounding**: every decisive number traced to a source.
+4. **Calibration**: stated confidence against observed accuracy.
+5. **Asymmetric risk**: the cost of the errors made.
+6. **Reliability**: agreement across repeated runs.
+7. **Reachability**: evidence arriving by the expected path.
+
 ### Cross-model benchmark
 
-A matched single-run comparison: the same 97 claims through two models on identical code and
-a frozen dataset. The model behind each run is recorded from the serving process, not the
-client — which is how the run caught `deepseek-chat` silently resolving to a different model:
-
-| | DeepSeek | MiniMax |
+| Layer | `deepseek-v4-flash` | `MiniMax-M2.7` |
 |---|---|---|
-| requested as | `deepseek-chat` (alias) | `MiniMax-M2.7` |
-| actually served | `deepseek-v4-flash` | `MiniMax-M2.7` |
-| endpoint | hosted API | self-hosted LiteLLM gateway |
-| wall clock, 97 claims | **17.2 min** | 47.7 min |
+| 1. Outcome, verdict accuracy (86 claims, excluding 8 live-market and 3 observe-only) | **96.5%** | **96.5%** |
+| 2. Tool trajectory, required tools called (DeepEval) | 98.4% | 94.8% |
+| 3. Grounding, decisive numbers traced to a source (42) | **100%** | **100%** |
+| 4. Calibration, decisive-verdict ECE | 0.039 | 0.046 |
+| 5. Asymmetric risk, confidently-wrong verdicts (of 94 scored) | **0** | **0** |
+| 5. Asymmetric risk, declined rather than answered | 3.2% | 7.4% |
+| 7. Reachability, evidence path matches expectation | 97.9% | 96.8% |
 
-| Measure | DeepSeek | MiniMax |
-|---|---|---|
-| Verdict accuracy (86 claims scored after excluding 8 live-market rows and 3 observe-only rows) | **96.5%** | **96.5%** |
-| Confidently-wrong verdicts (of 94 scored incl. live market) | **0** | **0** |
-| Observation-source attribution (42 decisive numeric verdicts) | **100%** | **100%** |
-| Required-tool coverage | 98.4% | 94.8% |
-| Calibration, decisive-verdict ECE | 0.039 | 0.046 |
-| Evidence-path match | 97.9% | 96.8% |
+Layer 6, reliability, needs repeated runs, so it is reported below rather than per model.
 
-Two kinds of result, kept apart. **Enforced by construction**: zero out-of-lane tool calls
-(each agent binds only its own tools), zero tool spend on the 26 claims that must spend
-nothing (they short-circuit before any agent), and observation-source attribution (a decisive
-numeric verdict is unreachable without a trusted observation — the path fails closed).
-**Observed in these runs**: identical accuracy, zero confidently-wrong verdicts, and perfect
-accuracy in the top confidence bin. The first kind is a code property; the second held twice,
-and for DeepSeek it has since been measured across four runs on the frozen set (c1 at
-`94f1ec9`, c2–c4 at `0cdce16`): pass@1 98.9%, **pass^4 94.5%** — 86 of the 91 rows every run
-scores passed on *all four* attempts. The four that flickered are ids 17 and 22 (XBRL rows
-that a Llama Guard false positive sometimes escalates instead of answering), 51 (the
-News→SEC corroboration row) and 62 (a live market quote); the population includes the
-live-market rows. MiniMax has one complete run, so its column is pass@1 only. Single-run
-differences of a few claims sit inside this measured variation. Pooled summary:
-[`layers-deepseek-c1-c4.json`](docs/eval/layers-deepseek-c1-c4.json).
+Three of those results are properties of the code rather than of a run: an agent cannot call
+another agent's tools, the 26 claims that must spend nothing short-circuit before any agent,
+and a decisive numeric verdict is unreachable without a trusted observation.
 
-Raw accuracy including live-market rows reads 96.8% vs 93.5% (n=93: both columns drop the
-one row that errored at the 600s timeout under MiniMax, so the two models are scored on the
-same rows); the gap is a market-data outage during the MiniMax run, not the model.
+**Stability.** Four runs on one model: pass@1 98.9%, **pass^4 94.5%**. Every row that missed
+pass^4 had escalated to human review on at least one attempt; none returned a wrong verdict.
 
-**Evidence:** [`docs/eval/`](docs/eval/) holds five redacted per-claim run artifacts (claim
-text withheld by [`scripts/redact_run.py`](scripts/redact_run.py); every table cell and the
-pass^4 figure recompute from them), the layer summaries, the benchmark write-up, and the
-[dataset card](docs/eval/DATASET_CARD.md) — composition, SHA-256,
-labelling rules, disclosed biases, and three fully published sample rows. The dataset itself
-is held out privately — a published test set enters training corpora and stops measuring
-anything — and is available to reviewers against the published hash.
+**Retrieval.** XBRL lookups against SEC primary-source values: **198/199**, the one miss
+returning not enough information rather than a wrong number. Filing-text retrieval on the
+70-case set that also set the relevance threshold: 30 of 30 on-topic retrieved, 30 of 30
+off-topic rejected, 10 near-misses returned nothing. Both gold sets are held privately, so
+unlike the table above these are not recomputable from this repository.
 
-### Retrieval accuracy
-
-XBRL retrieval, measured against SEC primary-source values: **198/199 (99.5%)** with zero
-silently-wrong results — the one miss returns NOT_ENOUGH_INFO. A fallback from the
-period-targeted `companyconcept` endpoint to `frames` took accuracy from ~91% to 99.5%.
-This figure comes from `tests/integration/test_xbrl_retrieval.py` against a retrieval gold
-set held privately with the golden claims, so unlike the table above it is not recomputable
-from this repository (see [Known gaps](docs/VALIDATION_STRATEGY.md#known-gaps)).
-
-Filing-text retrieval, on the 70-case calibration set that also set the relevance floor: all
-30 on-topic queries retrieved, all 30 off-topic queries rejected, and 10 near-misses (right
-topic, wrong period or form) returned nothing. Calibration fit, not held-out performance;
-every case is recorded in
-[`tests/accuracy/rag_release_a_manifest.json`](tests/accuracy/rag_release_a_manifest.json).
+**Evidence.** [`docs/eval/`](docs/eval/) holds the redacted per-claim artifacts, the layer
+summaries, the [benchmark write-up](docs/eval/BENCHMARK_2026-08-31.md) and the
+[dataset card](docs/eval/DATASET_CARD.md). Every figure in the table recomputes from them.
+The claim set itself is held out, and available to reviewers against its published hash.
 
 ---
 
@@ -163,12 +143,10 @@ docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 # UI → http://localhost:8501   API → http://localhost:8000
 ```
 
-Prebuilt images, published on tagged releases: `docker pull ghcr.io/danielberhane/finvet-api:latest`
-(and `finvet-ui`).
-Every published port binds to `127.0.0.1`; the API is unauthenticated and Postgres ships a
-dev password, so expose the stack deliberately (`FINVET_BIND_ADDR=0.0.0.0`) only after
-changing `POSTGRES_PASSWORD`. Real API keys are required — the system verifies against live
-data. Missing optional keys disable their feature rather than crashing.
+Prebuilt images are published on tagged releases: `docker pull ghcr.io/danielberhane/finvet-api:latest`
+(and `finvet-ui`). Every port binds to `127.0.0.1`; read [SECURITY.md](SECURITY.md) before
+exposing the stack. Real API keys are required, since the system verifies against live data.
+Missing optional keys disable their feature rather than crashing.
 
 <details>
 <summary><b>Native dev · RAG ingest · compose profiles · which key powers what</b></summary>
@@ -223,44 +201,42 @@ any of the three roles via env vars, no code change.
 
 ## Limitations & operations
 
-Packaged for **local / demo use, not public hosting as-is** — no auth, rate limiting, or
-CORS. With SEC MCP or Ollama down, the API degrades to NOT_ENOUGH_INFO or review rather than
-500-ing. Python dependencies are locked (`uv.lock`); [CI](.github/workflows/ci.yml) runs
-lint, tests and Docker builds on every push, and [release](.github/workflows/release.yml)
-publishes images to GHCR on version tags.
+Packaged for local and demo use. With SEC MCP or Ollama down, the API degrades to
+NOT_ENOUGH_INFO or review rather than failing.
 
-- **US large-cap equities, point-in-time claims only.** Latency measured on the benchmark
-  runs: p50 13s / p95 23s per claim (DeepSeek), p50 28s / p95 43s (MiniMax, excluding the
-  one row that errored at the 600s timeout during a market-data outage; p95 48s with it).
-- **A numeric verdict requires a structured source** — an XBRL fact, a market quote field,
-  or the deterministic fine/settlement extraction. The remaining 45 metrics the parser can
-  accept (analyst price targets among them) are declined up front with a stated limitation.
-- **Range claims are declined.** "Between X and Y" parses, but only the band's midpoint
-  survives parsing, and comparing a midpoint refutes true claims — so these return
-  NOT_ENOUGH_INFO and typically route to review.
-- **Q4-derived numeric claims are unsupported** and return NOT_ENOUGH_INFO; the retrieval
-  contract does not combine annual and nine-month facts.
-- **Pending reviews do not survive an API restart** (in-memory checkpoints); an unresumable
-  review is refused rather than answered from the reviewer's own submission.
-- **Claim memory ships disabled** — its output is prior model output, not a source.
-- The consensus step is **heuristic, not learned**; historical prices need a paid Finnhub
-  tier.
-- **Not a compliance product** — it applies model-risk-management *principles*; it certifies
+- **Scope**: US large-cap equities, point-in-time claims. Latency on the default provider,
+  p50 13s and p95 23s per claim.
+- **Numeric verdicts need a structured source**: an XBRL fact, a market quote field, or the
+  deterministic fine/settlement extraction. The other 45 metrics the parser accepts, analyst
+  price targets among them, are declined up front with a stated reason.
+- **Declined by design**: range claims, and figures that would require combining annual and
+  nine-month facts.
+- **Pending reviews do not survive an API restart**, since checkpoints are in memory.
+- **Claim memory ships disabled**. Its output is prior model output, not a source.
+- **Not a compliance product.** It applies model-risk-management principles; it certifies
   nothing.
 
 ---
 
-## Contributing, security, origins & license
+## Contributing
 
-Bug reports and small focused fixes are welcome — see
-[CONTRIBUTING.md](CONTRIBUTING.md) for setup, what CI enforces, and the changes
-that will be declined. To report a vulnerability, or to read what this system does and
-does not defend against before deploying it, see [SECURITY.md](SECURITY.md).
+Bug reports and focused fixes are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup,
+what CI enforces, and the changes that will be declined. For vulnerability reports, and for
+what this system does and does not defend against, see [SECURITY.md](SECURITY.md).
 
+## Citation
 
-Evolved from [FinVet v1](https://github.com/danielberhane/finvet-acl-demo) (two RAG pipelines
-and vote-based verdicts); this version is a ground-up redesign as a multi-agent LangGraph
-system. [Apache-2.0](LICENSE). Relies on external components it does not distribute — notably
-the **AGPL-3.0** SEC EDGAR MCP server, run as its own container. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); users must honor each provider's terms,
+To cite this software, use [CITATION.cff](CITATION.cff).
+
+**Prior work.** FinVet v1, joint work with Duoduo Liao, verified claims with two retrieval
+pipelines and an external fact-check source, deciding verdicts by confidence-weighted vote
+([IEEE BigData 2025](https://ieeexplore.ieee.org/document/11400848);
+[code](https://github.com/danielberhane/finvet-v1)). This release replaces that design: one
+agent per claim, and the verdict settled by a deterministic comparator rather than a vote.
+
+## License
+
+[Apache-2.0](LICENSE). FinVet runs third-party components without distributing them, notably
+the AGPL-3.0 SEC EDGAR MCP server, which runs as its own container; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Users must honor each provider's terms,
 including the [SEC Fair Access policy](https://www.sec.gov/os/webmaster-faq#developers).

@@ -19,7 +19,13 @@ from pathlib import Path
 
 import pytest
 
-PUBLIC_DOCS = [Path("README.md"), Path("docs/ARCHITECTURE.md")]
+# SECURITY.md joined this list when it was written. The deployment warnings it
+# carries -- no authentication, the development database password, the bind
+# override -- used to live in the README, and moving them out silently took
+# them outside this guard's view. A reader finds them either way; the guard
+# should too.
+PUBLIC_DOCS = [Path("README.md"), Path("docs/ARCHITECTURE.md"),
+               Path("SECURITY.md")]
 
 
 def _text():
