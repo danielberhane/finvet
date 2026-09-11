@@ -213,7 +213,7 @@ would not send to a third party.
 
 ---
 
-## Limitations & operations
+## Limitations
 
 Packaged for local and demo use. With SEC MCP or Ollama down, the API degrades to
 NOT_ENOUGH_INFO or review rather than failing.
@@ -223,12 +223,11 @@ NOT_ENOUGH_INFO or review rather than failing.
 - **Numeric verdicts need a structured source**: an XBRL fact, a market quote field, or the
   deterministic fine/settlement extraction. The other 45 metrics the parser accepts, analyst
   price targets among them, are declined up front with a stated reason.
-- **Declined by design**: range claims, and figures that would require combining annual and
-  nine-month facts.
-- **Pending reviews do not survive an API restart**, since checkpoints are in memory.
-- **Claim memory ships disabled**. Its output is prior model output, not a source.
 - **Not a compliance product.** It applies model-risk-management principles; it certifies
   nothing.
+
+Narrower limits, and the reasoning behind each, are recorded in
+[`docs/RELEASE_A_DECISIONS.md`](docs/RELEASE_A_DECISIONS.md).
 
 ---
 
