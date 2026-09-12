@@ -52,7 +52,7 @@ seven layers:
 
 ### Cross-model benchmark
 
-| Layer | `deepseek-v4-flash` | `MiniMax-M2.7` |
+| Layer | `deepseek-chat` | `MiniMax-M2.7` |
 |---|---|---|
 | 1. Outcome, verdict accuracy (86 claims, excluding 8 live-market and 3 observe-only) | **96.5%** | **96.5%** |
 | 2. Tool trajectory, required tools called (DeepEval) | 98.4% | 94.8% |
