@@ -114,6 +114,35 @@ class TestTheResultsTableRecomputes:
             f"the artifact gives {actual:.4f}")
 
 
+class TestTheTableNamesTheModelsTheArtifactsRecord:
+    """The header was checked by nothing, and it was wrong.
+
+    Every cell of the results table is recomputed above, and the column
+    headers were not. They named `deepseek-v4-flash`, a string that appeared
+    nowhere else in the repository and in none of the five artifacts, all of
+    which record `deepseek-chat`. The rows that once explained it -- a
+    "requested as" / "actually served" pair describing the alias -- were cut
+    as redundant, which left the label with nothing behind it.
+
+    In a project whose runner refuses to start on model drift because 56 rows
+    were once mislabelled, the headline table naming an unrecorded model is
+    the failure the machinery exists to prevent, one layer up.
+    """
+
+    @pytest.mark.parametrize("column,label", [(1, "deepseek-c1"),
+                                              (2, "minimax-c1")])
+    def test_the_column_header_matches_the_artifact(self, column, label):
+        header = next(line for line in README.read_text().splitlines()
+                      if line.startswith("| Layer |"))
+        published = header.split("|")[column + 1].strip().strip("`")
+
+        served = _runs(label)[0].model
+
+        assert published == served, (
+            f"the table column reads {published!r}; the {label} artifact "
+            f"records {served!r}")
+
+
 class TestTheStabilityFiguresRecompute:
     """pass@1 and pass^4, quoted in prose rather than the table."""
 
