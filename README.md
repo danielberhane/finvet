@@ -13,14 +13,14 @@ agent that answered, lists every tool call it made in order, and keeps an audit 
 run.
 
 <p align="center">
-  <a href="docs/diagrams/finvet-a2a-run.png"><img src="docs/diagrams/finvet-a2a-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict"></a>
+  <a href="docs/diagrams/finvet-delegation-run.png"><img src="docs/diagrams/finvet-delegation-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict"></a>
   <br><sub>A news claim the news agent cannot settle alone. It searched, then handed the finding to
   the SEC agent, which found the same &euro;500 million in Apple's filing. Click any image for full
   resolution.</sub>
 </p>
 
 <p align="center">
-  <a href="docs/diagrams/finvet-a2a-evidence.png"><img src="docs/diagrams/finvet-a2a-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent"></a>
+  <a href="docs/diagrams/finvet-delegation-evidence.png"><img src="docs/diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent"></a>
   <br><sub>The same run's evidence: every tool call with its arguments and raw response, including the
   delegation itself and what the SEC agent sent back.</sub>
 </p>
@@ -113,8 +113,8 @@ reconciling several opinions.
 | **News** | Events and announcements | Tavily search | SEC |
 
 **Delegation** runs one way: News asks SEC whether the issuer's own filing discloses a
-reported fine or settlement. The SEC agent holds no delegation tool, so the call cannot
-recurse. Where the filing states an amount, the verdict follows the filing rather than the
+reported fine or settlement. One hop, in-process, no wire protocol. The SEC agent holds no
+delegation tool, so the call cannot recurse. Where the filing states an amount, the verdict follows the filing rather than the
 press.
 
 **Trust boundary.** XBRL is the authoritative numeric source. Retrieved filing text is
