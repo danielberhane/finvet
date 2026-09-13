@@ -72,7 +72,14 @@ CORROBORATION_METRICS = frozenset({"fine_amount", "settlement_amount"})
 
 # Budget for a delegated (nested) agent. Lower than a top-level run: it answers
 # one bounded question, and it is spending the caller's step budget.
-A2A_MAX_ITERATIONS = 3
+#
+# Raised from 3 alongside AGENT_MAX_ITERATIONS, and for the same reason: the
+# model behind the `deepseek-chat` alias changed and now needs more steps. At 3
+# the nested run hit its recursion limit of 7 on every delegation, so the SEC
+# side came back with zero sources and every fine or settlement claim declined.
+# Kept well under the top-level budget, because the caller pays for it and a
+# news run may delegate more than once.
+A2A_MAX_ITERATIONS = 5
 
 # ---------------------------------------------------------------------------
 # Confidence thresholds (used in helpers.py)
