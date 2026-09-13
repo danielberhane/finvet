@@ -1,15 +1,20 @@
-"""Data source badge rendering (XBRL, RAG, A2A)."""
+"""Data source badge rendering (XBRL, RAG, delegation)."""
 
 
 def _data_source_badges_html(metadata: dict) -> str:
-    """Generate HTML badges for data sources used (XBRL, RAG, A2A)."""
+    """Generate HTML badges for data sources used (XBRL, RAG, delegation)."""
     ds = metadata.get("data_sources", {})
     if not ds:
         return ""
+    # The delegation badge reads "DELEGATED", not "A2A". Since 2025 that
+    # acronym names Google's Agent2Agent protocol -- agent cards, JSON-RPC over
+    # HTTP, cross-vendor discovery -- and this is an in-process call to a nested
+    # agent with none of that. The key stays `a2a` because the audit schema and
+    # the eval layers are keyed on it; only the word a reader sees changes.
     badge_map = {
         "xbrl": ("XBRL", "ds-xbrl"),
         "rag": ("RAG", "ds-rag"),
-        "a2a": ("A2A", "ds-a2a"),
+        "a2a": ("DELEGATED", "ds-a2a"),
     }
     badges = []
     for key in ("xbrl", "rag", "a2a"):
