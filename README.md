@@ -13,7 +13,8 @@ agent that answered, lists every tool call it made in order, and keeps an audit 
 run.
 
 <p align="center">
-  <img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim, with retrieved value, tolerance, and tool calls">
+  <a href="docs/diagrams/finvet-screenshot.png"><img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim, with retrieved value, tolerance, and tool calls"></a>
+  <br><sub>Click for full resolution.</sub>
 </p>
 
 > **Not financial advice.** A research and demonstration system; outputs may be wrong and must
