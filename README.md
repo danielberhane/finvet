@@ -13,8 +13,10 @@ agent that answered, lists every tool call it made in order, and keeps an audit 
 run.
 
 <p align="center">
-  <a href="docs/diagrams/finvet-screenshot.png"><img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim: the pipeline steps, the claimed and filed figures, and the verdict"></a>
-  <br><sub>Claimed $90.00B, filed $58.47B, 35.03% apart. Click any image for full resolution.</sub>
+  <a href="docs/diagrams/finvet-screenshot.png"><img src="docs/diagrams/finvet-screenshot.png" alt="FinVet verifying a claim: the pipeline steps, the claimed and filed figures, and the verdict"></a>
+  <br><sub>Claimed above $50B, filed $58.47B. The 14.5% gap supports an "above" claim rather than
+  refuting it, because the comparator reads the operator and not just the distance.
+  Click any image for full resolution.</sub>
 </p>
 
 <p align="center">
