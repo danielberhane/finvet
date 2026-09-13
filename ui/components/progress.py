@@ -93,9 +93,15 @@ def _agent_detail(d, claimed_value):
 
     detail = _joined(parts)
 
-    # The moment this whole component exists for.
-    if d.get("override_applied") and d.get("llm_original_verdict"):
-        detail += (f" — the model said {verdict_label(d['llm_original_verdict'])};"
+    # The moment this whole component exists for. Only say the comparison
+    # decided otherwise when it visibly did: on the delegation path
+    # `override_applied` is set against the news agent's own declined verdict,
+    # not against the answer on screen, so the two can agree while the flag is
+    # true. Saying "decided otherwise" beside a matching verdict reads as a
+    # contradiction in the one place the project cannot afford one.
+    original = d.get("llm_original_verdict")
+    if d.get("override_applied") and original and original != d.get("verdict"):
+        detail += (f" — the model said {verdict_label(original)};"
                    f" the comparison decided otherwise")
     return detail
 

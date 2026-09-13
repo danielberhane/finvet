@@ -14,7 +14,8 @@ import pytest
 from finvet.agents.base import BaseVerificationAgent
 from finvet.agents.news_agent.react_agent import NewsAgent
 from finvet.agents.sec_agent.react_agent import SECAgent
-from finvet.config.constants import CORROBORATION_METRICS
+from finvet.config.constants import (A2A_MAX_ITERATIONS, AGENT_MAX_ITERATIONS,
+                                     CORROBORATION_METRICS)
 from finvet.graph.nodes import domain_agents
 from finvet.models.a2a import (
     A2A_CONTRADICTS,
@@ -133,7 +134,12 @@ class TestDelegationCarriesTheClaimedValue:
         with patch("finvet.graph.nodes.domain_agents.run_sec_agent_scoped", fake_scoped):
             corroborate_sec._corroborate(finding="x", ticker="AAPL")
 
-        assert captured["max_iterations"] == 3
+        # The property is the relationship, not the literal. This asserted 3
+        # and broke when both budgets rose together, which is the one change
+        # it should have tolerated.
+        assert captured["max_iterations"] == A2A_MAX_ITERATIONS
+        assert A2A_MAX_ITERATIONS < AGENT_MAX_ITERATIONS, (
+            "a delegated run spends the caller's budget, so it must be shorter")
 
     def test_result_carries_both_numbers_for_audit(self):
         def fake_scoped(state, **kwargs):

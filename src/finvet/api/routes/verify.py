@@ -88,6 +88,11 @@ def _progress_detail(node_name: str, updates: dict) -> dict:
             "retrieved_value": evidence.get("retrieved_value"),
             "magnitude_difference_percent": evidence.get(
                 "magnitude_difference_percent"),
+            # Both sides of the override, not just the model's. Without the
+            # agent's own verdict here the UI could say "the comparison decided
+            # otherwise" while showing a verdict that matched, which is exactly
+            # what it did on the delegation path.
+            "verdict": evidence.get("verdict"),
             "llm_original_verdict": evidence.get("llm_original_verdict"),
             "override_applied": evidence.get("override_applied"),
             "limitation": evidence.get("limitation"),
