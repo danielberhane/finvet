@@ -37,7 +37,17 @@ CONSENSUS_MAX_CONFIDENCE = 0.95         # confidence cap
 # ---------------------------------------------------------------------------
 # Agent limits (used in base.py)
 # ---------------------------------------------------------------------------
-AGENT_MAX_ITERATIONS = 5
+# Raised from 5 on 2026-09-13. `deepseek-chat` is an alias, and the provider
+# repointed it from deepseek-v4-flash to deepseek-flash between two runs on the
+# same afternoon. The new model takes five tool calls where the old took four,
+# and a budget of 5 gives a recursion limit of 11 -- exactly five calls with no
+# headroom -- so every claim began exhausting its budget and escalating. Nothing
+# in the code changed; the model behind the name did.
+#
+# FINNHUB_TIMEOUT_SECONDS moves with this: the two multiply, and a dead feed
+# must still not cost more than a minute of pure waiting per claim. See
+# tests/unit/test_finnhub_timeout_is_bounded.py, which enforces the product.
+AGENT_MAX_ITERATIONS = 8
 AGENT_MAX_RESULT_CHARS = 50000  # ~12K tokens, safe for 131K context
 
 # How long to wait for a Finnhub quote before giving up. It was 30s, which is
@@ -45,7 +55,11 @@ AGENT_MAX_RESULT_CHARS = 50000  # ~12K tokens, safe for 131K context
 # a benchmark, the tool reported an error, the agent tried again, and single
 # claims took 600s. A quote endpoint that has not answered in 10s is not about
 # to; the cost of being wrong is one NOT_ENOUGH_INFO on a live-price claim.
-FINNHUB_TIMEOUT_SECONDS = 10.0
+# 10.0 until the iteration budget rose to 8, which would have put the worst case
+# at 80s. The bound is the product, so the timeout came down rather than the
+# guarantee being relaxed. A quote endpoint silent for 7s is no likelier to
+# answer than one silent for 10.
+FINNHUB_TIMEOUT_SECONDS = 7.0
 
 # News claims whose truth an issuer's own filing can settle, so the News agent
 # delegates to SEC even when the model does not think to. Deliberately narrow:
