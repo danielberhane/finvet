@@ -13,8 +13,13 @@ agent that answered, lists every tool call it made in order, and keeps an audit 
 run.
 
 <p align="center">
-  <a href="docs/diagrams/finvet-screenshot.png"><img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim, with retrieved value, tolerance, and tool calls"></a>
-  <br><sub>Click for full resolution.</sub>
+  <a href="docs/diagrams/finvet-screenshot.png"><img src="docs/diagrams/finvet-screenshot.png" alt="FinVet refuting a claim: the pipeline steps, the claimed and filed figures, and the verdict"></a>
+  <br><sub>Claimed $90.00B, filed $58.47B, 35.03% apart. Click any image for full resolution.</sub>
+</p>
+
+<p align="center">
+  <a href="docs/diagrams/finvet-evidence.png"><img src="docs/diagrams/finvet-evidence.png" alt="Every tool call with its arguments and raw response, and the filing the number came from"></a>
+  <br><sub>The same run's evidence: every tool call with its arguments and raw response, and the accession number the figure came from.</sub>
 </p>
 
 > **Not financial advice.** A research and demonstration system; outputs may be wrong and must
