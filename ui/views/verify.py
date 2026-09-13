@@ -249,7 +249,7 @@ def _render_parsed_claim(data):
     rows = parsed_claim_rows(parsed)
     if not rows:
         return
-    with st.expander("How the claim was parsed"):
+    with st.expander("Parsed Claim"):
         st.table({"Field": [label for label, _ in rows],
                   "Value": [str(value) for _, value in rows]})
 
