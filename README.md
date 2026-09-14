@@ -90,6 +90,8 @@ unlike the table above these are not recomputable from this repository.
 summaries, the [benchmark write-up](docs/eval/BENCHMARK_2026-08-31.md) and the
 [dataset card](docs/eval/DATASET_CARD.md). Every figure in the table recomputes from them.
 The claim set itself is held out, and available to reviewers against its published hash.
+It was written by the author of the system; 57 of its parse labels have not been
+adjudicated by a second reader, and no independent validation has been performed.
 
 ---
 
@@ -234,6 +236,11 @@ NOT_ENOUGH_INFO or review rather than failing.
   price targets among them, are declined up front with a stated reason.
 - **Not a compliance product.** It applies model-risk-management principles; it certifies
   nothing.
+- **Not a service.** The API has no authentication, authorization, rate limiting or tenant
+  isolation ([SECURITY.md](SECURITY.md)). Review checkpoints live in process memory, so a
+  pending review does not survive an API restart. It is single-process and has not been
+  load-, failover- or sustained-degradation-tested; the latency figures above are from
+  benchmark runs, one claim at a time.
 
 Narrower limits, and the reasoning behind each, are recorded in
 [`docs/RELEASE_A_DECISIONS.md`](docs/RELEASE_A_DECISIONS.md).
