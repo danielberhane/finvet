@@ -23,31 +23,31 @@
 <circle cx="1110" cy="686" r="10" fill="#0F172A"/>
 <path d="M 275 686 L 1650 686" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" stroke-linejoin="round"/>
 <path d="M 275 686 L 275 1580" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
-<path d="M 570 686 L 570 740" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
+<path d="M 520 686 L 520 740" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
 <path d="M 1110 686 L 1110 932" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
 <path d="M 1650 686 L 1650 932" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-dasharray="8 6" marker-end="url(#ar)" stroke-linejoin="round"/>
 <text x="275" y="666" fill="#DC2626" font-size="23" font-weight="700" text-anchor="middle">Reject</text>
-<text x="570" y="666" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">SEC</text>
+<text x="520" y="666" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">SEC</text>
 <text x="1650" y="666" fill="#334155" font-size="23" font-weight="700" text-anchor="middle">Market</text>
 <text x="1140" y="800" fill="#334155" font-size="23" font-weight="700" text-anchor="start">News</text>
-<rect x="335" y="746" width="470" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
-<text x="570.0" y="824.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">Period Resolver</text>
-<path d="M 570 878 L 570 932" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
-<rect x="335" y="938" width="470" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
-<text x="570.0" y="999.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">SEC Agent</text>
-<text x="570.0" y="1035.0" fill="#334155" font-size="23" text-anchor="middle">ReAct · SEC EDGAR (MCP)</text>
+<rect x="305" y="746" width="430" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
+<text x="520.0" y="824.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">Period Resolver</text>
+<path d="M 520 878 L 520 932" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
+<rect x="305" y="938" width="430" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
+<text x="520.0" y="999.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">SEC Agent</text>
+<text x="520.0" y="1035.0" fill="#334155" font-size="23" text-anchor="middle">ReAct · SEC EDGAR (MCP)</text>
 <rect x="875" y="938" width="470" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
 <text x="1110.0" y="999.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">News Agent</text>
 <text x="1110.0" y="1035.0" fill="#334155" font-size="23" text-anchor="middle">ReAct · Tavily Search</text>
 <rect x="1415" y="938" width="470" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
 <text x="1650.0" y="999.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">Market Agent</text>
 <text x="1650.0" y="1035.0" fill="#334155" font-size="23" text-anchor="middle">ReAct · Finnhub</text>
-<path d="M 875 1004 L 805 1004" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
-<text x="840" y="980" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">A2A</text>
-<path d="M 570 1070 L 570 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
+<path d="M 875 1004 L 735 1004" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
+<text x="805" y="982" fill="#334155" font-size="19" font-weight="700" text-anchor="middle">Delegate</text>
+<path d="M 520 1070 L 520 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
 <path d="M 1110 1070 L 1110 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
 <path d="M 1650 1070 L 1650 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
-<path d="M 570 1118 L 1650 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
+<path d="M 520 1118 L 1650 1118" fill="none" stroke="#0F172A" stroke-width="3.6" stroke-linejoin="round"/>
 <path d="M 1110 1118 L 1110 1172" fill="none" stroke="#0F172A" stroke-width="3.6" marker-end="url(#ar)" stroke-linejoin="round"/>
 <rect x="875" y="1178" width="470" height="132" rx="15" fill="#FFFFFF" stroke="#0F172A" stroke-width="5.0"/>
 <text x="1110.0" y="1239.0" fill="#0F172A" font-size="36" font-weight="700" text-anchor="middle">Consensus</text>
