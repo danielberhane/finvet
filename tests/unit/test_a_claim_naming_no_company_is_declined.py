@@ -97,5 +97,12 @@ class TestNothingElseIsAffected:
         assert _unsupported_claim(
             {"parsed_claim": _Claim(ticker="")}) is not None
 
-    def test_no_parsed_claim_is_still_a_pass_through(self):
-        assert _unsupported_claim({"parsed_claim": None}) is None
+    def test_no_parsed_claim_is_declined_too(self):
+        """This used to assert a pass-through: no parse, let the agent run.
+        Reversed on 2026-09-16 -- an agent with nothing to look up spends its
+        budget and ends in NOT_ENOUGH_INFO anyway, so the pre-flight declines
+        it like the other known "cannot"s. See
+        test_a_missing_parse_is_declined_not_run.py, which drives the nodes."""
+        declined = _unsupported_claim({"parsed_claim": None})
+        assert declined is not None
+        assert declined["limitation"] == "no_parsed_claim"

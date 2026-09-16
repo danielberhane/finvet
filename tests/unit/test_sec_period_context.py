@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from finvet.models.claim import CanonicalPeriod
+from finvet.models.claim import CanonicalPeriod, ParsedClaim
 from finvet.tools import sec_tools
 from finvet.tools.sec_tools import (
     get_balance_sheet,
@@ -23,6 +23,11 @@ from finvet.tools.sec_tools import (
     period_target_for,
     use_period_target,
 )
+
+
+def _sec_claim():
+    return ParsedClaim(claim_type="sec", ticker="AAPL", metric="revenue",
+                       operator="eq", value=391e9, period="fiscal 2024")
 
 
 def _period(period_type, start="2024-01-01", end="2024-12-31"):
@@ -135,7 +140,7 @@ class TestSecAgentNodeAppliesTheTarget:
         from finvet.graph.nodes import domain_agents
         monkeypatch.setattr(domain_agents, "_run_agent", fake_run_agent)
         domain_agents.run_sec_agent({
-            "request_id": "t",
+            "request_id": "t", "parsed_claim": _sec_claim(),
             "canonical_period": _period("quarterly", end="2024-06-30"),
         })
         assert seen["target"] == ("2024-06-30", "quarterly")
@@ -147,7 +152,7 @@ class TestSecAgentNodeAppliesTheTarget:
             lambda *a, **k: {"agent_evidence": {"provenance": []}, "agent_type": "sec"},
         )
         domain_agents.run_sec_agent({
-            "request_id": "t",
+            "request_id": "t", "parsed_claim": _sec_claim(),
             "canonical_period": _period("annual"),
         })
         assert sec_tools._current_period_target() == (None, None)
@@ -162,7 +167,7 @@ class TestSecAgentNodeAppliesTheTarget:
 
         monkeypatch.setattr(domain_agents, "_run_agent", fake_run_agent)
         domain_agents.run_sec_agent({
-            "request_id": "t",
+            "request_id": "t", "parsed_claim": _sec_claim(),
             "canonical_period": _period("event_relative"),
         })
         assert seen["target"] == (None, None)
