@@ -93,6 +93,7 @@ def run_market_agent(state: VerificationState) -> Dict:
     """Run the Market ReAct agent for market data claims."""
     declined = _unsupported_claim(state)
     if declined is not None:
+        declined["agent"] = "market"
         logger.info(f"Market claim declined: {declined['limitation']}")
         return {"agent_evidence": declined, "agent_type": "market"}
     return _run_agent(MarketAgent, "market", "Finnhub", state)
@@ -117,6 +118,7 @@ def run_news_agent(state: VerificationState) -> Dict:
     # A guard the relevant path never calls is not a guard.
     declined = _unsupported_claim(state)
     if declined is not None:
+        declined["agent"] = "news"
         logger.info(f"News claim declined: {declined['limitation']}")
         return {"agent_evidence": declined, "agent_type": "news"}
 
@@ -409,8 +411,18 @@ def _names_fourth_quarter(period: Optional[str]) -> bool:
 def _unsupported_claim(state: VerificationState) -> Optional[Dict]:
     """Reasons to decline before an agent runs, or None to proceed."""
     parsed = state.get("parsed_claim")
+
+    # No parse at all. The router sends a missing parse to reject_handler, so
+    # this is unreachable on the graph path -- but this used to step aside and
+    # let the agent run, which is the one outcome the pre-flight exists to
+    # prevent: an agent with no ticker, metric or period spends its whole
+    # budget and ends in NOT_ENOUGH_INFO anyway. A known "cannot" is declined
+    # up front like the others, at no cost.
     if parsed is None:
-        return None
+        return _limitation_evidence(
+            "sec", "unavailable", "no_parsed_claim",
+            "No structured claim reached the agent, so there is nothing to "
+            "look up. No verdict was attempted.")
 
     # Q4 numeric claims. Deriving Q4 needs a 12-month fact minus a nine-month
     # fact, and retrieval is scoped to one resolved period per request, so the

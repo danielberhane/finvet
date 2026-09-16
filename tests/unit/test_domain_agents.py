@@ -2,12 +2,27 @@
 
 from unittest.mock import patch, MagicMock
 from finvet.graph.nodes import domain_agents
+from finvet.models.claim import ParsedClaim
 from finvet.graph.nodes.domain_agents import (
     _error_evidence,
     run_market_agent,
     run_news_agent,
     run_sec_agent,
 )
+
+
+def _parsed(claim_type):
+    """The minimum the pre-flight accepts: a company, and a servable metric.
+    A node never sees a state without a parse, so these tests should not
+    either (a missing parse is declined; see
+    test_a_missing_parse_is_declined_not_run.py)."""
+    return {
+        "sec": ParsedClaim(claim_type="sec", ticker="AAPL", metric="revenue",
+                           operator="eq", value=391e9, period="fiscal 2024"),
+        "market": ParsedClaim(claim_type="market", ticker="AAPL",
+                              metric="closing_price", operator="eq", value=150.0),
+        "news": ParsedClaim(claim_type="news", ticker="AAPL", metric=None),
+    }[claim_type]
 
 
 class TestErrorEvidence:
@@ -41,7 +56,7 @@ class TestRunAgent:
         }
         MockAgent.return_value = mock_instance
 
-        state = {"request_id": "test_123"}
+        state = {"request_id": "test_123", "parsed_claim": _parsed("market")}
         result = run_market_agent(state)
 
         assert result["agent_type"] == "market"
@@ -51,7 +66,7 @@ class TestRunAgent:
     def test_run_market_agent_failure(self, MockAgent):
         MockAgent.side_effect = RuntimeError("API down")
 
-        state = {"request_id": "test_123"}
+        state = {"request_id": "test_123", "parsed_claim": _parsed("market")}
         result = run_market_agent(state)
 
         assert result["agent_type"] == "market"
@@ -69,7 +84,7 @@ class TestRunAgent:
         }
         MockAgent.return_value = mock_instance
 
-        state = {"request_id": "test_456"}
+        state = {"request_id": "test_456", "parsed_claim": _parsed("news")}
         result = run_news_agent(state)
 
         assert result["agent_type"] == "news"
@@ -101,7 +116,7 @@ class TestSECProvenance:
         }
         MockAgent.return_value = mock_instance
 
-        state = {"request_id": "test_sec"}
+        state = {"request_id": "test_sec", "parsed_claim": _parsed("sec")}
         result = run_sec_agent(state)
 
         assert "rag_chunks_retrieved" in result
