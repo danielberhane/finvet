@@ -389,6 +389,23 @@ def _limitation_evidence(agent_type: str, source_desc: str, limitation: str,
 
 _FOURTH_QUARTER = re.compile(r"\bq\s*4\b|\bfourth\s+quarter\b", re.IGNORECASE)
 
+# A non-USD amount. Filed values and quotes are compared in USD, and the parser
+# contract carries no currency: "Apple's revenue was €360 billion" would reach
+# the comparator as 360e9 against 391e9 and refute a true claim -- the one
+# error the system is built to never make. Symbols, ISO codes as whole words,
+# and the spelled-out names. Read from the claim text, like the Q4 check, so
+# the guarantee does not depend on any parser noticing.
+_NON_USD_AMOUNT = re.compile(
+    r"[€£¥₹]"
+    r"|\b(?:EUR|GBP|JPY|CNY|RMB|CAD|CHF|AUD|INR|KRW|SEK|NOK|DKK|HKD|SGD)\b"
+    r"|\b(?:euros?|pounds?\s+sterling|yen|yuan|rupees?|francs?)\b",
+    re.IGNORECASE,
+)
+
+
+def _names_non_usd_amount(claim_text: Optional[str]) -> bool:
+    return bool(claim_text and _NON_USD_AMOUNT.search(claim_text))
+
 
 def _names_fourth_quarter(period: Optional[str]) -> bool:
     """Whether the claim itself says Q4.
@@ -439,6 +456,19 @@ def _unsupported_claim(state: VerificationState) -> Optional[Dict]:
             "Q4 figures are not filed separately and deriving them requires "
             "two differently-scoped retrievals, which this pipeline does not "
             "support. No verdict was attempted.")
+
+    # A numeric claim stated in another currency. Only the two agents whose
+    # sources are USD-denominated: fines and settlements go through
+    # filing_amounts, which reads the currency out of the filing text itself.
+    if (getattr(parsed, "claim_type", None) in ("sec", "market")
+            and getattr(parsed, "value", None) is not None
+            and _names_non_usd_amount(state.get("claim_normalized")
+                                      or state.get("claim_raw"))):
+        return _limitation_evidence(
+            "sec", "unavailable", "non_usd_amount",
+            "The claim states an amount in a currency other than USD, and "
+            "filed values and quotes are compared in USD. No verdict was "
+            "attempted.")
 
     # A SEC lookup needs a CIK, which comes from a ticker. Without one there is
     # no filing to fetch, and the claim is unverifiable in principle rather than

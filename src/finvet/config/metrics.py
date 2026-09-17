@@ -202,9 +202,18 @@ def verification_strategy_for(parsed_claim) -> str:
         return "unsupported"
 
     # No canonical metric: the narrative path, where the agent reads filing
-    # text. Legitimate, and never decisive for a number.
+    # text. Legitimate, and never decisive for a number. Only for the two
+    # agents that read prose: a market claim with no metric ("Amazon's stock
+    # has doubled since 2020") has no quote to fetch and no text to search,
+    # and used to fall into "news_search" here, so the market agent ran with
+    # nothing to look up and ended in NOT_ENOUGH_INFO after spending its
+    # budget. Declined up front instead.
     if metric is None:
-        return "filing_rag" if claim_type == "sec" else "news_search"
+        if claim_type == "sec":
+            return "filing_rag"
+        if claim_type == "market":
+            return "unsupported"
+        return "news_search"
 
     if metric in NARRATIVE_METRICS:
         return "news_search"
