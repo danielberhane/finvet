@@ -330,6 +330,35 @@ def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
                   "operator": operator_decision}
 
 
+_THINK_BLOCK = re.compile(r"\A\s*<think>.*?</think>\s*", re.DOTALL)
+
+
+def extract_json_object(text: str) -> Dict:
+    """The first JSON object in a model reply, or raise json.JSONDecodeError.
+
+    Tolerates what models put around the object -- a leading <think> block
+    (Qwen-family bases emit one unless the chat template is told not to),
+    markdown fences, and a sentence of prose either side. Nothing inside the
+    object is repaired: a reply with no decodable object still fails, and the
+    node turns that into ParsingError as before.
+    """
+    text = _THINK_BLOCK.sub("", text).strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    if text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    text = text.strip()
+    start = text.find("{")
+    if start < 0:
+        raise json.JSONDecodeError("no JSON object in reply", text, 0)
+    obj, _ = json.JSONDecoder().raw_decode(text[start:])
+    if not isinstance(obj, dict):
+        raise json.JSONDecodeError("reply is not a JSON object", text, start)
+    return obj
+
+
 def claim_parser(state: VerificationState) -> Dict:
     """
     Parse a natural-language claim into the 7-field ParsedClaim contract.
@@ -380,18 +409,7 @@ def claim_parser(state: VerificationState) -> Dict:
                 for block in response_text
             ])
 
-        # Remove markdown code blocks if present
-        response_text = response_text.strip()
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-        response_text = response_text.strip()
-
-        # Parse JSON
-        parsed_data = json.loads(response_text)
+        parsed_data = extract_json_object(response_text)
 
         # One boundary between untrusted model output and the trusted claim:
         # reconcile the reject fields, resolve the metric against the
