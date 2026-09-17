@@ -332,21 +332,27 @@ def normalize_parser_output(raw: Dict, claim_text: str) -> tuple:
 
 def claim_parser(state: VerificationState) -> Dict:
     """
-    Parse natural language claim into simplified 6-field structure.
+    Parse a natural-language claim into the 7-field ParsedClaim contract.
 
-    Uses the LLM configured for the `parser` role to extract:
-    - claim_type: Routing category
-    - ticker: Company identifier
-    - value: Numeric claim
-    - period: Time reference
-    - currency: Currency code
-    - reject_reason: Why claim is invalid (if applicable)
+    Uses the LLM configured for the `parser` role to propose:
+    - claim_type: routing category (sec | market | news | reject)
+    - ticker: company identifier
+    - metric: canonical metric name, resolved against the whitelist
+    - operator: comparison (eq | gt | gte | lt | lte | approx | range)
+    - value: the number the claim asserts
+    - period: the time reference, as written (resolved to dates downstream)
+    - reject_reason: why the claim is unverifiable, iff claim_type is reject
+
+    The model's JSON is a proposal. normalize_parser_output reconciles the
+    reject fields, resolves the metric (fail closed to null) and settles the
+    operator/value pairing; ParsedClaim then validates the result. Nothing
+    downstream sees the raw model output.
 
     Args:
         state: Current verification state with claim_raw
 
     Returns:
-        Dictionary with parsed_claim and parser metadata
+        Dictionary with parsed_claim and the tokens the parse consumed
     """
     # Support both claim_raw and claim_normalized for flexibility
     claim_text = state.get("claim_normalized") or state.get("claim_raw", "")
