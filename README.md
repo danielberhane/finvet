@@ -98,9 +98,9 @@ adjudicated by a second reader, and no independent validation has been performed
 ## Architecture
 
 A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each a ReAct loop
-with its own tools: routing, period resolution, consensus and guardrails are fixed pipeline
+with its own tools: routing, period resolution, confidence adjustment and guardrails are fixed pipeline
 stages, and within the selected agent the model chooses its own tool calls. One agent runs
-per claim, so consensus passes its verdict through and adjusts confidence rather than
+per claim, so the confidence adjuster passes its verdict through and adjusts confidence rather than
 reconciling several opinions.
 
 <p align="center">

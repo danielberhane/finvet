@@ -121,10 +121,10 @@ class TestEachNodeReportsWhatItProduced:
 
         assert detail["a2a_status"] == "NO_MATCHING_DISCLOSURE"
 
-    def test_consensus_reports_the_settled_verdict(self):
-        detail = _progress_detail("consensus", {
+    def test_confidence_adjuster_reports_the_settled_verdict(self):
+        detail = _progress_detail("confidence_adjuster", {
             "verdict": "SUPPORTS", "confidence": 0.95,
-            "confidence_label": "HIGH", "consensus_reasons": ["…"]})
+            "confidence_label": "HIGH"})
 
         assert detail["verdict"] == "SUPPORTS"
         assert detail["confidence"] == 0.95

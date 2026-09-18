@@ -43,7 +43,7 @@ AGENT = _event("sec_agent", agent="sec", tools=["get_income_statement"],
                magnitude_difference_percent=0.009,
                llm_original_verdict="NOT_ENOUGH_INFO", override_applied=True,
                concept="Revenues", period_end="2024-09-28", rag_chunks=0)
-CONSENSUS = _event("consensus", verdict="SUPPORTS", confidence=0.95)
+CONFIDENCE = _event("confidence_adjuster", verdict="SUPPORTS", confidence=0.95)
 GUARDS = _event("output_guardrails", hitl_required=False, hitl_triggers=[])
 
 
@@ -67,7 +67,7 @@ class TestTheLedgerBuildsFromWhatArrived:
         assert rows[0]["state"] == "done"
 
     def test_a_completed_run_leaves_nothing_running(self):
-        rows = progress_rows([PARSED, AGENT, CONSENSUS], finished=True)
+        rows = progress_rows([PARSED, AGENT, CONFIDENCE], finished=True)
 
         assert all(r["state"] == "done" for r in rows)
 
@@ -154,7 +154,7 @@ class TestNothingReadsLikeCode:
         return " ".join(f"{r['label']} {r['detail']}" for r in rows)
 
     def test_no_label_or_detail_contains_an_underscore(self):
-        rows = progress_rows([PARSED, PERIOD, AGENT, CONSENSUS, GUARDS],
+        rows = progress_rows([PARSED, PERIOD, AGENT, CONFIDENCE, GUARDS],
                              finished=True)
 
         assert "_" not in self._all_text(rows)

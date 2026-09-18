@@ -1,16 +1,16 @@
-"""Tests for workflow routing, consensus, and HITL logic."""
+"""Tests for workflow routing, confidence adjustment, and HITL logic."""
 
 import pytest
 
 from finvet.graph.workflow import (
     _route_after_parsing,
-    _simple_consensus,
+    _adjust_confidence,
     _route_after_guardrails,
     _handle_rejection,
     _apply_hitl_decision,
 )
 from finvet.config.constants import (
-    CONSENSUS_MAX_CONFIDENCE,
+    CONFIDENCE_AUTOMATED_CAP,
 )
 from finvet.models.claim import ParsedClaim
 
@@ -50,10 +50,10 @@ class TestRouteAfterParsing:
         assert _route_after_parsing({}) == "reject"
 
 
-class TestSimpleConsensus:
+class TestAdjustConfidence:
 
     def test_no_evidence(self):
-        result = _simple_consensus({})
+        result = _adjust_confidence({})
         assert result["verdict"] == "NOT_ENOUGH_INFO"
         assert result["confidence"] == 0.2
         assert result["confidence_label"] == "LOW"
@@ -67,7 +67,7 @@ class TestSimpleConsensus:
             },
             "parsed_claim": _make_parsed("sec", operator="eq"),
         }
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         assert result["verdict"] == "SUPPORTS"
 
     def test_close_match_bonus(self):
@@ -81,7 +81,7 @@ class TestSimpleConsensus:
             },
             "parsed_claim": _make_parsed("sec", operator="eq"),
         }
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         assert result["confidence"] > 0.80
 
     def test_large_diff_penalty(self):
@@ -95,7 +95,7 @@ class TestSimpleConsensus:
             },
             "parsed_claim": _make_parsed("sec", operator="eq"),
         }
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         assert result["confidence"] < 0.80
 
     def test_thorough_investigation_bonus(self):
@@ -108,11 +108,11 @@ class TestSimpleConsensus:
             },
             "parsed_claim": _make_parsed("sec"),
         }
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         assert result["confidence"] > 0.80
 
     def test_confidence_capped(self):
-        """Confidence should never exceed CONSENSUS_MAX_CONFIDENCE."""
+        """Confidence should never exceed CONFIDENCE_AUTOMATED_CAP."""
         state = {
             "agent_evidence": {
                 "verdict": "SUPPORTS",
@@ -122,8 +122,8 @@ class TestSimpleConsensus:
             },
             "parsed_claim": _make_parsed("sec", operator="eq"),
         }
-        result = _simple_consensus(state)
-        assert result["confidence"] <= CONSENSUS_MAX_CONFIDENCE
+        result = _adjust_confidence(state)
+        assert result["confidence"] <= CONFIDENCE_AUTOMATED_CAP
 
     def test_directional_claim_no_magnitude_adjustment(self):
         """Directional claims (gt) should not get magnitude-based adjustments."""
@@ -136,7 +136,7 @@ class TestSimpleConsensus:
             },
             "parsed_claim": _make_parsed("sec", operator="gt"),
         }
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         # No penalty applied, confidence unchanged
         assert result["confidence"] == 0.85
 
@@ -250,7 +250,7 @@ class TestDisposition:
         assert _apply_hitl_decision({"request_id": "test", "verdict": "SUPPORTS"}) == {}
 
 
-class TestConsensusReadsOperator:
+class TestAdjustConfidenceReadsOperator:
     """Stage 05, reader 2: the magnitude gate reads the contract name, so the
     CONTRACT-phase removal of `comparison` cannot silently disable it."""
 
@@ -264,14 +264,14 @@ class TestConsensusReadsOperator:
         from types import SimpleNamespace
         state = {"agent_evidence": self._evidence(0.5),
                  "parsed_claim": SimpleNamespace(operator="eq")}
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         assert result["confidence"] == pytest.approx(0.85)   # close-match bonus
 
     def test_directional_operator_still_skips_magnitude_adjustment(self):
         from types import SimpleNamespace
         state = {"agent_evidence": self._evidence(50.0),
                  "parsed_claim": SimpleNamespace(operator="gt")}
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         assert result["confidence"] == pytest.approx(0.80)   # no penalty
 
     def test_approx_gets_no_magnitude_adjustment(self):
@@ -281,5 +281,5 @@ class TestConsensusReadsOperator:
         from types import SimpleNamespace
         state = {"agent_evidence": self._evidence(0.5),
                  "parsed_claim": SimpleNamespace(operator="approx")}
-        result = _simple_consensus(state)
+        result = _adjust_confidence(state)
         assert result["confidence"] == pytest.approx(0.80)
