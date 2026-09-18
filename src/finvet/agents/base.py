@@ -1,4 +1,4 @@
-"""Base ReAct agent implementation using LangGraph create_react_agent.
+"""Base ReAct agent implementation using LangChain's create_agent.
 
 This module provides the foundation for domain-specific verification agents.
 Each agent uses LangGraph's built-in ReAct pattern where the LLM reasons
@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Literal, Optional
 from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import BaseTool
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from pydantic import BaseModel, Field
 
 from ..config.constants import (
@@ -273,15 +273,18 @@ class BaseVerificationAgent(ABC):
         # LLM (model configurable via LLM_AGENT__MODEL env var)
         self.llm = create_llm("agent")
 
-        # LangGraph ReAct agent handles the reasoning + tool calling loop
-        self.react_agent = create_react_agent(
-            model=self.llm,
+        # The model <-> tools loop (create_agent, a LangGraph graph under the
+        # hood): model turn, tool turn, model turn ... until the model stops
+        # calling tools, bounded by recursion_limit at invoke time. The
+        # verdict is not decided inside this loop; see execute().
+        self.react_agent = create_agent(
+            self.llm,
             tools=tools,
-            prompt=system_prompt,
+            system_prompt=system_prompt,
         )
 
     def execute(self, state: VerificationState) -> Dict[str, Any]:
-        """Execute verification using LangGraph's create_react_agent."""
+        """Execute verification: run the agent loop, then decide deterministically."""
         start_time = time.time()
         # Tokens this execution consumed: every model call of the loop plus
         # the verdict call. Every evidence dict below reports it; the node

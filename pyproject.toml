@@ -10,7 +10,7 @@ keywords = ["financial-claims", "fact-checking", "sec-edgar", "xbrl", "langgraph
 # versions nothing has ever run.
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "langchain>=0.3.0",
+    "langchain>=1.0.0",           # agents/base.py — create_agent lives here from 1.0
     "langgraph>=0.2.0",
     "langchain-openai>=1.1.0",   # llm/factory.py — the OpenAI-*compatible*
                                  # client used for DeepSeek/Ollama/vLLM/LiteLLM
