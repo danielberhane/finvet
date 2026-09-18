@@ -37,7 +37,7 @@ TRACKED_NODES = frozenset({
     "reject_handler",
     "confidence_adjuster",
     "output_guardrails",
-    "hitl_checkpoint",
+    "hitl_gate",
     "apply_hitl_decision",
     "response_generator",
 })

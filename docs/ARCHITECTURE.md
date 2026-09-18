@@ -9,7 +9,7 @@ Streamlit UI (:8501)
        |  HTTP
 FastAPI API (:8000)
        |
-LangGraph Pipeline (12-node DAG + HITL checkpoint)
+LangGraph Pipeline (12-node DAG + HITL gate)
        |
   SEC Agent ------> SEC EDGAR MCP (:9870) ---> XBRL/Filing Data
   ^    |                                            |
@@ -85,7 +85,7 @@ LangGraph Pipeline (12-node DAG + HITL checkpoint)
 Twelve nodes are registered; at most nine execute for a given claim, since the router
 selects one domain agent and the two HITL nodes run only below the confidence threshold.
 
-Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_checkpoint"]`.
+Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_gate"]`.
 
 #### Node Map
 
@@ -100,7 +100,7 @@ Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_chec
 | 7 | `reject_handler` | 2 (reject) | 12 | No | Set verdict=REJECTED |
 | 8 | `confidence_adjuster` | 4/5/6 | 9 | No | Adjust confidence |
 | 9 | `output_guardrails` | 8 | 10/12 | Yes (hitl_required) | Check confidence + output safety |
-| 10 | `hitl_checkpoint` | 9 (needs_hitl) | 11 | No | Graph pauses (interrupt_before) |
+| 10 | `hitl_gate` | 9 (needs_hitl) | 11 | No | Graph pauses (interrupt_before) |
 | 11 | `apply_hitl_decision` | 10 | 12 | No | Apply reviewer decision |
 | 12 | `response_generator` | 7/9/11 | END | No | Format final response |
 
@@ -113,7 +113,7 @@ Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_chec
 - `claim_type == "reject"` --> `reject_handler`
 
 **After output_guardrails** (`_route_after_guardrails`):
-- `hitl_required == True` --> `hitl_checkpoint`
+- `hitl_required == True` --> `hitl_gate`
 - `hitl_required == False` --> `response_generator`
 
 #### Confidence Adjustments
@@ -142,7 +142,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 | **domain_agents** | `agent_evidence` (AgentEvidence), `agent_type`, `rag_chunks_retrieved`, `corroboration_result`, `total_tokens_used` |
 | **confidence_adjuster** | `verdict`, `confidence`, `confidence_label`, `confidence_adjustments` |
 | **output_guardrails** | `hitl_required`, `hitl_triggers`, `guard_result_output` |
-| **hitl_checkpoint** | `hitl_checkpoint_passed` |
+| **hitl_gate** | `hitl_gate_passed` |
 | **apply_hitl_decision** | `hitl_applied`, `hitl_decision`, `hitl_override_verdict` |
 | **response_generator** | `final_response`, `execution_end_time` |
 
@@ -351,7 +351,7 @@ conflict would route much of the traffic to a reviewer and teach them to ignore 
 | `data` | `JSONB` | Event payload |
 | `created_at` | `VARCHAR(50)` | |
 
-**Event types**: `input_received`, `period_resolved`, `output_guardrails_checked`, `hitl_checkpoint_reached`, `hitl_approved`, `hitl_overridden`, `hitl_rejected`, `memory_cache_accepted`, `memory_context_injected`, `guardrail_violation`
+**Event types**: `input_received`, `period_resolved`, `output_guardrails_checked`, `hitl_gate_reached`, `hitl_approved`, `hitl_overridden`, `hitl_rejected`, `memory_cache_accepted`, `memory_context_injected`, `guardrail_violation`
 
 #### `audit_executions` (Execution Summary)
 
@@ -528,7 +528,7 @@ Three properties matter beyond the fusion itself:
   delimiters, and the SEC prompt states that text inside them is evidence to weigh and
   never an instruction to follow.
 
-### HITL Checkpoint with MemorySaver
+### HITL Gate with MemorySaver
 
 LangGraph `interrupt_before` pauses the graph. API returns `pending_review`. Human review
 resumes via `update_state()` + `invoke(None, config)`.

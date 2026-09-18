@@ -158,7 +158,7 @@ def derive_terminal_status(state: Mapping[str, Any],
     every completed run "success", so a parser rejection -- a claim the system
     declined to verify -- was stored as a successful verification.
     """
-    if state.get("hitl_required") and not state.get("hitl_checkpoint_passed"):
+    if state.get("hitl_required") and not state.get("hitl_gate_passed"):
         return "pending_review"
     if not final_response:
         return "error"
@@ -361,7 +361,7 @@ def build_pending_response(request_id: str, claim_text: str,
                            state: Mapping[str, Any],
                            preliminary_analysis: Optional[Dict[str, Any]] = None,
                            ) -> Dict[str, Any]:
-    """The response body for a claim paused at the HITL checkpoint.
+    """The response body for a claim paused at the HITL gate.
 
     Shared so both routes describe a pending review identically; they returned
     different shapes for the same graph result before.

@@ -193,7 +193,7 @@ class TestAllTrackedNodes:
     @pytest.mark.parametrize("node_name", [
         "input_guardrails", "claim_parser", "period_resolver",
         "sec_agent", "market_agent", "news_agent", "reject_handler",
-        "confidence_adjuster", "output_guardrails", "hitl_checkpoint",
+        "confidence_adjuster", "output_guardrails", "hitl_gate",
         "apply_hitl_decision", "response_generator",
     ])
     def test_tracks_all_pipeline_nodes(self, handler, mock_audit, node_name):

@@ -24,7 +24,7 @@ async def get_pending_reviews():
 def submit_hitl_review(request_id: str, review: HITLReviewRequest):
     """Submit a human review decision and resume the paused verification graph.
 
-    The graph was interrupted at hitl_checkpoint during verification. The
+    The graph was interrupted at hitl_gate during verification. The
     decision is injected into the checkpointed state and the graph resumes, so
     the reviewed verdict is produced by the same pipeline that produced the
     pending one -- not recomputed from the request body.

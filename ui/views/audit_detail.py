@@ -24,7 +24,7 @@ _PIPELINE_ORDER = [
     ("reject_handler",      "Reject Handler"),
     ("confidence_adjuster", "Confidence"),
     ("output_guardrails",   "Output Guardrails"),
-    ("hitl_checkpoint",     "HITL Checkpoint"),
+    ("hitl_gate",     "HITL Gate"),
     ("apply_hitl_decision", "Apply HITL Decision"),
     ("response_generator",  "Response Generator"),
 ]

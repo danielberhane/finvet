@@ -25,7 +25,7 @@ Pipeline flow (which node writes which fields):
     Node 5 (confidence_adjuster) → verdict, confidence, confidence_label,
                                    confidence_adjustments
     Node 6 (output_guardrails)  → hitl_required, hitl_triggers
-    Node 7 (hitl_checkpoint)    → hitl_checkpoint_passed
+    Node 7 (hitl_gate)    → hitl_gate_passed
     Node 8 (apply_hitl_decision)→ hitl_applied, verdict (override),
                                    confidence (override), disposition
     Node 9 (response_generator) → final_response
@@ -323,30 +323,30 @@ class VerificationState(TypedDict, total=False):
 
     # The gate: should the pipeline pause for human review?
     # True if ANY trigger in hitl_triggers fired.
-    # Determines routing: True → hitl_checkpoint (pause), False → response_generator (skip).
+    # Determines routing: True → hitl_gate (pause), False → response_generator (skip).
     hitl_required: bool
 
     # ===================================================================
-    # NODES 7 & 8: HITL CHECKPOINT + APPLY DECISION
-    # Written by: _hitl_checkpoint and _apply_hitl_decision in workflow.py
+    # NODES 7 & 8: HITL GATE + APPLY DECISION
+    # Written by: _hitl_gate and _apply_hitl_decision in workflow.py
     #
     # HITL flow:
     #   1. output_guardrails sets hitl_required=True
-    #   2. _route_after_guardrails sends to hitl_checkpoint
-    #   3. LangGraph pauses BEFORE hitl_checkpoint (interrupt_before config)
+    #   2. _route_after_guardrails sends to hitl_gate
+    #   3. LangGraph pauses BEFORE hitl_gate (interrupt_before config)
     #   4. /verify returns status="pending_review" to the client
     #   5. Human reviews via POST /review/{request_id}
     #   6. /review calls graph.update_state() to inject hitl_decision
     #   7. /review calls graph.invoke(None, config) to resume
-    #   8. hitl_checkpoint runs (logs audit), then apply_hitl_decision runs
+    #   8. hitl_gate runs (logs audit), then apply_hitl_decision runs
     #   9. Pipeline continues to response_generator → END
     # ===================================================================
 
-    # Set to True by _hitl_checkpoint when it runs (after resume).
-    # Bookkeeping flag — confirms the checkpoint node executed.
+    # Set to True by _hitl_gate when it runs (after resume).
+    # Bookkeeping flag — confirms the gate node executed.
     # During the first /verify call (before resume), this field doesn't exist yet
-    # because the graph pauses BEFORE the checkpoint node runs.
-    hitl_checkpoint_passed: bool
+    # because the graph pauses BEFORE the gate node runs.
+    hitl_gate_passed: bool
 
     # Set to True by _apply_hitl_decision when a human decision was applied.
     # False or missing means no human reviewed this claim.
@@ -400,13 +400,13 @@ class VerificationState(TypedDict, total=False):
     #
     #   "released"             — auto-released, confidence >= threshold, guards clean
     #   "rejected_parser"      — claim_parser classified the claim as unverifiable
-    #   "rejected_human"       — human reviewer rejected at the HITL checkpoint
+    #   "rejected_human"       — human reviewer rejected at the HITL gate
     #   "rejected_input_guard" — reserved; input guard violations currently fail
     #                            closed at the API boundary (HTTP 400) and never
     #                            reach response_generator
     #   "approved_human"       — human reviewer approved the automated verdict
     #   "overridden_human"     — human reviewer replaced the verdict
-    #   "pending_review"       — paused at the HITL checkpoint, not yet terminal
+    #   "pending_review"       — paused at the HITL gate, not yet terminal
     disposition: Optional[Literal[
         "released",
         "rejected_parser",

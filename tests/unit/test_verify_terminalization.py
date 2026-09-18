@@ -110,7 +110,7 @@ def _final(status="success", verdict="SUPPORTS"):
 SUCCESS_STATE = {"agent_type": "sec", "final_response": _final()}
 REJECTED_STATE = {"agent_type": None,
                   "final_response": _final(status="rejected", verdict="REJECTED")}
-PENDING_STATE = {"hitl_required": True, "hitl_checkpoint_passed": False,
+PENDING_STATE = {"hitl_required": True, "hitl_gate_passed": False,
                  "hitl_triggers": ["low_confidence"], "agent_type": "sec",
                  "agent_evidence": {"agent": "sec", "reasoning": "unsure",
                                     "tools_called": []}}

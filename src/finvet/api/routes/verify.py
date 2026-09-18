@@ -131,7 +131,7 @@ def verify_claim(request: VerifyClaimRequest):
 
     Returns a verdict immediately for normal claims.
     For HITL claims (low confidence), returns status="pending_review" — the graph
-    is paused at the HITL checkpoint and waits for human review via POST /review/.
+    is paused at the HITL gate and waits for human review via POST /review/.
     """
 
     # Generate a unique ID for this request — used everywhere:
@@ -179,7 +179,7 @@ def verify_claim(request: VerifyClaimRequest):
 
         # Run the full LangGraph pipeline:
         # input_guardrails → claim_parser → period_resolver → agent → confidence_adjuster
-        # → output_guardrails → (HITL checkpoint or response_generator)
+        # → output_guardrails → (HITL gate or response_generator)
         logger.info(f"Starting verification graph (request: {request_id})")
         result = deps.verification_graph.invoke(initial_state, config)
 

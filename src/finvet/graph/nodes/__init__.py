@@ -16,7 +16,7 @@ threshold.
 7.  reject_handler      - Terminal path for unsafe / non-financial claims
 8.  confidence_adjuster - Confidence adjustment on the agent verdict
 9.  output_guardrails   - Confidence threshold + output safety -> HITL routing
-10. hitl_checkpoint     - INTERRUPT point for human review
+10. hitl_gate           - the graph pauses before it for human review
 11. apply_hitl_decision - Apply the reviewer's decision
 12. response_generator  - Format final response
 """
