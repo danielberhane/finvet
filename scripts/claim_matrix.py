@@ -42,7 +42,7 @@ API = os.environ.get("FINVET_API_URL", "http://127.0.0.1:8000").rstrip("/")
 #   revenue 130,497,000,000   gross 97,858,000,000   op income 81,453,000,000
 #   assets 111,601,000,000    equity 79,327,000,000
 #
-# SEC tolerance is 1.5% for values above $1B (TOLERANCE_SEC_LARGE).
+# SEC tolerance is 1.5% for values above $1B (TOLERANCE_SEC_LARGE_VALUES).
 
 CLAIMS = [
     # -- SEC XBRL, true values -> SUPPORTS ------------------------------

@@ -22,11 +22,11 @@ from ..config.constants import (
     TOOL_RESULT_PREVIEW_CHARS,
     TOLERANCE_APPROX_MULTIPLIER,
     TOLERANCE_DEFAULT,
-    TOLERANCE_LARGE_VALUE_THRESHOLD,
+    SEC_LARGE_VALUE_THRESHOLD,
     TOLERANCE_MARKET,
     TOLERANCE_NEWS,
-    TOLERANCE_SEC_LARGE,
-    TOLERANCE_SEC_SMALL,
+    TOLERANCE_SEC_LARGE_VALUES,
+    TOLERANCE_SEC_SMALL_VALUES,
 )
 from ..config.settings import settings
 from ..tools.sec_tools import _DATABLE_PERIOD_TYPES
@@ -76,9 +76,9 @@ def _tolerance_for(claimed_value, agent_type) -> float:
         return TOLERANCE_NEWS
     if claimed_value is None:
         return TOLERANCE_DEFAULT
-    if abs(claimed_value) >= TOLERANCE_LARGE_VALUE_THRESHOLD:
-        return TOLERANCE_SEC_LARGE
-    return TOLERANCE_SEC_SMALL
+    if abs(claimed_value) >= SEC_LARGE_VALUE_THRESHOLD:
+        return TOLERANCE_SEC_LARGE_VALUES
+    return TOLERANCE_SEC_SMALL_VALUES
 
 
 def compare_observation(parsed_claim, observation, agent_type="sec") -> tuple:
@@ -1008,7 +1008,7 @@ class BaseVerificationAgent(ABC):
 
         This used to repeat the branching in `_tolerance_for`, which is what
         the fallback comparator uses. The two agreed for the three agent types
-        that exist only because TOLERANCE_SEC_SMALL and TOLERANCE_DEFAULT are
+        that exist only because TOLERANCE_SEC_SMALL_VALUES and TOLERANCE_DEFAULT are
         both 2.0; for any other agent type they already disagreed (2.0 here
         against 1.5 there above the large-value threshold), and either
         constant changing would have split them for every claim. A second
