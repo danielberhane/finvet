@@ -33,7 +33,7 @@ _STEP_LABELS = {
     "reject_handler": "Declined the claim",
     "confidence_adjuster": "Adjusted confidence",
     "output_guardrails": "Checked the answer",
-    "hitl_checkpoint": "Queued for review",
+    "hitl_gate": "Queued for review",
     "apply_hitl_decision": "Applied the review decision",
     "response_generator": "Wrote the response",
 }

@@ -13,12 +13,12 @@ falls below the threshold.
 7.  reject_handler      - Terminal path for unsafe / non-financial claims
 8.  confidence_adjuster - Confidence adjustment on the agent verdict
 9.  output_guardrails   - Confidence threshold + output safety -> HITL routing
-10. hitl_checkpoint     - INTERRUPT point for human review
+10. hitl_gate           - the graph pauses before it for human review
 11. apply_hitl_decision - Apply the reviewer's decision
 12. response_generator  - Format final response
 
 LangGraph checkpointing enables HITL:
-- Graph pauses at hitl_checkpoint when hitl_required=True
+- Graph pauses at hitl_gate when hitl_required=True
 - State persists via checkpointer (MemorySaver or PostgresSaver)
 - Human reviews via /review endpoint, graph resumes with decision
 """
@@ -61,7 +61,7 @@ def create_verification_graph(checkpointer=None):
     Args:
         checkpointer: Optional LangGraph checkpointer (MemorySaver, PostgresSaver, etc.)
                       for HITL persistence. If provided, compiles with interrupt_before
-                      so the graph pauses at hitl_checkpoint for human review.
+                      so the graph pauses at hitl_gate for human review.
 
     Returns:
         Compiled StateGraph ready for invocation
@@ -78,7 +78,7 @@ def create_verification_graph(checkpointer=None):
     graph.add_node("reject_handler", _handle_rejection)
     graph.add_node("confidence_adjuster", _adjust_confidence)
     graph.add_node("output_guardrails", output_guardrails)
-    graph.add_node("hitl_checkpoint", _hitl_checkpoint)
+    graph.add_node("hitl_gate", _hitl_gate)
     graph.add_node("apply_hitl_decision", _apply_hitl_decision)
     graph.add_node("response_generator", response_generator)
 
@@ -113,21 +113,21 @@ def create_verification_graph(checkpointer=None):
     graph.add_edge("confidence_adjuster", "output_guardrails")
 
     # After output guardrails, route based on whether HITL is needed
-    # Non-HITL claims skip hitl_checkpoint entirely (no interrupt)
+    # Non-HITL claims skip hitl_gate entirely (no interrupt)
     graph.add_conditional_edges(
         "output_guardrails",
         _route_after_guardrails,
         {
-            "needs_hitl": "hitl_checkpoint",
+            "needs_hitl": "hitl_gate",
             "no_hitl": "response_generator",
         }
     )
 
-    # HITL checkpoint → apply decision → generate response
-    # With a checkpointer, interrupt_before pauses BEFORE hitl_checkpoint.
-    # When resumed (after human review), hitl_checkpoint runs, then the
+    # HITL gate → apply decision → generate response
+    # With a checkpointer, interrupt_before pauses BEFORE hitl_gate.
+    # When resumed (after human review), hitl_gate runs, then the
     # decision is applied, and response_generator produces the final output.
-    graph.add_edge("hitl_checkpoint", "apply_hitl_decision")
+    graph.add_edge("hitl_gate", "apply_hitl_decision")
     graph.add_edge("apply_hitl_decision", "response_generator")
 
     # Response generator is the end
@@ -137,7 +137,7 @@ def create_verification_graph(checkpointer=None):
     if checkpointer:
         compiled = graph.compile(
             checkpointer=checkpointer,
-            interrupt_before=["hitl_checkpoint"],
+            interrupt_before=["hitl_gate"],
         )
         logger.info("Graph compiled with checkpointer and HITL interrupt support")
     else:
@@ -238,7 +238,7 @@ def _adjust_confidence(state: VerificationState) -> Dict:
 def _route_after_guardrails(state: VerificationState) -> str:
     """Route after output guardrails based on whether HITL review is needed.
 
-    Non-HITL claims skip hitl_checkpoint entirely so they aren't
+    Non-HITL claims skip hitl_gate entirely so they aren't
     paused by interrupt_before.
     """
     if state.get("hitl_required", False):
@@ -246,24 +246,23 @@ def _route_after_guardrails(state: VerificationState) -> str:
     return "no_hitl"
 
 
-def _hitl_checkpoint(state: VerificationState) -> Dict:
-    """
-    HITL checkpoint node.
+def _hitl_gate(state: VerificationState) -> Dict:
+    """The gate a flagged claim waits at for a human.
 
-    If hitl_required is True, the graph will be interrupted BEFORE this node
-    (due to interrupt_before config). When resumed, this node executes.
-
-    This node just logs and passes through - the actual pause happens
-    via LangGraph's interrupt mechanism.
+    The pause is not in this function. The graph is compiled with
+    interrupt_before=["hitl_gate"], so LangGraph stops and the checkpointer
+    saves state *before* this node runs; the /review route writes the
+    decision into that saved state and resumes. Only then does this node
+    execute -- it records the gate in the audit trail and marks it passed.
     """
     request_id = state.get("request_id", "unknown")
     hitl_required = state.get("hitl_required", False)
 
     if hitl_required:
-        # Log HITL checkpoint to audit trail
+        # Record the gate in the audit trail
         audit = get_audit_logger()
         audit.log_event(
-            event_type="hitl_checkpoint_reached",
+            event_type="hitl_gate_reached",
             request_id=request_id,
             data={
                 "hitl_triggers": state.get("hitl_triggers", []),
@@ -271,10 +270,10 @@ def _hitl_checkpoint(state: VerificationState) -> Dict:
                 "confidence_before_hitl": state.get("confidence"),
             }
         )
-        logger.info(f"HITL checkpoint: would require review (request: {request_id})")
+        logger.info(f"HITL gate reached after review (request: {request_id})")
 
     return {
-        "hitl_checkpoint_passed": True,
+        "hitl_gate_passed": True,
     }
 
 

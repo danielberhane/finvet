@@ -220,7 +220,7 @@ class TestStateOwnership:
         "confidence_label": "response",
         "hitl_required": "routing after output_guardrails",
         "hitl_triggers": "response, review queue",
-        "hitl_checkpoint_passed": "terminal status derivation",
+        "hitl_gate_passed": "terminal status derivation",
         "hitl_decision": "apply_hitl_decision",
         "hitl_override_verdict": "apply_hitl_decision",
         "hitl_reviewer_notes": "finalize_review",

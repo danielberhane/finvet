@@ -23,7 +23,7 @@ rather than publishing the model's reading.
   Tunable constants (tolerances, confidence adjustments, limits) in `config/constants.py`;
   the metric vocabulary, remaps, servable sets and `verification_strategy_for`
   in `config/metrics.py`.
-- **HITL**: MemorySaver checkpointer, `interrupt_before=["hitl_checkpoint"]`,
+- **HITL**: MemorySaver checkpointer, `interrupt_before=["hitl_gate"]`,
   resume via `update_state()` + `invoke(None, config)`. Pending reviews do
   NOT survive an API restart (409 `checkpoint_unavailable`).
 - **Memory**: episodic claim memory, off by default (`enable_claim_memory`;
