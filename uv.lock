@@ -505,7 +505,7 @@ requires-dist = [
     { name = "deepeval", marker = "extra == 'evaluation'", specifier = ">=4.0.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "httpx", specifier = ">=0.27.0" },
-    { name = "langchain", specifier = ">=0.3.0" },
+    { name = "langchain", specifier = ">=1.0.0" },
     { name = "langchain-core", specifier = ">=1.2.8" },
     { name = "langchain-openai", specifier = ">=1.1.0" },
     { name = "langgraph", specifier = ">=0.2.0" },
