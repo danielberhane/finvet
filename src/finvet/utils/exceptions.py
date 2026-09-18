@@ -62,11 +62,6 @@ class DataRetrievalError(FinVetError):
     pass
 
 
-class ConsensusError(FinVetError):
-    """Exception raised when consensus building fails."""
-    pass
-
-
 class StorageError(FinVetError):
     """Exception raised for storage-related errors."""
     pass

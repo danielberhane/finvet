@@ -1,7 +1,7 @@
 """Named constants extracted from across the codebase.
 
 Centralizes magic numbers for tolerances, thresholds, agent limits,
-embedding config, and consensus adjustments.
+embedding config, and confidence adjustments.
 """
 
 # ---------------------------------------------------------------------------
@@ -24,15 +24,15 @@ SEC_LARGE_VALUE_THRESHOLD = 1_000_000_000  # the value, not a tolerance: $1B
 TOLERANCE_APPROX_MULTIPLIER = 2.0
 
 # ---------------------------------------------------------------------------
-# Consensus adjustments (used in workflow.py _simple_consensus)
+# Confidence adjustments (used in workflow.py _adjust_confidence)
 # ---------------------------------------------------------------------------
-CONSENSUS_LARGE_DIFF_THRESHOLD = 20     # % magnitude diff for penalty
-CONSENSUS_CLOSE_MATCH_THRESHOLD = 2     # % magnitude diff for bonus
-CONSENSUS_LARGE_DIFF_PENALTY = -0.1     # confidence adjustment
-CONSENSUS_CLOSE_MATCH_BONUS = 0.05      # confidence adjustment
-CONSENSUS_THOROUGH_BONUS = 0.05         # bonus for >= 3 tool calls
-CONSENSUS_THOROUGH_TOOL_COUNT = 3       # min tools for thorough bonus
-CONSENSUS_MAX_CONFIDENCE = 0.95         # confidence cap
+CONFIDENCE_LARGE_DIFF_PCT = 20     # % magnitude diff for penalty
+CONFIDENCE_CLOSE_MATCH_PCT = 2     # % magnitude diff for bonus
+CONFIDENCE_LARGE_DIFF_PENALTY = -0.1     # confidence adjustment
+CONFIDENCE_CLOSE_MATCH_BONUS = 0.05      # confidence adjustment
+CONFIDENCE_THOROUGH_BONUS = 0.05         # bonus for >= 3 tool calls
+CONFIDENCE_THOROUGH_TOOL_COUNT = 3       # min tools for thorough bonus
+CONFIDENCE_AUTOMATED_CAP = 0.95         # cap for an automated verdict; 1.0 is a human's
 
 # ---------------------------------------------------------------------------
 # Agent limits (used in base.py)

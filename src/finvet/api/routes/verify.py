@@ -3,7 +3,7 @@ Claim verification endpoint.
 
 This is the main entry point for the FinVet pipeline. A claim comes in,
 flows through the LangGraph verification graph (guardrails → parsing →
-agent → consensus → output check), and either:
+agent → confidence adjuster → output check), and either:
   - Returns a verdict immediately (SUPPORTS / REFUTES / NOT_ENOUGH_INFO)
   - Pauses for human review if confidence is too low (HITL flow)
 """
@@ -105,7 +105,7 @@ def _progress_detail(node_name: str, updates: dict) -> dict:
                 "status"),
         }
 
-    elif node_name == "consensus":
+    elif node_name == "confidence_adjuster":
         detail = {
             "verdict": updates.get("verdict"),
             "confidence": updates.get("confidence"),
@@ -178,7 +178,7 @@ def verify_claim(request: VerifyClaimRequest):
         }
 
         # Run the full LangGraph pipeline:
-        # input_guardrails → claim_parser → period_resolver → agent → consensus
+        # input_guardrails → claim_parser → period_resolver → agent → confidence_adjuster
         # → output_guardrails → (HITL checkpoint or response_generator)
         logger.info(f"Starting verification graph (request: {request_id})")
         result = deps.verification_graph.invoke(initial_state, config)

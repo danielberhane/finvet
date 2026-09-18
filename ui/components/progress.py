@@ -31,7 +31,7 @@ _STEP_LABELS = {
     "market_agent": "Fetched the market quote",
     "news_agent": "Searched the news",
     "reject_handler": "Declined the claim",
-    "consensus": "Weighed the evidence",
+    "confidence_adjuster": "Adjusted confidence",
     "output_guardrails": "Checked the answer",
     "hitl_checkpoint": "Queued for review",
     "apply_hitl_decision": "Applied the review decision",
@@ -114,7 +114,7 @@ def _detail_for(node, d, claimed_value):
         return _joined([window, d.get("assumption")])
     if node in _AGENT_NODES:
         return _agent_detail(d, claimed_value)
-    if node == "consensus":
+    if node == "confidence_adjuster":
         verdict = verdict_label(d.get("verdict")) if d.get("verdict") else ""
         confidence = (f"{d['confidence']:.0%} confident"
                       if d.get("confidence") is not None else "")

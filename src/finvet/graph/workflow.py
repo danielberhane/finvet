@@ -11,7 +11,7 @@ falls below the threshold.
 5.  market_agent        - ReAct verification against Finnhub
 6.  news_agent          - ReAct verification against Tavily
 7.  reject_handler      - Terminal path for unsafe / non-financial claims
-8.  consensus           - Confidence adjustment on the agent verdict
+8.  confidence_adjuster - Confidence adjustment on the agent verdict
 9.  output_guardrails   - Confidence threshold + output safety -> HITL routing
 10. hitl_checkpoint     - INTERRUPT point for human review
 11. apply_hitl_decision - Apply the reviewer's decision
@@ -40,13 +40,13 @@ from .nodes import (
 )
 from ..audit import get_audit_logger
 from ..config.constants import (
-    CONSENSUS_CLOSE_MATCH_BONUS,
-    CONSENSUS_CLOSE_MATCH_THRESHOLD,
-    CONSENSUS_LARGE_DIFF_PENALTY,
-    CONSENSUS_LARGE_DIFF_THRESHOLD,
-    CONSENSUS_MAX_CONFIDENCE,
-    CONSENSUS_THOROUGH_BONUS,
-    CONSENSUS_THOROUGH_TOOL_COUNT,
+    CONFIDENCE_CLOSE_MATCH_BONUS,
+    CONFIDENCE_CLOSE_MATCH_PCT,
+    CONFIDENCE_LARGE_DIFF_PENALTY,
+    CONFIDENCE_LARGE_DIFF_PCT,
+    CONFIDENCE_AUTOMATED_CAP,
+    CONFIDENCE_THOROUGH_BONUS,
+    CONFIDENCE_THOROUGH_TOOL_COUNT,
 )
 from ..utils.logging import get_logger
 from ..utils.helpers import get_confidence_label
@@ -76,7 +76,7 @@ def create_verification_graph(checkpointer=None):
     graph.add_node("market_agent", run_market_agent)
     graph.add_node("news_agent", run_news_agent)
     graph.add_node("reject_handler", _handle_rejection)
-    graph.add_node("consensus", _simple_consensus)
+    graph.add_node("confidence_adjuster", _adjust_confidence)
     graph.add_node("output_guardrails", output_guardrails)
     graph.add_node("hitl_checkpoint", _hitl_checkpoint)
     graph.add_node("apply_hitl_decision", _apply_hitl_decision)
@@ -101,16 +101,16 @@ def create_verification_graph(checkpointer=None):
     # After period resolution, run SEC agent
     graph.add_edge("period_resolver", "sec_agent")
 
-    # All agents go to consensus
-    graph.add_edge("sec_agent", "consensus")
-    graph.add_edge("market_agent", "consensus")
-    graph.add_edge("news_agent", "consensus")
+    # All agents go to the confidence adjuster
+    graph.add_edge("sec_agent", "confidence_adjuster")
+    graph.add_edge("market_agent", "confidence_adjuster")
+    graph.add_edge("news_agent", "confidence_adjuster")
 
     # Rejection goes directly to response
     graph.add_edge("reject_handler", "response_generator")
 
-    # Consensus to output guardrails
-    graph.add_edge("consensus", "output_guardrails")
+    # Confidence adjuster to output guardrails
+    graph.add_edge("confidence_adjuster", "output_guardrails")
 
     # After output guardrails, route based on whether HITL is needed
     # Non-HITL claims skip hitl_checkpoint entirely (no interrupt)
@@ -172,24 +172,21 @@ def _handle_rejection(state: VerificationState) -> Dict:
     }
 
 
-def _simple_consensus(state: VerificationState) -> Dict:
-    """Adjusts confidence. Does not overturn a verdict.
+def _adjust_confidence(state: VerificationState) -> Dict:
+    """Adjusts confidence. Never overturns a verdict.
 
-    The name is a leftover from a design where three agents voted and their
-    answers had to be reconciled. One agent runs per claim now, so there is
-    nothing to reconcile: the agent's verdict is copied out and every branch
-    below touches only the confidence. The single exception is the first
-    guard -- if the agent produced no evidence at all there is no verdict to
-    carry, and NOT_ENOUGH_INFO is the honest answer rather than a judgement
-    about the claim. Anyone looking for where a verdict genuinely changes
-    should be reading `_apply_override` in the agent, or the human-review
-    node further down this file.
+    One agent runs per claim; its verdict is copied out unchanged and every
+    branch below touches only the confidence. The single exception is the
+    first guard -- if the agent produced no evidence at all there is no
+    verdict to carry, and NOT_ENOUGH_INFO is the honest answer rather than a
+    judgement about the claim. A verdict genuinely changes in exactly two
+    places: `_apply_override` in the agent, and `_apply_hitl_decision` below.
 
-    What it does do is nudge the agent's own confidence on three signals,
-    then cap it: a very close numeric match, a very large mismatch, and
-    whether the agent bothered to call several tools. The thresholds live in
-    `config/constants.py` rather than here so they can be read without
-    reading this function.
+    Three signals nudge the agent's own confidence, then a cap: a very close
+    numeric match, a very large mismatch, and whether the agent called
+    several tools. The thresholds live in `config/constants.py` so they can
+    be read without reading this function; the cap is below 1.0 because
+    full confidence is reserved for a human decision.
     """
     agent_evidence = state.get("agent_evidence", {})
 
@@ -198,7 +195,6 @@ def _simple_consensus(state: VerificationState) -> Dict:
             "verdict": "NOT_ENOUGH_INFO",
             "confidence": 0.2,
             "confidence_label": "LOW",
-            "consensus_reasons": ["No agent evidence available"],
         }
 
     verdict = agent_evidence.get("verdict", "NOT_ENOUGH_INFO")
@@ -217,26 +213,25 @@ def _simple_consensus(state: VerificationState) -> Dict:
     # precision, no penalty for one the override already judged at the
     # widened tolerance.
     if magnitude_diff is not None and operator == "eq":
-        if magnitude_diff > CONSENSUS_LARGE_DIFF_THRESHOLD:
-            confidence += CONSENSUS_LARGE_DIFF_PENALTY
-            adjustments.append({"reason": "large_magnitude_difference", "amount": CONSENSUS_LARGE_DIFF_PENALTY})
-        elif magnitude_diff < CONSENSUS_CLOSE_MATCH_THRESHOLD:
-            confidence += CONSENSUS_CLOSE_MATCH_BONUS
-            adjustments.append({"reason": "close_match", "amount": CONSENSUS_CLOSE_MATCH_BONUS})
+        if magnitude_diff > CONFIDENCE_LARGE_DIFF_PCT:
+            confidence += CONFIDENCE_LARGE_DIFF_PENALTY
+            adjustments.append({"reason": "large_magnitude_difference", "amount": CONFIDENCE_LARGE_DIFF_PENALTY})
+        elif magnitude_diff < CONFIDENCE_CLOSE_MATCH_PCT:
+            confidence += CONFIDENCE_CLOSE_MATCH_BONUS
+            adjustments.append({"reason": "close_match", "amount": CONFIDENCE_CLOSE_MATCH_BONUS})
 
     tools_called = agent_evidence.get("tools_called", [])
-    if len(tools_called) >= CONSENSUS_THOROUGH_TOOL_COUNT:
-        confidence += CONSENSUS_THOROUGH_BONUS
-        adjustments.append({"reason": "thorough_investigation", "amount": CONSENSUS_THOROUGH_BONUS})
+    if len(tools_called) >= CONFIDENCE_THOROUGH_TOOL_COUNT:
+        confidence += CONFIDENCE_THOROUGH_BONUS
+        adjustments.append({"reason": "thorough_investigation", "amount": CONFIDENCE_THOROUGH_BONUS})
 
-    confidence = max(0.0, min(CONSENSUS_MAX_CONFIDENCE, confidence))
+    confidence = max(0.0, min(CONFIDENCE_AUTOMATED_CAP, confidence))
 
     return {
         "verdict": verdict,
         "confidence": confidence,
         "confidence_label": get_confidence_label(confidence),
         "confidence_adjustments": adjustments,
-        "consensus_reasons": [agent_evidence.get("reasoning", "")],
     }
 
 

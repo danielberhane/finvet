@@ -22,8 +22,8 @@ Pipeline flow (which node writes which fields):
     Node 4 (domain_agent)       → agent_type, agent_evidence,
                                    rag_chunks_retrieved, corroboration_result,
                                    total_tokens_used
-    Node 5 (consensus)          → verdict, confidence, confidence_label,
-                                   consensus_reasons, confidence_adjustments
+    Node 5 (confidence_adjuster) → verdict, confidence, confidence_label,
+                                   confidence_adjustments
     Node 6 (output_guardrails)  → hitl_required, hitl_triggers
     Node 7 (hitl_checkpoint)    → hitl_checkpoint_passed
     Node 8 (apply_hitl_decision)→ hitl_applied, verdict (override),
@@ -64,7 +64,7 @@ class AgentEvidence(TypedDict):
     temporal_status: str
 
     # Which agent produced this evidence: "sec", "market", or "news".
-    # Used by response_generator to label the data source and by consensus
+    # Used by response_generator to label the data source and by confidence_adjuster
     # to log which agent ran.
     agent: str
 
@@ -77,7 +77,7 @@ class AgentEvidence(TypedDict):
 
     # Agent's confidence in the verdict, 0.0 to 1.0.
     # Comes from the verdict extraction LLM call, then may be adjusted
-    # by the consensus node (close_match_bonus, large_diff_penalty, etc.).
+    # by the confidence_adjuster node (close_match_bonus, large_diff_penalty, etc.).
     confidence: float
 
     # The actual numeric value the agent found in the data.
@@ -98,14 +98,14 @@ class AgentEvidence(TypedDict):
 
     # How far the claimed value is from the retrieved value, as a percentage.
     # Example: claimed $94B, retrieved $94.2B → 0.21%.
-    # Used by consensus for confidence adjustments (only for equality claims).
+    # Used by confidence_adjuster (only for equality claims).
     # Used by response_generator to show "Difference from claimed value: 0.21%".
     # None if either claimed or retrieved value is missing.
     magnitude_difference_percent: Optional[float]
 
     # List of tool names the agent called during the ReAct loop.
     # Examples: ["get_company_info", "get_income_statement"]
-    # Used by: consensus (thoroughness bonus if >= 3 tools),
+    # Used by: confidence_adjuster (thoroughness bonus if >= 3 tools),
     #          response_generator (source citations),
     #          _format_metadata (data_sources provenance: xbrl/rag/a2a).
     tools_called: list[str]
@@ -226,7 +226,7 @@ class VerificationState(TypedDict, total=False):
     #   - value → the number to verify (94000000000.0)
     #   - comparison → how to compare: eq/gt/gte/lt/lte
     #   - period → the time reference ("Q4 2024")
-    # Read by: period_resolver, domain agents, consensus, response_generator,
+    # Read by: period_resolver, domain agents, confidence_adjuster, response_generator,
     #          base.py (verdict override), helpers.py (build_preliminary_analysis).
     parsed_claim: ParsedClaim
 
@@ -262,31 +262,31 @@ class VerificationState(TypedDict, total=False):
     # The full structured output of the ReAct loop. See AgentEvidence above.
     # Contains: verdict, confidence, retrieved_value, magnitude_difference_percent,
     #           tools_called, tool_calls_detail, reasoning, execution_time_ms.
-    # Read by: consensus (to produce final verdict/confidence),
+    # Read by: confidence_adjuster (to produce final verdict/confidence),
     #          output_guardrails (reasoning checked for safety),
     #          response_generator (to build explanation, sources, metadata),
     #          /verify route (for memory storage and audit commit).
     agent_evidence: AgentEvidence
 
     # ===================================================================
-    # NODE 5: CONSENSUS
-    # Written by: _simple_consensus in workflow.py
+    # NODE 5: CONFIDENCE_ADJUSTER
+    # Written by: _adjust_confidence in workflow.py
     # Runs: Single-agent pass-through with confidence adjustments.
     # If multi-agent is added later, this is where voting/merging happens.
     # ===================================================================
 
-    # The FINAL verdict after consensus. For single-agent, same as
+    # The FINAL verdict after confidence adjustment. For single-agent, same as
     # agent_evidence.verdict. For multi-agent (future), could differ
     # if agents disagree and voting resolves the conflict.
     # Can be overwritten by apply_hitl_decision if human overrides.
     verdict: Literal["SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO", "REJECTED"]
 
     # The FINAL confidence after adjustments. Starts from agent_evidence.confidence,
-    # then consensus applies:
+    # then confidence_adjuster applies:
     #   - close_match_bonus (magnitude_diff < threshold, eq claims only)
     #   - large_diff_penalty (magnitude_diff > threshold, eq claims only)
     #   - thoroughness_bonus (tools_called >= threshold)
-    # Clamped to [0.0, CONSENSUS_MAX_CONFIDENCE].
+    # Clamped to [0.0, CONFIDENCE_AUTOMATED_CAP].
     # This value determines HITL routing: < 0.70 → human review required.
     confidence: float
 
@@ -297,12 +297,12 @@ class VerificationState(TypedDict, total=False):
     # Shown in the UI verdict card. "LOW" claims typically trigger HITL.
     confidence_label: Literal["HIGH", "MODERATE", "LOW"]
 
-    # Explanations of why this verdict was chosen.
-    # Currently: the agent's reasoning text passed through.
-    # For multi-agent (future): ["2 of 3 agents agree on SUPPORTS"].
-    consensus_reasons: list[str]
+    # `consensus_reasons` used to be declared here, carrying the agent's
+    # reasoning text under a name from the multi-agent design. Nothing read
+    # it -- the reasoning already travels in agent_evidence -- so it is gone
+    # rather than left as a field a reader might trust.
 
-    # Specific confidence adjustments applied by consensus.
+    # Specific confidence adjustments applied by confidence_adjuster.
     # Each entry: {"reason": "close_match", "amount": 0.03}
     # Empty list means no adjustments were needed.
     # Visible in audit trail for transparency.

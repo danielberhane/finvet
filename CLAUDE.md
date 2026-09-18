@@ -9,7 +9,7 @@ rather than publishing the model's reading.
 
 ## Architecture
 - **Pipeline**: input_guardrails → claim_parser → period_resolver →
-  domain_agents → consensus → output_guardrails → response_generator
+  domain_agents → confidence_adjuster → output_guardrails → response_generator
 - **API** `src/finvet/main.py` + `api/routes/` (port 8000) ·
   **UI** `ui/app.py` (port 8501, absolute imports only)
 - **Agents**: SEC, Market, News in `src/finvet/agents/`, all extend `base.py`
@@ -20,7 +20,7 @@ rather than publishing the model's reading.
   `corroborate_with_filing`, or the policy path fires for
   `CORROBORATION_METRICS`.
 - **State**: `VerificationState` in `models/state.py`.
-  Tunable constants (tolerances, consensus, limits) in `config/constants.py`;
+  Tunable constants (tolerances, confidence adjustments, limits) in `config/constants.py`;
   the metric vocabulary, remaps, servable sets and `verification_strategy_for`
   in `config/metrics.py`.
 - **HITL**: MemorySaver checkpointer, `interrupt_before=["hitl_checkpoint"]`,

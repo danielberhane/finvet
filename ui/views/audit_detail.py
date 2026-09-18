@@ -22,7 +22,7 @@ _PIPELINE_ORDER = [
     ("market_agent",        "Market Agent"),
     ("news_agent",          "News Agent"),
     ("reject_handler",      "Reject Handler"),
-    ("consensus",           "Consensus"),
+    ("confidence_adjuster", "Confidence"),
     ("output_guardrails",   "Output Guardrails"),
     ("hitl_checkpoint",     "HITL Checkpoint"),
     ("apply_hitl_decision", "Apply HITL Decision"),

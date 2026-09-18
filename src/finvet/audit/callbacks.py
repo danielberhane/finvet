@@ -35,7 +35,7 @@ TRACKED_NODES = frozenset({
     "market_agent",
     "news_agent",
     "reject_handler",
-    "consensus",
+    "confidence_adjuster",
     "output_guardrails",
     "hitl_checkpoint",
     "apply_hitl_decision",

@@ -98,7 +98,7 @@ Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_chec
 | 5 | `market_agent` | 2 (market) | 8 | No | ReAct market verification |
 | 6 | `news_agent` | 2 (news) | 8 | No | ReAct news verification |
 | 7 | `reject_handler` | 2 (reject) | 12 | No | Set verdict=REJECTED |
-| 8 | `consensus` | 4/5/6 | 9 | No | Adjust confidence |
+| 8 | `confidence_adjuster` | 4/5/6 | 9 | No | Adjust confidence |
 | 9 | `output_guardrails` | 8 | 10/12 | Yes (hitl_required) | Check confidence + output safety |
 | 10 | `hitl_checkpoint` | 9 (needs_hitl) | 11 | No | Graph pauses (interrupt_before) |
 | 11 | `apply_hitl_decision` | 10 | 12 | No | Apply reviewer decision |
@@ -116,14 +116,14 @@ Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_chec
 - `hitl_required == True` --> `hitl_checkpoint`
 - `hitl_required == False` --> `response_generator`
 
-#### Consensus Adjustments
+#### Confidence Adjustments
 
 | Condition | Adjustment | Constant |
 |-----------|-----------|----------|
-| `magnitude_diff >= 20%` | -0.10 | `CONSENSUS_LARGE_DIFF_PENALTY` |
-| `magnitude_diff <= 2%` | +0.05 | `CONSENSUS_CLOSE_MATCH_BONUS` |
-| `len(tools_called) >= 3` | +0.05 | `CONSENSUS_THOROUGH_BONUS` |
-| Always | cap at 0.95 | `CONSENSUS_MAX_CONFIDENCE` |
+| `magnitude_diff >= 20%` | -0.10 | `CONFIDENCE_LARGE_DIFF_PENALTY` |
+| `magnitude_diff <= 2%` | +0.05 | `CONFIDENCE_CLOSE_MATCH_BONUS` |
+| `len(tools_called) >= 3` | +0.05 | `CONFIDENCE_THOROUGH_BONUS` |
+| Always | cap at 0.95 | `CONFIDENCE_AUTOMATED_CAP` |
 
 Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 
@@ -140,7 +140,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 | **claim_parser** | `parsed_claim` (ParsedClaim), `parser_used`, `total_tokens_used` |
 | **period_resolver** | `canonical_period` (CanonicalPeriod), `period_assumptions` |
 | **domain_agents** | `agent_evidence` (AgentEvidence), `agent_type`, `rag_chunks_retrieved`, `corroboration_result`, `total_tokens_used` |
-| **consensus** | `verdict`, `confidence`, `confidence_label`, `confidence_adjustments`, `consensus_reasons` |
+| **confidence_adjuster** | `verdict`, `confidence`, `confidence_label`, `confidence_adjustments` |
 | **output_guardrails** | `hitl_required`, `hitl_triggers`, `guard_result_output` |
 | **hitl_checkpoint** | `hitl_checkpoint_passed` |
 | **apply_hitl_decision** | `hitl_applied`, `hitl_decision`, `hitl_override_verdict` |
@@ -474,10 +474,10 @@ Configurable via `LLM_PARSER__MODEL`, `LLM_AGENT__TEMPERATURE`, etc.
 | | `TOLERANCE_SEC_SMALL_VALUES` | 2% (<=$$1B) |
 | | `TOLERANCE_MARKET` | 5% |
 | | `TOLERANCE_NEWS` | 5% |
-| **Consensus** | `CONSENSUS_LARGE_DIFF_PENALTY` | -0.10 |
-| | `CONSENSUS_CLOSE_MATCH_BONUS` | +0.05 |
-| | `CONSENSUS_THOROUGH_BONUS` | +0.05 |
-| | `CONSENSUS_MAX_CONFIDENCE` | 0.95 |
+| **Confidence** | `CONFIDENCE_LARGE_DIFF_PENALTY` | -0.10 |
+| | `CONFIDENCE_CLOSE_MATCH_BONUS` | +0.05 |
+| | `CONFIDENCE_THOROUGH_BONUS` | +0.05 |
+| | `CONFIDENCE_AUTOMATED_CAP` | 0.95 |
 | **Agent** | `AGENT_MAX_ITERATIONS` | 5 |
 | | `AGENT_MAX_RESULT_CHARS` | 50,000 |
 | **Confidence** | `CONFIDENCE_HIGH_THRESHOLD` | 0.85 |
