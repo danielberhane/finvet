@@ -20,7 +20,7 @@ from ...utils.exceptions import AuditPersistenceError, GuardrailViolation
 from ..execution import (
     ExecutionFinalizer,
     begin_request,
-    resolve_memory_context,
+    resolve_prior_verification,
 )
 from ...utils.helpers import build_preliminary_analysis
 from ...utils.logging import get_logger
@@ -162,7 +162,7 @@ def verify_claim(request: VerifyClaimRequest):
             claim_text=request.claim,
             user_id=user_id,
             started_at=start_time,
-            memory_context=resolve_memory_context(
+            prior_verification=resolve_prior_verification(
                 deps.claim_memory, request.memory_context_request_id),
         )
 
@@ -276,7 +276,7 @@ def verify_claim_stream(request: VerifyClaimRequest):
         claim_text=request.claim,
         user_id=user_id,
         started_at=start_time,
-        memory_context=resolve_memory_context(
+        prior_verification=resolve_prior_verification(
             deps.claim_memory, request.memory_context_request_id),
     )
 

@@ -268,7 +268,7 @@ class TestBothRoutesOpenIdentically:
     @pytest.mark.parametrize("streaming", [True, False], ids=["sse", "sync"])
     def test_memory_decision_is_recorded(self, monkeypatch, streaming):
         types = [t for t, _ in self._events(monkeypatch, streaming)]
-        assert "memory_context_injected" in types
+        assert "prior_verification_attached" in types
 
     @pytest.mark.parametrize("streaming", [True, False], ids=["sse", "sync"])
     def test_input_received_carries_a_timestamp(self, monkeypatch, streaming):

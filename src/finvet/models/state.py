@@ -15,7 +15,7 @@ How it works:
 
 Pipeline flow (which node writes which fields):
     /verify route      → claim_raw, user_id, request_id, timestamp_received,
-                          total_tokens_used, memory_context
+                          total_tokens_used, prior_verification
     Node 1 (input_guardrails)   → claim_normalized
     Node 2 (claim_parser)       → parsed_claim, total_tokens_used
     Node 3 (period_resolver)    → canonical_period
@@ -40,6 +40,7 @@ Pipeline flow (which node writes which fields):
 
 from typing import Any, Literal, Optional, TypedDict
 from .claim import ParsedClaim, CanonicalPeriod
+from ..memory.store_service import ClaimMemoryContext
 
 
 class AgentEvidence(TypedDict):
@@ -443,16 +444,16 @@ class VerificationState(TypedDict, total=False):
     #          _format_metadata (data_sources["a2a"] section).
     corroboration_result: Optional[dict[str, Any]]
 
-    # Prior verification result injected as context for the agent.
-    # Set by /verify route when the user chose "Verify With Context" after
-    # /memory-check found a similar past claim (similarity >= 0.95).
-    # Contains: {"request_id": "req_abc", "verdict": "SUPPORTS",
-    #            "confidence": 0.92, "similarity": 0.97, "summary": "..."}
-    # The agent sees this in its context: "A similar claim was previously
-    # verified as SUPPORTS with 0.92 confidence."
-    # None for fresh verifications (most common case).
-    # Read by: base.py _build_context() (adds to agent prompt).
-    memory_context: Optional[dict[str, Any]]
+    # A prior verification the caller pointed at, attached as advisory
+    # context for the agent. Set by begin_request from a server-side lookup
+    # keyed by the request's memory_context_request_id -- an identifier the
+    # client sends, never text. (The free-form dict that used to arrive here
+    # from the client was removed as a prompt-injection channel.)
+    # A ClaimMemoryContext: claim, verdict, confidence, summary. Advisory
+    # only: base.py _build_context() adds it inside untrusted delimiters, and
+    # nothing numeric depends on it. None unless claim memory is enabled and
+    # the caller named an episode.
+    prior_verification: Optional[ClaimMemoryContext]
 
     # ===================================================================
     # AUDIT FIELDS — Accumulated throughout the pipeline

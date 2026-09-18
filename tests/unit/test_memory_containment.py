@@ -109,9 +109,9 @@ class TestTheThreeFailuresAreDistinguishable:
 class TestTheRouteMapsEachFailureToItsOwnStatus:
 
     def _resolve(self, service):
-        from finvet.api.execution import resolve_memory_context
+        from finvet.api.execution import resolve_prior_verification
 
-        return resolve_memory_context(service, "req_0123456789ab")
+        return resolve_prior_verification(service, "req_0123456789ab")
 
     def _service_raising(self, exc):
         from unittest.mock import MagicMock
@@ -131,7 +131,7 @@ class TestTheRouteMapsEachFailureToItsOwnStatus:
             self._resolve(service)
 
         assert excinfo.value.status_code == 404
-        assert excinfo.value.detail["error"] == "memory_context_not_found"
+        assert excinfo.value.detail["error"] == "prior_verification_not_found"
 
     def test_an_unreachable_store_is_a_503(self):
         from fastapi import HTTPException
@@ -142,7 +142,7 @@ class TestTheRouteMapsEachFailureToItsOwnStatus:
             self._resolve(self._service_raising(ClaimMemoryUnavailable("down")))
 
         assert excinfo.value.status_code == 503
-        assert excinfo.value.detail["error"] == "memory_context_unavailable"
+        assert excinfo.value.detail["error"] == "prior_verification_unavailable"
 
     def test_a_malformed_record_is_a_422(self):
         from fastapi import HTTPException
@@ -153,17 +153,17 @@ class TestTheRouteMapsEachFailureToItsOwnStatus:
             self._resolve(self._service_raising(ClaimMemoryCorrupt("bad")))
 
         assert excinfo.value.status_code == 422
-        assert excinfo.value.detail["error"] == "memory_context_corrupt"
+        assert excinfo.value.detail["error"] == "prior_verification_corrupt"
 
     def test_memory_disabled_is_still_a_404(self):
         """Unchanged: asking to reuse an episode while memory is off is a
         request the server cannot honour."""
         from fastapi import HTTPException
 
-        from finvet.api.execution import resolve_memory_context
+        from finvet.api.execution import resolve_prior_verification
 
         with pytest.raises(HTTPException) as excinfo:
-            resolve_memory_context(None, "req_0123456789ab")
+            resolve_prior_verification(None, "req_0123456789ab")
         assert excinfo.value.status_code == 404
 
 
@@ -178,9 +178,9 @@ class TestTheAuditEventDescribesAnExactLookup:
         audit = MagicMock()
         begin_request(audit, request_id="req_x", claim_text="c",
                       user_id="u", started_at=datetime.utcnow(),
-                      memory_context=context)
+                      prior_verification=context)
         for call in audit.log_event.call_args_list:
-            if call.kwargs.get("event_type") == "memory_context_injected":
+            if call.kwargs.get("event_type") == "prior_verification_attached":
                 return call.kwargs["data"]
         return None
 
@@ -224,7 +224,7 @@ class TestThePromptTreatsStoredTextAsUntrusted:
         agent = SECAgent.__new__(SECAgent)
         agent.agent_type = "sec"
         return agent._build_context({"claim_raw": "a claim",
-                                     "memory_context": context})
+                                     "prior_verification": context})
 
     def test_the_context_is_delimited(self):
         prompt = self._prompt(self._context())
@@ -261,7 +261,7 @@ class TestThePromptTreatsStoredTextAsUntrusted:
         closed = prompt.index("</untrusted_historical_context>")
         assert opened < prompt.index(hostile) < closed
 
-    def test_no_memory_context_adds_no_block(self):
+    def test_no_prior_verification_adds_no_block(self):
         assert "<untrusted_historical_context>" not in self._prompt(None)
 
 

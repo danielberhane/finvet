@@ -73,16 +73,16 @@ class TestTheDisabledPathIsSilentNotBroken:
         would verify a different question than the one submitted."""
         from fastapi import HTTPException
 
-        from finvet.api.execution import resolve_memory_context
+        from finvet.api.execution import resolve_prior_verification
 
         with pytest.raises(HTTPException) as excinfo:
-            resolve_memory_context(None, "req_0123456789ab")
+            resolve_prior_verification(None, "req_0123456789ab")
         assert excinfo.value.status_code == 404
 
     def test_no_context_requested_is_simply_no_context(self):
-        from finvet.api.execution import resolve_memory_context
+        from finvet.api.execution import resolve_prior_verification
 
-        assert resolve_memory_context(None, None) is None
+        assert resolve_prior_verification(None, None) is None
 
 
 class TestTheDefaultUiOffersNoMemoryChoice:
