@@ -60,7 +60,7 @@ LangGraph Pipeline (12-node DAG + HITL gate)
 1. Generate `request_id = "req_<12-hex>"`
 2. Audit: log `input_received`
 3. If `memory_context_request_id` provided: resolve the episode server-side (404 if it
-   names nothing), then audit-log `memory_context_injected`
+   names nothing), then audit-log `prior_verification_attached`
 4. Build initial `VerificationState` dict
 5. `graph.invoke(state, config={thread_id: request_id})`
 6. If HITL interrupted: return `status="pending_review"` + `preliminary_analysis`
@@ -135,7 +135,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 
 | Pipeline Stage | Fields Written |
 |---|---|
-| **API init** | `claim_raw`, `user_id`, `request_id`, `timestamp_received`, `execution_start_time`, `memory_context` |
+| **API init** | `claim_raw`, `user_id`, `request_id`, `timestamp_received`, `execution_start_time`, `prior_verification` |
 | **input_guardrails** | `claim_normalized`, `guard_result_input`, `guardrails_passed`, `guardrails_failed` |
 | **claim_parser** | `parsed_claim` (ParsedClaim), `parser_used`, `total_tokens_used` |
 | **period_resolver** | `canonical_period` (CanonicalPeriod), `period_assumptions` |
@@ -351,7 +351,7 @@ conflict would route much of the traffic to a reviewer and teach them to ignore 
 | `data` | `JSONB` | Event payload |
 | `created_at` | `VARCHAR(50)` | |
 
-**Event types**: `input_received`, `period_resolved`, `output_guardrails_checked`, `hitl_gate_reached`, `hitl_approved`, `hitl_overridden`, `hitl_rejected`, `memory_cache_accepted`, `memory_context_injected`, `guardrail_violation`
+**Event types**: `input_received`, `period_resolved`, `output_guardrails_checked`, `hitl_gate_reached`, `hitl_approved`, `hitl_overridden`, `hitl_rejected`, `memory_cache_accepted`, `prior_verification_attached`, `guardrail_violation`
 
 #### `audit_executions` (Execution Summary)
 

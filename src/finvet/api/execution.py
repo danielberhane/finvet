@@ -50,7 +50,7 @@ def agents_run_from_state(state: Mapping[str, Any]) -> list:
     return [_AGENT_DISPLAY_NAMES.get(agent, agent)]
 
 
-def resolve_memory_context(claim_memory, request_id: Optional[str],
+def resolve_prior_verification(claim_memory, request_id: Optional[str],
                            ) -> Optional[Dict[str, Any]]:
     """Read the prior episode the caller named, from the server's own store.
 
@@ -65,7 +65,7 @@ def resolve_memory_context(claim_memory, request_id: Optional[str],
         raise HTTPException(
             status_code=404,
             detail={
-                "error": "memory_context_not_found",
+                "error": "prior_verification_not_found",
                 "message": "Claim memory is disabled; no prior verification "
                            "to reuse.",
             })
@@ -81,14 +81,14 @@ def resolve_memory_context(claim_memory, request_id: Optional[str],
         raise HTTPException(
             status_code=503,
             detail={
-                "error": "memory_context_unavailable",
+                "error": "prior_verification_unavailable",
                 "message": f"The memory store could not be reached: {exc}",
             })
     except ClaimMemoryCorrupt as exc:
         raise HTTPException(
             status_code=422,
             detail={
-                "error": "memory_context_corrupt",
+                "error": "prior_verification_corrupt",
                 "message": f"The stored verification cannot be read: {exc}",
             })
 
@@ -96,7 +96,7 @@ def resolve_memory_context(claim_memory, request_id: Optional[str],
         raise HTTPException(
             status_code=404,
             detail={
-                "error": "memory_context_not_found",
+                "error": "prior_verification_not_found",
                 "message": f"No stored verification for {request_id}",
             })
     return match
@@ -104,13 +104,13 @@ def resolve_memory_context(claim_memory, request_id: Optional[str],
 
 def begin_request(audit, *, request_id: str, claim_text: str, user_id: str,
                   started_at: datetime,
-                  memory_context: Optional[Dict[str, Any]] = None,
+                  prior_verification: Optional[Any] = None,
                   ) -> Dict[str, Any]:
     """Open a request: record its start and build the graph's initial state.
 
     Shared because the two routes had drifted here as well as at the end. Both
     built the same state dict by hand, but only /verify logged the
-    memory_context_injected decision -- and the UI always streams, so that
+    prior_verification_attached decision -- and the UI always streams, so that
     audit event never fired in practice. Only /verify put a timestamp on
     input_received. One builder means one answer.
     """
@@ -124,18 +124,18 @@ def begin_request(audit, *, request_id: str, claim_text: str, user_id: str,
         },
     )
 
-    if memory_context:
+    if prior_verification:
         # The user chose "Verify With Context" at /memory-check. That decision
         # changes what the agent sees, so it belongs in the trail.
         audit.log_event(
-            event_type="memory_context_injected",
+            event_type="prior_verification_attached",
             request_id=request_id,
             data={
                 "user_decision": "with_context",
                 # An exact lookup by id. There is no similarity to record --
                 # the field was always None and suggested a fuzzy match had
                 # been scored. What matters is the role the text plays.
-                "prior_request_id": getattr(memory_context, "request_id", None),
+                "prior_request_id": getattr(prior_verification, "request_id", None),
                 "context_role": "untrusted_historical_context",
             },
         )
@@ -146,7 +146,7 @@ def begin_request(audit, *, request_id: str, claim_text: str, user_id: str,
         "request_id": request_id,
         "timestamp_received": started_at.isoformat(),
         "total_tokens_used": 0,
-        "memory_context": memory_context,
+        "prior_verification": prior_verification,
     }
 
 

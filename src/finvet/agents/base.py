@@ -962,8 +962,8 @@ class BaseVerificationAgent(ABC):
                 context_parts.append(f"- Fiscal Quarter: {canonical_period.fiscal_quarter}")
             context_parts.append("")
 
-        memory_context = state.get("memory_context")
-        if memory_context:
+        prior_verification = state.get("prior_verification")
+        if prior_verification:
             # Delimited the same way retrieved filing text is, and for the same
             # reason: this is the one path where the system's own prior output
             # re-enters as input, and the model has no other signal separating
@@ -976,12 +976,12 @@ class BaseVerificationAgent(ABC):
             # entirely unrelated.
             context_parts.append(_UNTRUSTED_OPEN)
             context_parts.append(
-                f"Prior claim: {_strip_delimiters(memory_context.claim)}")
-            context_parts.append(f"Prior verdict: {memory_context.verdict}")
-            context_parts.append(f"Prior confidence: {memory_context.confidence:.0%}")
-            if memory_context.summary:
+                f"Prior claim: {_strip_delimiters(prior_verification.claim)}")
+            context_parts.append(f"Prior verdict: {prior_verification.verdict}")
+            context_parts.append(f"Prior confidence: {prior_verification.confidence:.0%}")
+            if prior_verification.summary:
                 context_parts.append(
-                    f"Prior summary: {_strip_delimiters(memory_context.summary)}")
+                    f"Prior summary: {_strip_delimiters(prior_verification.summary)}")
             context_parts.append(_UNTRUSTED_CLOSE)
             context_parts.append("")
             context_parts.append(

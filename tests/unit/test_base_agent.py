@@ -111,7 +111,7 @@ class TestBuildContext:
         agent = ConcreteAgent()
         state = {
             "claim_raw": "test",
-            "memory_context": ClaimMemoryContext(
+            "prior_verification": ClaimMemoryContext(
                 request_id="req_0123456789ab",
                 claim="prior claim",
                 verdict="SUPPORTS",

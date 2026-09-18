@@ -28,7 +28,8 @@ rather than publishing the model's reading.
   NOT survive an API restart (409 `checkpoint_unavailable`).
 - **Memory**: episodic claim memory, off by default (`enable_claim_memory`;
   rationale in docs/RELEASE_A_DECISIONS.md D8). The API takes
-  `memory_context_request_id` — an identifier, never free-form context; the
+  `memory_context_request_id` — an identifier, never free-form context — and
+  the server resolves it into the `prior_verification` state field; the
   free-form `memory_context` field was removed as a prompt-injection channel.
   Do not reintroduce it.
 - Provenance: `_provenance_tool_names` on BaseVerificationAgent captures full

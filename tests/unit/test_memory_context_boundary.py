@@ -17,7 +17,7 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from finvet.api.execution import resolve_memory_context
+from finvet.api.execution import resolve_prior_verification
 from finvet.api.models import VerifyClaimRequest
 
 CLAIM = "Apple FY2024 revenue was $391 billion"
@@ -62,7 +62,7 @@ class TestClientCannotSupplyContext:
 class TestServerResolvesTheEpisode:
 
     def test_no_id_means_no_context(self):
-        assert resolve_memory_context(MagicMock(), None) is None
+        assert resolve_prior_verification(MagicMock(), None) is None
 
     def test_the_stored_episode_is_what_reaches_state(self):
         """Whatever the client believed about the prior run is irrelevant; the
@@ -74,7 +74,7 @@ class TestServerResolvesTheEpisode:
             "summary": "filed revenue matched",
         }
 
-        resolved = resolve_memory_context(memory, PRIOR_ID)
+        resolved = resolve_prior_verification(memory, PRIOR_ID)
 
         memory.get_claim.assert_called_once_with(PRIOR_ID)
         assert resolved["verdict"] == "SUPPORTS"
@@ -87,12 +87,12 @@ class TestServerResolvesTheEpisode:
         memory.get_claim.return_value = None
 
         with pytest.raises(HTTPException) as excinfo:
-            resolve_memory_context(memory, PRIOR_ID)
+            resolve_prior_verification(memory, PRIOR_ID)
         assert excinfo.value.status_code == 404
 
     def test_disabled_memory_is_a_404_not_a_silent_pass(self):
         with pytest.raises(HTTPException) as excinfo:
-            resolve_memory_context(None, PRIOR_ID)
+            resolve_prior_verification(None, PRIOR_ID)
         assert excinfo.value.status_code == 404
 
 
@@ -122,7 +122,7 @@ class TestRouteUsesTheResolvedEpisode:
         verify_route.verify_claim(
             VerifyClaimRequest(claim=CLAIM, memory_context_request_id=PRIOR_ID))
 
-        injected = graph.invoke.call_args.args[0]["memory_context"]
+        injected = graph.invoke.call_args.args[0]["prior_verification"]
         assert injected == stored
 
 
@@ -208,7 +208,7 @@ class TestStateOwnership:
         "user_id": "audit input_received event",
         "request_id": "audit, checkpointer thread_id",
         "timestamp_received": "audit input_received event",
-        "memory_context": "base.py _build_context (experimental)",
+        "prior_verification": "base.py _build_context (experimental)",
         "total_tokens_used": "response metadata, cost tracking",
         "final_response": "the API returns it",
         "parsed_claim": "read by every downstream node",
