@@ -4,11 +4,11 @@ from unittest.mock import MagicMock
 from finvet.agents.base import BaseVerificationAgent
 from finvet.config.constants import (
     TOLERANCE_DEFAULT,
-    TOLERANCE_LARGE_VALUE_THRESHOLD,
+    SEC_LARGE_VALUE_THRESHOLD,
     TOLERANCE_MARKET,
     TOLERANCE_NEWS,
-    TOLERANCE_SEC_LARGE,
-    TOLERANCE_SEC_SMALL,
+    TOLERANCE_SEC_LARGE_VALUES,
+    TOLERANCE_SEC_SMALL_VALUES,
 )
 
 
@@ -50,16 +50,16 @@ class TestGetTolerance:
 
     def test_sec_large_value_tolerance(self):
         agent = ConcreteAgent(agent_type="sec")
-        assert agent._get_tolerance(2_000_000_000) == TOLERANCE_SEC_LARGE
+        assert agent._get_tolerance(2_000_000_000) == TOLERANCE_SEC_LARGE_VALUES
 
     def test_sec_small_value_tolerance(self):
         agent = ConcreteAgent(agent_type="sec")
-        assert agent._get_tolerance(500_000_000) == TOLERANCE_SEC_SMALL
+        assert agent._get_tolerance(500_000_000) == TOLERANCE_SEC_SMALL_VALUES
 
     def test_sec_boundary_value(self):
         agent = ConcreteAgent(agent_type="sec")
         # Exactly $1B should use small tolerance (not >=)
-        assert agent._get_tolerance(TOLERANCE_LARGE_VALUE_THRESHOLD) == TOLERANCE_SEC_LARGE
+        assert agent._get_tolerance(SEC_LARGE_VALUE_THRESHOLD) == TOLERANCE_SEC_LARGE_VALUES
 
     def test_news_tolerance(self):
         agent = ConcreteAgent(agent_type="news")
@@ -71,7 +71,7 @@ class TestGetTolerance:
 
     def test_none_value_sec(self):
         agent = ConcreteAgent(agent_type="sec")
-        assert agent._get_tolerance(None) == TOLERANCE_SEC_SMALL
+        assert agent._get_tolerance(None) == TOLERANCE_SEC_SMALL_VALUES
 
 
 class TestBuildContext:

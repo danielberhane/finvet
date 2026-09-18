@@ -11,12 +11,12 @@ embedding config, and consensus adjustments.
 # median 0.004%, p95 1.034%, max 3.067%. 1.0% sat below p95, so true claims
 # were refuted on rounding alone; 1.5% covers p95 with margin while staying
 # far under the 3.067% outlier.
-TOLERANCE_SEC_LARGE = 1.5       # SEC/financial values > $1B
-TOLERANCE_SEC_SMALL = 2.0       # SEC/financial values <= $1B
+TOLERANCE_SEC_LARGE_VALUES = 1.5   # tolerance (%) for SEC values above the threshold
+TOLERANCE_SEC_SMALL_VALUES = 2.0   # tolerance (%) for SEC values at or below it
 TOLERANCE_MARKET = 5.0          # Market data (stock prices, market cap)
 TOLERANCE_NEWS = 5.0            # News-reported values
 TOLERANCE_DEFAULT = 2.0         # Fallback
-TOLERANCE_LARGE_VALUE_THRESHOLD = 1_000_000_000  # $1B boundary
+SEC_LARGE_VALUE_THRESHOLD = 1_000_000_000  # the value, not a tolerance: $1B
 # approx/range widen the base tolerance by this factor. Measured across the 36
 # approx rows with a filed value: spread median 0.014%, p95 1.25%, max 2.14%;
 # 2.0x the SEC-large tolerance captures 97% of them, and 3.0x would buy only a

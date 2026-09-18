@@ -47,7 +47,7 @@ TIMEOUT = 300
 # NVDA FY2025 (period_end 2025-01-26)
 #   revenue 130,497M  gross 97,858M  operating income 81,453M
 #
-# TOLERANCE_SEC_LARGE = 1.5% for values above $1B.
+# TOLERANCE_SEC_LARGE_VALUES = 1.5% for values above $1B.
 
 
 @pytest.fixture(scope="module")

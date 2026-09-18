@@ -470,8 +470,8 @@ Configurable via `LLM_PARSER__MODEL`, `LLM_AGENT__TEMPERATURE`, etc.
 
 | Category | Constant | Value |
 |----------|----------|-------|
-| **Tolerances** | `TOLERANCE_SEC_LARGE` | 1% (>$1B) |
-| | `TOLERANCE_SEC_SMALL` | 2% (<=$$1B) |
+| **Tolerances** | `TOLERANCE_SEC_LARGE_VALUES` | 1.5% (>$1B) |
+| | `TOLERANCE_SEC_SMALL_VALUES` | 2% (<=$$1B) |
 | | `TOLERANCE_MARKET` | 5% |
 | | `TOLERANCE_NEWS` | 5% |
 | **Consensus** | `CONSENSUS_LARGE_DIFF_PENALTY` | -0.10 |
