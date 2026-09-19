@@ -87,7 +87,9 @@ redacted artifacts beside this file
 
 The shared population is the 94 non-burned rows minus the three
 known-defect rows with no expected verdict, and it includes the live-market
-rows. MiniMax has one complete run; its stability is unmeasured.
+rows. Every row that missed pass^4 had escalated to human review on at least
+one attempt; none returned a wrong verdict. MiniMax has one complete run; its
+stability is unmeasured.
 
 ## Known environmental defect
 

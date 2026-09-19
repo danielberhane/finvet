@@ -309,6 +309,13 @@ News Agent ReAct loop
 Recursion is structurally impossible: the SEC agent holds no delegation tool, so News -> SEC
 terminates by construction.
 
+<p align="center">
+  <a href="diagrams/finvet-delegation-evidence.png"><img src="diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent"></a>
+  <br><sub>A delegated run's evidence panel: every tool call with its arguments and raw response,
+  including the delegation itself and what the SEC agent sent back. The run view is in the
+  README.</sub>
+</p>
+
 `status=CONTRADICTS` adds the `source_disagreement` HITL trigger. **Nothing else does.** The
 other statuses record why the delegation could not contradict anything:
 
@@ -730,6 +737,30 @@ main.py            <-- api/routes, graph/workflow, config
 | `LLM_AGENT__MODEL` | No | deepseek-chat | Override agent LLM |
 | `LLM_VERDICT__MODEL` | No | deepseek-chat | Override verdict LLM |
 
+### Tracing (LangSmith)
+
+Off by default. Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, and `LANGCHAIN_PROJECT`
+in `.env` and restart the API. Every verification then appears as one trace named
+`finvet-verify` (`finvet-verify-stream`, `finvet-review-resume`, `finvet-review-reconcile`
+for the other entry points) carrying the `request_id` in its metadata, so a trace joins to
+its audit row at `GET /audit/{request_id}`. A trace holds every graph node, model call, and
+tool call with latency and token counts. The same total is on every response as
+`metadata.total_tokens_used`, delegated runs included, so cost per claim needs no tracing.
+
+Three sample traces, default provider, 2026-09 (not a benchmark; one claim each):
+
+| Claim | Wall time | Tokens | Model calls | Note |
+|---|---|---|---|---|
+| SEC, XBRL lookup | ~20 s | ~20.8k | 6 (~7 s in total) | the XBRL fetch behind `get_income_statement` was 11-15 s; latency is dominated by the data source, not the model |
+| News, delegated to SEC | ~21 s | ~38.9k | -- | the news loop plus the scoped SEC run |
+
+Prompt tokens are ~96% of the total in both: the ReAct loop re-sends the growing context on
+each step.
+
+Tracing is data egress: the claim text, tool outputs (filing excerpts, quotes, news
+snippets), and model prompts leave the machine for LangSmith. Do not enable it on claims you
+would not send to a third party.
+
 ---
 
 ## 8. UI Output (Brief)
@@ -746,3 +777,5 @@ The Streamlit UI at port 8501 renders:
 
 Architecture diagrams are in `docs/diagrams/`:
 - `finvet-linkedin.png` / `finvet-linkedin.svg` -- LangGraph pipeline overview
+- `finvet-delegation-run.png` -- a News -> SEC delegated run as the UI shows it (embedded in the README)
+- `finvet-delegation-evidence.png` -- the same run's evidence panel, every tool call with arguments and raw response (embedded above, section 2)
