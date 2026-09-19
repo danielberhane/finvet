@@ -98,8 +98,13 @@ press.
 <p align="center">
   <a href="docs/diagrams/finvet-delegation-run.png"><img src="docs/diagrams/finvet-delegation-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict" width="720"></a>
   <br><sub>A news claim the news agent could not settle alone: it searched, then handed the finding
-  to the SEC agent, which found the same &euro;500 million in Apple's filing. The run's evidence
-  panel is in <a href="docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>.</sub>
+  to the SEC agent, which found the same &euro;500 million in Apple's filing.</sub>
+</p>
+
+<p align="center">
+  <a href="docs/diagrams/finvet-delegation-evidence.png"><img src="docs/diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent" width="720"></a>
+  <br><sub>The same run's evidence: every tool call with its arguments and raw response, including the
+  delegation itself and what the SEC agent sent back. Click either image for full resolution.</sub>
 </p>
 
 **Trust boundary.** XBRL is the authoritative numeric source. Retrieved filing text is
