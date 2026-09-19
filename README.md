@@ -13,16 +13,8 @@ agent that answered, lists every tool call it made in order, and keeps an audit 
 run.
 
 <p align="center">
-  <a href="docs/diagrams/finvet-delegation-run.png"><img src="docs/diagrams/finvet-delegation-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict"></a>
-  <br><sub>A news claim the news agent cannot settle alone. It searched, then handed the finding to
-  the SEC agent, which found the same &euro;500 million in Apple's filing. Click any image for full
-  resolution.</sub>
-</p>
-
-<p align="center">
-  <a href="docs/diagrams/finvet-delegation-evidence.png"><img src="docs/diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent"></a>
-  <br><sub>The same run's evidence: every tool call with its arguments and raw response, including the
-  delegation itself and what the SEC agent sent back.</sub>
+  <a href="docs/diagrams/finvet-linkedin.png"><img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="1000"></a>
+  <br><sub>Click the diagram for full resolution.</sub>
 </p>
 
 > **Not financial advice.** A research and demonstration system; outputs may be wrong and must
@@ -49,15 +41,7 @@ labelling rules and disclosed biases are in the [dataset card](docs/eval/DATASET
 
 **Protocol.** Two models, one run each on identical code; one of them repeated four times to
 measure stability. Retrieval is measured separately, on its own cases. Each run is scored on
-seven layers:
-
-1. **Outcome**: the verdict.
-2. **Tool trajectory**: the tools called.
-3. **Grounding**: every decisive number traced to a source.
-4. **Calibration**: stated confidence against observed accuracy.
-5. **Asymmetric risk**: the cost of the errors made.
-6. **Reliability**: agreement across repeated runs.
-7. **Reachability**: evidence arriving by the expected path.
+seven layers, defined in [`docs/VALIDATION_STRATEGY.md`](docs/VALIDATION_STRATEGY.md).
 
 ### Cross-model benchmark
 
@@ -69,22 +53,20 @@ seven layers:
 | 4. Calibration, decisive-verdict ECE | 0.039 | 0.046 |
 | 5. Asymmetric risk, confidently-wrong verdicts (of 94 scored) | **0** | **0** |
 | 5. Asymmetric risk, declined rather than answered | 3.2% | 7.4% |
+| 6. Reliability, pass^4 over four runs (91 rows) | **94.5%** | one run |
 | 7. Reachability, evidence path matches expectation | 97.9% | 96.8% |
 
-Layer 6, reliability, needs repeated runs, so it is reported below rather than per model.
-
-Three of those results are properties of the code rather than of a run: an agent cannot call
-another agent's tools, the 32 claims that must spend nothing never reach one,
-and a decisive numeric verdict is unreachable without a trusted observation.
+Three rows are enforced by the code rather than measured by the run: an agent cannot call
+another agent's tools, the 32 claims that must spend nothing never reach one, and a decisive
+numeric verdict is unreachable without a trusted observation.
 
 **Stability.** Four runs on one model: pass@1 98.9%, **pass^4 94.5%**. Every row that missed
 pass^4 had escalated to human review on at least one attempt; none returned a wrong verdict.
 
 **Retrieval.** XBRL lookups against SEC primary-source values: **198/199**, the one miss
-returning not enough information rather than a wrong number. Filing-text retrieval on the
-70-case set that also set the relevance threshold: 30 of 30 on-topic retrieved, 30 of 30
-off-topic rejected, 10 near-misses returned nothing. Both gold sets are held privately, so
-unlike the table above these are not recomputable from this repository.
+returning not enough information rather than a wrong number. Filing-text retrieval is
+measured on a separate 70-case set. Both gold sets are held privately, so unlike the table
+above these two figures are not recomputable from this repository.
 
 **Evidence.** [`docs/eval/`](docs/eval/) holds the redacted per-claim artifacts, the layer
 summaries, the [benchmark write-up](docs/eval/BENCHMARK_2026-08-31.md) and the
@@ -98,15 +80,9 @@ adjudicated by a second reader, and no independent validation has been performed
 ## Architecture
 
 A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each a ReAct loop
-with its own tools: routing, period resolution, confidence adjustment and guardrails are fixed pipeline
-stages, and within the selected agent the model chooses its own tool calls. One agent runs
-per claim, so the confidence adjuster passes its verdict through and adjusts confidence rather than
-reconciling several opinions.
-
-<p align="center">
-  <a href="docs/diagrams/finvet-linkedin.png"><img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="1000"></a>
-  <br><sub>Click the diagram for full resolution.</sub>
-</p>
+with its own tools; routing, period resolution, confidence policy and guardrails are fixed
+pipeline stages, and within the selected agent the model chooses its own tool calls. One
+agent runs per claim.
 
 | Agent | Handles | Sources | Can delegate to |
 |---|---|---|---|
@@ -118,6 +94,13 @@ reconciling several opinions.
 reported fine or settlement. One hop, in-process, no wire protocol. The SEC agent holds no
 delegation tool, so the call cannot recurse. Where the filing states an amount, the verdict follows the filing rather than the
 press.
+
+<p align="center">
+  <a href="docs/diagrams/finvet-delegation-run.png"><img src="docs/diagrams/finvet-delegation-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict" width="720"></a>
+  <br><sub>A news claim the news agent could not settle alone: it searched, then handed the finding
+  to the SEC agent, which found the same &euro;500 million in Apple's filing. The run's evidence
+  panel is in <a href="docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>.</sub>
+</p>
 
 **Trust boundary.** XBRL is the authoritative numeric source. Retrieved filing text is
 supporting evidence, and a model's reading of it never becomes the number a verdict rests on;
@@ -203,18 +186,10 @@ any of the three roles via env vars, no code change.
 ### Tracing (LangSmith)
 
 Off by default. Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, and `LANGCHAIN_PROJECT`
-in `.env` and restart the API. Every verification then appears as one trace named
-`finvet-verify` (`finvet-verify-stream`, `finvet-review-resume`, `finvet-review-reconcile`
-for the other entry points) carrying the `request_id` in its metadata, so a trace joins to
-its audit row at `GET /audit/{request_id}`. A trace holds every graph node, model call, and
-tool call with latency and token counts. The same total is on every response as
-`metadata.total_tokens_used`, delegated runs included, so cost per claim needs no tracing.
-
-What three sample traces showed on the default provider: an SEC claim is ~20 s and ~20.8k
-tokens across six model calls (~7 s in total); the XBRL fetch behind `get_income_statement`
-was 11–15 s of that, so latency is dominated by the data source, not the model. A news claim
-that delegated to the SEC agent was ~21 s and ~38.9k tokens. Prompt tokens are ~96% of the
-total — the ReAct loop re-sends the growing context on each step.
+in `.env` and restart the API. Every verification then appears as one trace carrying its
+`request_id`, so it joins to its audit row at `GET /audit/{request_id}`. Trace names, what a
+trace contains, and sample timings:
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#7-configuration-reference).
 
 **Tracing is data egress.** The claim text, tool outputs (filing excerpts, quotes, news
 snippets), and model prompts leave the machine for LangSmith. Do not enable it on claims you
