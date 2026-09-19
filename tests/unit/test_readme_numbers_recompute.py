@@ -34,8 +34,7 @@ import pytest
 sys.path.insert(0, "src")
 
 from finvet.eval.measures import (  # noqa: E402
-    artifacts as A, calibration, grounding, reliability, risk, routing,
-    trajectory,
+    artifacts as A, calibration, grounding, reliability, risk, trajectory,
 )
 
 README = Path("README.md")
@@ -94,7 +93,9 @@ LAYERS = [
      lambda runs: float(len(risk.measure(runs).dangerous)), float, 0.0),
     ("5. Asymmetric risk, declined",
      lambda runs: 100 * risk.measure(runs).decline_rate, _pct, 0.1),
-    ("7. Reachability", lambda runs: 100 * routing.measure(runs).rate, _pct, 0.1),
+    # The reachability row is withdrawn from the README table for now; restore
+    # this entry with the row.
+    # ("7. Reachability", lambda runs: 100 * routing.measure(runs).rate, _pct, 0.1),
 ]
 
 
