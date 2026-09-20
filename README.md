@@ -54,6 +54,7 @@ seven layers, defined in [`docs/VALIDATION_STRATEGY.md`](docs/VALIDATION_STRATEG
 | 5. Asymmetric risk, confidently-wrong verdicts (of 94 scored) | **0** | **0** |
 | 5. Asymmetric risk, declined rather than answered | 3.2% | 7.4% |
 | 6. Reliability, pass^4 over four runs (91 rows) | **94.5%** | one run |
+| 7. Reachability, evidence path matches expectation | 97.9% | 96.8% |
 
 Three rows are enforced by the code rather than measured by the run: an agent cannot call
 another agent's tools, the 32 claims that must spend nothing never reach one, and a decisive
