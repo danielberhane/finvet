@@ -1,6 +1,7 @@
 """Generic MCP client for streamable-http transport."""
 
 import json
+import time
 import uuid
 from typing import Any, Dict, Optional
 
@@ -30,6 +31,10 @@ class MCPClient:
         self.timeout = settings.sec_mcp_timeout_s if timeout is None else timeout
         self.session_id: Optional[str] = None
         self._client = httpx.Client(timeout=httpx.Timeout(self.timeout))
+        # A server that timed out is not asked again until this passes. One
+        # dead SEC MCP cost seven timeouts in a row -- seven minutes -- for
+        # the answer the first one had already given (issue #4).
+        self._down_until = 0.0
 
     def initialize(self) -> None:
         """Send JSON-RPC 'initialize' + 'notifications/initialized' to start a session."""
@@ -71,8 +76,14 @@ class MCPClient:
         except httpx.TimeoutException:
             raise MCPError(f"Timeout connecting to MCP server at {self.base_url}")
 
-    def call_tool(self, name: str, arguments: Dict[str, Any]) -> Any:
+    def call_tool(self, name: str, arguments: Dict[str, Any],
+                  _retried: bool = False) -> Any:
         """Call a tool via JSON-RPC tools/call and return the parsed result."""
+        if time.monotonic() < self._down_until:
+            raise MCPError(
+                f"Tool call '{name}' skipped: MCP server at {self.base_url} "
+                f"timed out ({self.timeout}s) and is not asked again yet"
+            )
         if self.session_id is None:
             self.initialize()
 
@@ -95,8 +106,14 @@ class MCPClient:
         except httpx.ConnectError:
             raise MCPError(f"Cannot connect to MCP server at {self.base_url}")
         except httpx.TimeoutException:
+            self._down_until = time.monotonic() + self.timeout
             raise MCPError(f"Tool call '{name}' timed out ({self.timeout}s)")
         except httpx.HTTPStatusError as e:
+            # 404 is the server saying it does not know our session -- it was
+            # restarted. Start a new one and retry once; a second 404 is real.
+            if e.response.status_code == 404 and not _retried:
+                self.session_id = None
+                return self.call_tool(name, arguments, _retried=True)
             raise MCPError(f"HTTP {e.response.status_code} from MCP server: {e.response.text}")
 
         return self._parse_response(resp.text, request_id, name)
