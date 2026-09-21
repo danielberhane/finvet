@@ -74,7 +74,7 @@ rather than publishing the model's reading.
    with no code path — it fails closed to NOT_ENOUGH_INFO. Never add
    midpoint comparison: it refutes true claims whose band exceeds the
    tolerance.
-8. **Sourcing `.env.minimax` then running pytest gives ~8 false failures**
+8. **Sourcing a provider-specific `.env` file then running pytest gives ~8 false failures**
    (`LLM_*__MODEL` leaks into the test env and breaks tests that assert the
    DeepSeek defaults). Run tests from a clean shell.
 
@@ -93,9 +93,10 @@ rather than publishing the model's reading.
   dataset path and any non-public endpoint, refuses to write a leak).
 - Seven layers: outcome, trajectory, grounding, calibration, asymmetric
   risk, reliability, reachability. Modules in `src/finvet/eval/measures/`
-  (reliability, calibration, grounding, risk, trajectory, routing —
-  `routing.py` computes the reachability layer; `artifacts.py` is the shared
-  loader that defines "correct", not a layer). `scripts/run_golden.py`
+  (reliability, calibration, grounding, risk, trajectory, routing;
+  `artifacts.py` is the shared loader that defines "correct", not a layer).
+  The README row for the routing layer still says "reachability"; the module
+  and the layer summaries say routing. `scripts/run_golden.py`
   records and asserts nothing; `tests/integration/test_golden.py` judges
   artifacts. `tests/golden/` is an empty scaffold — the real harness is the
   above.
@@ -127,9 +128,8 @@ was in the exact class that caused the original incident.
   `.claude/skills/benchmark-run/` is the freeze-safe run procedure.
 - The UI calls `/verify-stream`; other routes: `/review/*`, `/memory-*`,
   `/audit/*`, `/health` (reports the models this process will actually use).
-- Gitignored and local only, never committed: `.env*` (except
-  `.env.example`), `AGENTS.md`, `notes/`, `.agents/`, `.codex/`,
-  `docs/EVAL_DATA_POLICY.md`, `docs/AGENTIC_EVAL_GUIDE.md`.
+- Local working material (`.env*` except `.env.example`, `notes/`, and other
+  gitignored paths) never enters the tree.
 
 ## Code Style
 - Keep changes minimal. Don't refactor code you didn't change.
