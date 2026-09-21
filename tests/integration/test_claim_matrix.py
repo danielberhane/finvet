@@ -262,8 +262,7 @@ class TestUnservableClaimsFailClosed:
 
     Recorded rather than pinned to one outcome because `SERVABLE_METRICS`
     currently routes market-cap and P/E through an agent, which fails closed on
-    the missing observation time instead of declining up front. See
-    RELEASE_A_DECISIONS.md, D10.
+    the missing observation time instead of declining up front.
     """
 
     @pytest.mark.parametrize("claim,why", [

@@ -233,7 +233,7 @@ def _observation_from_items(record: ToolExecutionRecord, metric: str,
 # Market tools whose results carry an observation time from the source.
 # get_company_overview is deliberately absent: market cap, P/E, dividend yield
 # and the 52-week range have no timestamp in the producer contract, so nothing
-# can say when they were true. See RELEASE_A_DECISIONS.md, D10.
+# can say when they were true.
 _OBSERVATION_TIMED_TOOLS = frozenset({"get_stock_quote"})
 
 

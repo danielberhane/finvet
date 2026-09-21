@@ -43,7 +43,7 @@ fixture asserts the shape you remembered, not the shape the system emits.
 
 - **Midpoint comparison for range claims.** Comparing the midpoint of a stated
   band refutes true claims whose band exceeds the tolerance. Range claims
-  decline on purpose (`docs/RELEASE_A_DECISIONS.md`, D18).
+  decline on purpose.
 - **A free-form context field on the verify request.** It was removed as a
   prompt-injection channel and is not coming back; the API takes an identifier
   the server resolves itself.

@@ -1,6 +1,6 @@
 """Macro numeric claims are declined, and the decline actually fires.
 
-`RELEASE_A_DECISIONS.md` D10 says all macro numeric claims fail closed until
+Release A declines all macro numeric claims: they fail closed until
 their sources have deterministic period-selection and freshness contracts. FRED
 series carry an observation date but no contract for *which* observation a
 claim means: "inflation was 3.1%" names no vintage, and CPI is revised, so the

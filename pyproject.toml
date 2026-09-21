@@ -43,7 +43,7 @@ Repository = "https://github.com/danielberhane/finvet"
 Issues = "https://github.com/danielberhane/finvet/issues"
 
 [project.optional-dependencies]
-# Claim memory only. It ships disabled (RELEASE_A_DECISIONS.md, D8), so a
+# Claim memory only. It ships disabled, so a
 # default install does not need these -- and main.py imports PostgresStore
 # lazily, inside the feature gate, so the API boots without them.
 #   uv sync --extra memory
