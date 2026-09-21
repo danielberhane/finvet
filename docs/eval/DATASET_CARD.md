@@ -132,7 +132,7 @@ XBRL fact, provenance pinning the exact filing.
  "category": "declined", "strength": "strict",
  "expected": {"verdict": "NOT_ENOUGH_INFO", "limitation": "unsupported_metric", "sources": []},
  "ground_truth": "SERVABLE_METRICS['news'] is an empty frozenset in Release A, so cpi_inflation is whitelisted but unservable and verification_strategy_for returns 'unsupported'. The stated reason: a macro claim names no vintage, and these series are revised, so the same claim is true or false depending on which release you read",
- "source": "src/finvet/config/metrics.py:146 SERVABLE_METRICS['news']; RELEASE_A_DECISIONS.md D10",
+ "source": "src/finvet/config/metrics.py:146 SERVABLE_METRICS['news']",
  "gold_parse": {"claim_type": "news", "ticker": null, "metric": "cpi_inflation",
                 "operator": "eq", "value": 3.1, "period": "July 2025",
                 "reject_reason": null, "label_source": "needs_review"}}

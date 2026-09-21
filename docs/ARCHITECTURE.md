@@ -415,7 +415,7 @@ conflict would route much of the traffic to a reviewer and teach them to ignore 
 > verdict, or feeding a past summary back to an agent, moves something the system said into
 > the position of something it found. The implementation stays in the repository; the default
 > does not enable it. With it off, `/memory-check` answers `{"matches": []}` and the UI goes
-> straight to verification. See `RELEASE_A_DECISIONS.md`, D8.
+> straight to verification.
 
 **File**: `src/finvet/memory/store_service.py`
 
@@ -543,8 +543,7 @@ resumes via `update_state()` + `invoke(None, config)`.
 The checkpointer is `MemorySaver`, so paused state lives in the API process only: **pending
 reviews do not survive an API restart.** The claim's PENDING execution row remains in
 Postgres and is still listed, but the paused graph it belongs to is gone and cannot be
-resumed. Persistent PostgreSQL checkpointing is out of scope for this release
-(see `RELEASE_A_DECISIONS.md`, D7).
+resumed. Persistent PostgreSQL checkpointing is out of scope for this release.
 
 #### Review lifecycle
 
@@ -730,7 +729,7 @@ main.py            <-- api/routes, graph/workflow, config
 | `FINNHUB_API_KEY` | No | -- | Finnhub API key (mock mode if absent) |
 | `FINNHUB_MOCK_MODE` | No | false | Use mock market data |
 | `ENABLE_LLAMA_GUARD` | No | false | Enable Llama Guard semantic safety |
-| `ENABLE_CLAIM_MEMORY` | No | **false** | Enable claim memory (experimental; see RELEASE_A_DECISIONS.md D8) |
+| `ENABLE_CLAIM_MEMORY` | No | **false** | Enable claim memory (experimental; its output is prior model output, not a source) |
 | `CONFIDENCE_THRESHOLD_HITL` | No | 0.70 | Below this triggers HITL |
 | `LOG_LEVEL` | No | INFO | Logging level |
 | `LLM_PARSER__MODEL` | No | deepseek-chat | Override parser LLM |
