@@ -41,7 +41,15 @@ labelling rules and disclosed biases are in the [dataset card](docs/eval/DATASET
 
 **Protocol.** Two models, one run each on identical code; one of them repeated four times to
 measure stability. Retrieval is measured separately, on its own cases. Each run is scored on
-seven layers, defined in [`docs/VALIDATION_STRATEGY.md`](docs/VALIDATION_STRATEGY.md).
+seven layers:
+
+1. **Outcome**: the verdict.
+2. **Tool trajectory**: the tools called.
+3. **Grounding**: every decisive number traced to a source.
+4. **Calibration**: stated confidence against observed accuracy.
+5. **Asymmetric risk**: the cost of the errors made.
+6. **Reliability**: agreement across repeated runs.
+7. **Reachability**: evidence arriving by the expected path.
 
 ### Cross-model benchmark
 
