@@ -141,8 +141,7 @@ SERVABLE_METRICS: dict[str, frozenset[str]] = {
     # estimates, ownership percentages -- have no structured source at all.
     #
     # NARRATIVE_METRICS is consulted first, so fine_amount and
-    # settlement_amount still route to qualitative news search. See
-    # RELEASE_A_DECISIONS.md, D10.
+    # settlement_amount still route to qualitative news search.
     "news": frozenset(),
     "reject": frozenset(),
 }

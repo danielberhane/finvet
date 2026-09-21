@@ -39,7 +39,7 @@ class TestSeriesMap:
         means: "inflation was 3.1%" names no vintage, and CPI is revised, so
         the same claim is true or false depending on which release you read.
         A decisive verdict on that rests on an unstated choice, so Release A
-        declines the whole class -- see RELEASE_A_DECISIONS.md, D10.
+        declines the whole class.
 
         The map itself is retained: the retrieval works, and lifting the
         decision needs a vintage contract, not new plumbing.

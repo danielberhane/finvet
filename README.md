@@ -221,9 +221,6 @@ NOT_ENOUGH_INFO or review rather than failing.
   load-, failover- or sustained-degradation-tested; the latency figures above are from
   benchmark runs, one claim at a time.
 
-Narrower limits, and the reasoning behind each, are recorded in
-[`docs/RELEASE_A_DECISIONS.md`](docs/RELEASE_A_DECISIONS.md).
-
 ---
 
 ## Contributing

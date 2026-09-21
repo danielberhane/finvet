@@ -1,4 +1,4 @@
-"""SUPERSEDED -- DO NOT RUN. See RELEASE_A_DECISIONS.md D18.
+"""SUPERSEDED -- DO NOT RUN. Range claims decline; the parser contract has no range bounds.
 
 This script added `range_min`/`range_max` to the 32 range rows of test.jsonl
 (decision D16). It migrated only that split: train.jsonl's 4,578 rows,

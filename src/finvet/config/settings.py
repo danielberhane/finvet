@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     # something the system said into the position of something it found. That
     # is worth experimenting with and not worth shipping on. Set
     # ENABLE_CLAIM_MEMORY=true to study it; the implementation stays in the
-    # repository either way. See docs/RELEASE_A_DECISIONS.md, D8.
+    # repository either way.
     enable_claim_memory: bool = False
 
     @property

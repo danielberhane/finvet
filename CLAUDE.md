@@ -27,7 +27,7 @@ rather than publishing the model's reading.
   resume via `update_state()` + `invoke(None, config)`. Pending reviews do
   NOT survive an API restart (409 `checkpoint_unavailable`).
 - **Memory**: episodic claim memory, off by default (`enable_claim_memory`;
-  rationale in docs/RELEASE_A_DECISIONS.md D8). The API takes
+  its output is prior model output, not a source). The API takes
   `memory_context_request_id` — an identifier, never free-form context — and
   the server resolves it into the `prior_verification` state field; the
   free-form `memory_context` field was removed as a prompt-injection channel.
@@ -73,7 +73,7 @@ rather than publishing the model's reading.
    operator, value, period, reject_reason`). `range` is a legal operator
    with no code path — it fails closed to NOT_ENOUGH_INFO. Never add
    midpoint comparison: it refutes true claims whose band exceeds the
-   tolerance (docs/RELEASE_A_DECISIONS.md D18).
+   tolerance.
 8. **Sourcing `.env.minimax` then running pytest gives ~8 false failures**
    (`LLM_*__MODEL` leaks into the test env and breaks tests that assert the
    DeepSeek defaults). Run tests from a clean shell.
