@@ -57,3 +57,6 @@ AGENTS.md
 
 # local study notes, never committed
 notes/
+docs/RAG_AND_AGENTIC_RAG_GUIDE.md
+docs/STATE_WRITERS.md
+docs/TEST_EDGE_CASES.md

@@ -121,8 +121,7 @@ in. Every tool call and verdict is persisted with a checksum the API re-verifies
 [SECURITY.md](SECURITY.md) for what that does and does not guarantee.
 
 Mechanics — retrieval fusion, delegation states, review recovery:
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
-[`docs/RAG_AND_AGENTIC_RAG_GUIDE.md`](docs/RAG_AND_AGENTIC_RAG_GUIDE.md).
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
