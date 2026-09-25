@@ -1,22 +1,19 @@
-"""Fill missing source values in the SEC gold rows from SEC's frames API.
+"""Fills missing source values in the SEC gold rows from SEC's frames API.
 
 72 rows of the real-sourced held-out set name a company, an XBRL concept, a
-period and an accession, but never recorded the value the company filed. Filling
-them takes the retrieval harness from 128 scoreable cases to 200.
+period and an accession, but never recorded the value the company filed.
+Filling them takes the retrieval harness from 128 scoreable cases to 200.
 
-Why the frames endpoint and not companyconcept
-----------------------------------------------
-FinVet reads companyconcept and picks a fact with `_select_fact_for_period`.
-Generating the answer key with that same code would make the retrieval test pass
-by construction, and would bake any selection bug straight into the ground truth.
-
-So this reads `frames` instead — a different endpoint, keyed by exactly the
-`xbrl_frame` the dataset already records, where SEC performs the period
-normalisation itself. One response carries every filer, so the 72 rows collapse
-to ~19 network calls.
+Uses frames rather than companyconcept. FinVet reads companyconcept and picks a
+fact with _select_fact_for_period(), so generating the answer key with that same
+code would make the retrieval test pass by construction and bake any selection
+bug into the ground truth. frames is a different endpoint, keyed by the
+xbrl_frame the dataset already records, where SEC performs the period
+normalisation itself. One response carries every filer, so 72 rows collapse to
+about 19 network calls.
 
 The frozen gold file is never modified. Results go to a sidecar keyed by row id,
-each entry recording `label_source` so a filled value can never be confused with
+and each entry records label_source so a filled value cannot be confused with
 one the dataset authors sourced themselves.
 
 Usage:

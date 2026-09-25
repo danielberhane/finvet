@@ -1,25 +1,23 @@
-"""A read-only inventory of audit records nothing else will surface.
+"""A read-only inventory of audit records nothing else surfaces.
 
-Three ways a run stops being visible to anyone:
+Three ways a run stops being visible:
 
-1. **Orphan events** -- events under a request id with no execution row. A run
-   that was never terminalized. Historical, from before both routes shared one
-   terminalization path.
-2. **Stuck reviews** -- rows left in `REVIEWING` because the process holding
-   the claim died. Not pending, not reviewed, and no reconcile call will take
-   them, because reconcile only claims `REVIEW_FINALIZATION_FAILED`.
-3. **Reviews awaiting reconciliation** -- rows in
-   `REVIEW_FINALIZATION_FAILED`, where the graph ran but the audit write did
-   not land. These are retryable through `POST /review/{id}/reconcile`.
+    orphan events      events under a request id with no execution row, from a
+                       run that was never terminalized
+    stuck reviews      rows left in REVIEWING because the process holding the
+                       claim died. No reconcile call will take them, because
+                       reconcile claims only REVIEW_FINALIZATION_FAILED
+    awaiting reconcile rows in REVIEW_FINALIZATION_FAILED, where the graph ran
+                       but the audit write did not land. Retryable through
+                       POST /review/{id}/reconcile
 
-An events-without-executions query finds only the first: the other two *have*
-execution rows. Separating them is the point of this module.
+A query for events without executions finds only the first; the other two have
+execution rows. Separating them is what this module is for.
 
-**This module only reads.** There is no repair path and no `--apply`. Building
-an execution row from surviving events means inventing the parts the events do
-not record, and a reconstructed guess stored beside genuine records is
-indistinguishable from one. Release B may add reconstruction under an explicit,
-audited flag; measuring the problem does not require it.
+This module only reads. There is no repair path and no --apply flag. Building
+an execution row from surviving events would mean inventing the parts the
+events do not record, and a reconstructed row stored beside genuine ones cannot
+be told apart from them.
 """
 
 from dataclasses import dataclass, field

@@ -1,27 +1,19 @@
-"""Layer 3 — grounding: is every decisive number traceable to a source.
+"""Layer 3 — grounding: whether every decisive number traces to a source.
 
-The guide calls this the highest-stakes layer for a verification product: "a
-correct-by-luck number that appears in no tool output is a hallucination and
-must be counted as one."
+Counts two things over recorded runs:
 
-FinVet enforces this structurally rather than hoping for it. `_apply_override`
-compares only a `TrustedObservation`, and a numeric claim with no observation
-fails closed to NOT_ENOUGH_INFO. So this measure is expected to report 100% with
-zero violations -- **it scores the enforcement, not the model.**
+    traceable     a decisive verdict whose retrieved_value is backed by an
+                  observation naming the tool that produced it
+    untraceable   a decisive verdict carrying a number with no observation
+                  behind it
 
-That is worth stating as a number anyway. "The design prevents it" is a claim; a
-count over 400 recorded verdicts is evidence, and a violation would mean the
-guard had a hole.
-
-Two things are counted:
-
-`traceable`   a decisive verdict whose `retrieved_value` is backed by an
-              observation naming the tool that produced it.
-`untraceable` a decisive verdict carrying a number with no observation behind
-              it. This is the hallucination case and must be zero.
-
-Escalations and declines are excluded: they assert no number, so there is
+Escalations and declines are excluded. They assert no number, so there is
 nothing to trace.
+
+FinVet enforces this in code: _apply_override compares only a
+TrustedObservation, and a numeric claim without one fails closed. The expected
+result is therefore 100% with zero untraceable. This measure scores the
+enforcement, not the model, and any violation means the guard has a hole.
 """
 
 from dataclasses import dataclass, field
