@@ -1,24 +1,17 @@
-"""Layer 5 — asymmetric risk: not all errors cost the same.
+"""Layer 5 — asymmetric risk: which kind of error the system made.
 
-For a verification system, confidently affirming a false claim is categorically
-worse than declining to judge a true one. Averaging the two into one accuracy
-figure hides exactly the failure that matters, so the dangerous error is
-reported alone and never folded into an aggregate.
+Affirming a false claim and declining a true one are both "not the expected
+verdict", and only one puts a wrong number in front of a user. Averaging them
+into a single accuracy figure hides the failure that matters, so each is
+counted separately:
 
-FinVet's own framing, from the README: *silently wrong -- a confident number
-that disagrees with the filing -- is treated as the failure that matters.*
+    dangerous   a decisive verdict opposite to the expected one, SUPPORTS
+                where REFUTES was right or the reverse
+    declined    NOT_ENOUGH_INFO or an escalation where a decisive answer was
+                expected
+    correct     matched the expectation
 
-Three outcomes, kept apart:
-
-`dangerous`  a decisive verdict opposite to the expected one. SUPPORTS where
-             REFUTES was right, or the reverse. **This is the number that
-             matters, and it is 0 across four runs.**
-`declined`   the system returned NOT_ENOUGH_INFO or escalated where a decisive
-             answer was expected. A cost in usefulness, not in correctness.
-`correct`    matched the expectation.
-
-The asymmetry is why a decline is not counted as a wrong answer. Both are
-"not the expected verdict"; only one puts a false number in front of a user.
+dangerous is reported on its own and never folded into an aggregate.
 """
 
 from dataclasses import dataclass, field
