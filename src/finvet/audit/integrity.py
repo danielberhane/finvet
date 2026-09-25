@@ -1,22 +1,16 @@
-"""One canonical envelope for a finished run, and a checksum over all of it.
+"""Builds one canonical envelope for a finished run and checksums it.
 
-The previous scheme hashed the buffered event list alone. The row beside that
-hash also stored the claim, the verdict, the confidence, the final response and
-the data sources, so any of those could be edited without disturbing the digest
--- and the audit UI printed a green "Verified" badge whenever the hash string
-was non-empty, having recomputed nothing.
+The envelope carries the claim, the verdict, the confidence, the final response,
+the data sources and the event list. The checksum covers exactly that envelope,
+exactly what is stored, and verification recomputes it.
 
-What this module provides instead: build the envelope, hash exactly that
-envelope, store exactly what was hashed, and verify by recomputation.
-
-**Scope of the guarantee.** This is an integrity checksum over a stored
-snapshot. It detects a value that changed without its checksum being recomputed
--- a partial write, a manual edit of one column, a migration that rewrote a
-field. It does **not** resist a privileged writer who updates the data and the
-checksum together, because both live in the same database. Tamper evidence
-against that adversary needs a key held outside the database or an externally
-anchored hash chain, and neither is implemented here. Do not describe this as
-tamper detection.
+Scope of the guarantee. This is an integrity checksum over a stored snapshot. It
+detects a value that changed without its checksum being recomputed: a partial
+write, a manual edit of one column, a migration that rewrote a field. It does
+not resist a privileged writer who updates the data and the checksum together,
+because both live in the same database. That needs a key held outside the
+database or an externally anchored hash chain, and neither is implemented here.
+Do not describe this as tamper detection.
 """
 
 import hashlib

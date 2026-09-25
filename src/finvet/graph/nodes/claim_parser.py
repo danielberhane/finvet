@@ -1,11 +1,12 @@
-"""Claim parser node — emits the fine-tuned claim parser's 7-field contract:
+"""Parses a claim into the seven-field contract:
 
     claim_type | ticker | metric | operator | value | period | reject_reason
 
-metric is resolved against the vendored whitelist (fail closed to null, in
-which case the agent infers from claim text as before). operator carries the
-seven comparators including approx and range. Raw model output crosses
-normalize_parser_output — the one boundary where it becomes a trusted object.
+The model proposes all seven; normalize_parser_output() is the one boundary
+where that output becomes a trusted object. It reconciles the reject fields,
+resolves the metric against the vendored whitelist, and settles the
+operator/value pairing. A metric the whitelist does not recognise resolves to
+null, and the agent infers from the claim text instead.
 """
 
 import json
