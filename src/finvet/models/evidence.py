@@ -1,21 +1,23 @@
-"""The boundary between what a tool returned and what Python is willing to compare.
+"""Decides which numbers from a tool result may be used to judge a claim.
 
-The deterministic override is only as trustworthy as the number handed to it,
-and two defects sat underneath it:
+ToolExecutionRecord holds one tool call and tracks two things separately:
+whether the call completed, and whether it found any data. SEC and Market tools
+report their own failures inside the returned payload, so a call can complete
+and still have found nothing.
 
-1. Every SEC and Market tool catches its own exceptions and *returns* a result
-   with ``success=False`` instead of raising. LangChain therefore reports the
-   call's transport status as success, so a failed call was recorded as a
-   successful one -- and a parse error whose message echoed the payload it
-   choked on could be scraped for a financial-looking number.
-2. The retrieved-value fallback regex-matched that number out of the
-   *serialized, truncated* result string, so which value reached the comparator
-   depended on where a 3000-character preview happened to be cut.
+TrustedObservation holds one value with its source: the tool, the metric, the
+units, the period it covers, the XBRL concept, and the filing it came from.
 
-`ToolExecutionRecord` separates the two notions of success that were conflated,
-and `resolve_trusted_observation` reads structured fields instead of text. A
-numeric verdict may rest only on a `TrustedObservation`; anything else fails
-closed to NOT_ENOUGH_INFO.
+resolve_trusted_observation() takes a parsed claim and the run's tool calls and
+returns one TrustedObservation, or None. It looks in four places: SEC filing
+line items, market quote fields, FRED macro series, and penalty amounts in
+filing text.
+
+qualitative_evidence_gap() and qualitative_decline_reason() cover claims that
+state no number, where there is nothing to resolve.
+
+Without a TrustedObservation there is no numeric verdict; the caller returns
+NOT_ENOUGH_INFO.
 """
 
 from datetime import date

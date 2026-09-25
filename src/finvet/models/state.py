@@ -1,41 +1,31 @@
-"""LangGraph state definition for the FinVet verification pipeline.
+"""The LangGraph state for the verification pipeline.
 
-This is the single most important file in the codebase. Every node in the
-LangGraph pipeline reads from and writes to this state dictionary.
+VerificationState is a TypedDict with total=False, so every field is optional.
+The state starts with four fields from the route and grows as each node adds
+its own. A node receives the whole state, reads what it needs, and returns a
+dict of new fields, which LangGraph merges in. Nodes read with state.get()
+because upstream fields may not be set yet.
 
-How it works:
-    - VerificationState is a TypedDict (a regular Python dict with typed keys).
-    - LangGraph requires TypedDict for state — not Pydantic, not dataclass.
-    - total=False means ALL fields are optional. The state starts nearly empty
-      (only 4 input fields) and grows as each node adds its own fields.
-    - Each node receives the full state, reads upstream fields, and returns a
-      dict with new fields. LangGraph merges the returned dict into the state.
-    - Nodes must use state.get("field") not state["field"] to avoid KeyError
-      on fields that haven't been set yet by upstream nodes.
+Which node writes which fields:
 
-Pipeline flow (which node writes which fields):
     /verify route      → claim_raw, user_id, request_id, timestamp_received,
                           total_tokens_used, prior_verification
-    Node 1 (input_guardrails)   → claim_normalized
-    Node 2 (claim_parser)       → parsed_claim, total_tokens_used
-    Node 3 (period_resolver)    → canonical_period
-    Node 4 (domain_agent)       → agent_type, agent_evidence,
-                                   rag_chunks_retrieved, corroboration_result,
-                                   total_tokens_used
-    Node 5 (confidence_adjuster) → verdict, confidence, confidence_label,
-                                   confidence_adjustments
-    Node 6 (output_guardrails)  → hitl_required, hitl_triggers
-    Node 7 (hitl_gate)    → hitl_gate_passed
-    Node 8 (apply_hitl_decision)→ hitl_applied, verdict (override),
-                                   confidence (override), disposition
-    Node 9 (response_generator) → final_response
+    input_guardrails    → claim_normalized
+    claim_parser        → parsed_claim, total_tokens_used
+    period_resolver     → canonical_period
+    domain_agent        → agent_type, agent_evidence, rag_chunks_retrieved,
+                          corroboration_result, total_tokens_used
+    confidence_adjuster → verdict, confidence, confidence_label,
+                          confidence_adjustments
+    output_guardrails   → hitl_required, hitl_triggers
+    hitl_gate           → hitl_gate_passed
+    apply_hitl_decision → hitl_applied, verdict, confidence, disposition
+    response_generator  → final_response
 
-    reject_handler (terminal)   → verdict, confidence, confidence_label,
-                                   disposition, disposition_detail
-
-    /review route (external)    → hitl_decision, hitl_override_verdict,
-                                   hitl_reviewer_notes (injected via
-                                   graph.update_state())
+    reject_handler      → verdict, confidence, confidence_label, disposition,
+                          disposition_detail
+    /review route       → hitl_decision, hitl_override_verdict,
+                          hitl_reviewer_notes, written with update_state()
 """
 
 from typing import Any, Literal, Optional, TypedDict

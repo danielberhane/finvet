@@ -1,15 +1,14 @@
-"""Agent-to-Agent corroboration in the News -> SEC direction.
+"""Corroboration in the News to SEC direction.
 
 The News agent verifies a reported event; this asks the issuer's own filing
-whether that event is disclosed there. A 10-K's Legal Proceedings section is the
-primary source and press coverage is secondary, so this direction checks the
-weaker source against the stronger one.
+whether that event is disclosed there. A 10-K's Legal Proceedings section is
+the primary source and press coverage is secondary, so this checks the weaker
+source against the stronger one.
 
-Delegation is structured, not a sentence. The nested SEC agent receives a real
-ParsedClaim carrying the claimed value, because _apply_override compares
-parsed_claim.value against what the agent retrieved — hand it only prose and the
-deterministic comparison silently does nothing, which is the one part of FinVet
-that must never be skipped.
+The nested SEC agent receives a real ParsedClaim carrying the claimed value.
+_apply_override compares parsed_claim.value against what the agent retrieved,
+so passing prose alone would leave the deterministic comparison with nothing to
+compare.
 """
 
 from typing import Any, Dict, Optional
