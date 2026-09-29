@@ -55,14 +55,18 @@ seven layers:
 
 | Layer | `deepseek-chat` | `MiniMax-M2.7` |
 |---|---|---|
-| 1. Outcome, verdict accuracy (86 claims, excluding 8 live-market and 3 observe-only) | **96.5%** | **96.5%** |
-| 2. Tool trajectory, required tools called (DeepEval) | 98.4% | 94.8% |
-| 3. Grounding, decisive numbers traced to a source (42) | **100%** | **100%** |
-| 4. Calibration, decisive-verdict ECE | 0.039 | 0.046 |
-| 5. Asymmetric risk, confidently-wrong verdicts (of 94 scored) | **0** | **0** |
-| 5. Asymmetric risk, declined rather than answered | 3.2% | 7.4% |
-| 6. Reliability, pass^4 over four runs (91 rows) | **94.5%** | one run |
-| 7. Reachability, evidence path matches expectation | 97.9% | 96.8% |
+| 1. Outcome — verdict accuracy | **96.5%** | **96.5%** |
+| 2. Tool trajectory — tools called | 98.4% | 94.8% |
+| 3. Grounding — numbers traced | **100%** | **100%** |
+| 4. Calibration — decisive ECE | 0.039 | 0.046 |
+| 5. Asymmetric risk, confidently-wrong | **0** | **0** |
+| 5. Asymmetric risk, declined | 3.2% | 7.4% |
+| 6. Reliability — pass^4 | **94.5%** | one run |
+| 7. Reachability — expected path | 97.9% | 96.8% |
+
+Outcome is scored on 86 claims, excluding 8 live-market and 3 observe-only. Trajectory uses
+DeepEval's `ToolCorrectnessMetric`. Grounding covers 42 decisive numbers. Asymmetric risk is
+over the 94 scored claims. Reliability is pass^4 over four runs on 91 shared rows.
 
 Three rows are enforced by the code rather than measured by the run: an agent cannot call
 another agent's tools, the 32 claims that must spend nothing never reach one, and a decisive
