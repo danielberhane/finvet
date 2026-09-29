@@ -1,25 +1,16 @@
-"""Layer 6 — reliability: does it succeed every time, not just once.
+"""Layer 6 — reliability: whether a case succeeds on every attempt, not just one.
 
-Agents are stochastic, so a single pass cannot separate "solved it" from "got
-lucky". tau-bench introduced **pass^k** -- the rate at which a case succeeds on
-*all* k attempts -- because production cares about the worst case, and reports
-that a 90% pass@1 agent is typically only ~57% consistent by k=8.
+Agents are stochastic, so a single pass cannot separate solving a case from
+getting lucky. pass^k, from tau-bench, is the rate at which a case succeeds on
+all k attempts. pass@1 is the rate on the latest run alone.
 
-Measured on the four DeepSeek runs of the frozen set, the drop is 4.4 points:
-
-    pass@1 = 0.989      pass^4 = 0.945      n = 91
-
-Every one of the five rows that misses pass^4 escalated to human review on at
-least one attempt; none returned a wrong verdict. The instability is in whether
-the system asks for help, not in what it asserts.
-
-Only rows present in every run are counted, and row 88 is excluded because a
-code change moved it mid-series -- a difference with a known cause is not
+Only rows present in every run are counted, and rows whose verdict moved for a
+reason outside the system are excluded. A difference with a known cause is not
 evidence of non-determinism.
 
-`unstable` names the rows that did not agree with themselves. Those are the ones
-that cannot carry a comparison against another model later, so they are listed
-rather than folded into a rate.
+unstable names the rows that did not agree with themselves across runs. Those
+cannot carry a comparison against another model later, so they are listed
+rather than folded into the rate.
 """
 
 from dataclasses import dataclass, field

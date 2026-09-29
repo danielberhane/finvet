@@ -1,18 +1,14 @@
-"""FRED macro-series client — the news agent's structured macro source.
+"""FRED client for the macro series behind the news agent's numeric metrics.
 
-Eight news-whitelist macro metrics map to FRED series. The series IDs are not
-guessed: they are the exact IDs the gold dataset's provenance URLs name, and
-the mapping was validated against its 16 recorded source values (12 exact to
-two decimals; the 4 misses are 2026 data revisions, not mapping errors —
-CPI/retail/GDP restate after first release).
+Eight macro metrics from the news whitelist map to FRED series IDs, taken from
+the provenance URLs in the gold dataset and checked against its recorded source
+values. fredgraph.csv needs no API key. Each series is fetched once per process
+and cached.
 
-fredgraph.csv needs no API key. One fetch per series per process, cached.
-
-Revision caveat, first-class: unlike SEC XBRL, where a filed fact is frozen,
-FRED RESTATES history. A claim that was true against the initial print (GDP
-Q1 2026 advance: 1.6%) can drift from the current series (third estimate:
-2.1%). FinVet verifies against current authoritative data, so this returns
-today's series value; the tool surfaces the caveat to the agent.
+FRED restates history, unlike SEC XBRL where a filed fact is frozen. A claim
+that was true against the initial print can differ from the current series: GDP
+Q1 2026 was 1.6% on the advance estimate and 2.1% on the third. This returns
+today's value, and the tool passes the caveat to the agent.
 """
 
 import csv

@@ -1,43 +1,16 @@
-"""Layer 4 — calibration: does stated confidence predict accuracy.
+"""Layer 4 — calibration: whether stated confidence predicts accuracy.
 
-Measured as Expected Calibration Error. It matters here specifically because
-confidence *routes* claims: `output_guardrails` sends anything below the
-threshold to a human, so uncalibrated confidence makes that routing arbitrary.
+Measured as Expected Calibration Error. It matters here because confidence
+routes claims: output_guardrails sends anything below the threshold to a human,
+so uncalibrated confidence makes that routing arbitrary.
 
-Measured over the four DeepSeek runs of the frozen set, the aggregate and the
-shape disagree:
+Two figures are reported. ece covers every prediction. decisive_ece covers only
+decisive verdicts, and is the one to quote for routing behaviour.
 
-    ECE = 0.1351 over 343 predictions
-    ECE = 0.0391 over the 281 decisive ones
-
-    bin    n    accuracy  avg_conf     gap
-    0.0   13     0.000     0.000     +0.000
-    0.2   37     1.000     0.200     +0.800
-    0.3    1     1.000     0.350     +0.650
-    0.5   11     1.000     0.536     +0.464
-    0.9  281     1.000     0.961     +0.039
-
-**The aggregate is misleading on its own.** Every decisive verdict held at 0.9
-or above was correct -- 281 of them -- against a stated 0.961, so the system is
-mildly *under*confident where it answers. Essentially all the aggregate error
-comes from the low bands, where declines are correct while reporting low
-confidence.
-
-That is an overloaded scale rather than a miscalibrated one. `confidence`
-measures how strongly a verdict is held, not whether the outcome was right, and
-a decline is a correct outcome deliberately held weakly. The system already
-compensates: `declined_with_reason` in `output_guardrails` suppresses the
-low-confidence escalation for exactly these rows.
-
-So the report separates the two populations. The split is **decisive verdict vs
-decline**, not escalated vs not: an escalation reports 0.0 confidence and is
-counted wrong, which is perfectly calibrated and not where the error lives. The
-first split tried was escalation, and it made the "answered" figure *worse* than
-the aggregate -- the declines that dominate the error are `unsupported_metric`
-and `no_company_identified` rows, which never escalate.
-
-`decisive_ece` is the number to quote for routing behaviour; `ece` is the honest
-aggregate and belongs with its explanation rather than alone.
+The split is decisive verdict against decline, not escalated against not. A
+decline is a correct outcome held deliberately at low confidence, so it enters
+the aggregate as error without being a miscalibration. confidence measures how
+strongly a verdict is held, not whether the outcome was right.
 """
 
 from dataclasses import dataclass, field

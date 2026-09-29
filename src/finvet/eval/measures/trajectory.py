@@ -1,39 +1,28 @@
-"""Layer 2 — trajectory: was the path sound, not just the answer right.
+"""Layer 2 — trajectory: whether the agent took the intended path.
 
-The guide calls this "the only way to distinguish good agents from lucky ones".
-Outcome scoring said row 88 failed; it could not say the agent had spent 14 tool
-calls hunting a company that was never named.
+Outcome scoring says whether the verdict was right. This says whether the work
+behind it happened.
 
-**Expectations come from the routing design, not from past runs.** Reading tool
-calls out of previous artifacts and calling that the expectation would only
-assert that the system does what it already does.
-`verification_strategy_for` declares how a claim will be handled before any
-agent starts, and each strategy implies the work that must happen:
+Expectations come from the routing design, not from past runs.
+verification_strategy_for() declares how a claim will be handled before any
+agent starts, and each strategy implies work that must occur:
 
-    xbrl          a financial statement must actually be fetched
-    filing_rag    filing text must actually be searched
-    market        a quote must actually be pulled
-    news_search   news must actually be searched
-    unsupported   nothing should run at all
+    xbrl          a financial statement must be fetched
+    filing_rag    filing text must be searched
+    market        a quote must be pulled
+    news_search   news must be searched
+    unsupported   nothing should run
 
-`get_company_info` and `get_recent_filings` are allowed but never required:
-they are prerequisites the agent chooses on the way, not the work itself.
+get_company_info and get_recent_filings are permitted but never required. They
+are prerequisites the agent chooses on the way, not the work itself.
 
-Two facts about this codebase that would otherwise produce wrong scores:
+Two facts about this codebase shape the scoring. A delegated SEC call is logged
+under the parent request_id, so SEC tools stay permitted under news_search.
+search_past_verifications belongs to all three agents and is never out of lane.
 
-**A delegated SEC call is logged under the parent's request_id.** When the News
-agent calls `corroborate_with_filing`, the nested SEC agent's tool calls appear
-on the *news* claim's trace. SEC tools therefore stay permitted under
-`news_search` -- forbidding them would flag every successful delegation as a
-lane violation.
-
-**`search_past_verifications` belongs to all three agents**, so it can never be
-out of lane anywhere.
-
-Scoring sits behind `_score_required`, the one function that touches DeepEval.
-`ToolCorrectnessMetric` is a deterministic set comparison -- no judge, no API
-key -- and if it is unavailable the same comparison runs inline. Only the name
-is lost.
+_score_required() is the only function that touches DeepEval.
+ToolCorrectnessMetric is a deterministic set comparison; if it is unavailable,
+the same comparison runs inline.
 """
 
 import os

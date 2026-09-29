@@ -1,22 +1,20 @@
-"""The contract for one-hop bounded agent delegation.
+"""The contract for one-hop agent delegation.
 
-FinVet has exactly one delegation: the News agent asks the SEC agent whether an
-issuer's own filing corroborates a reported fine or settlement. It runs in that
-direction only, in-process, one hop deep. This is **not** a network A2A
-protocol and no interoperability with external agents is implied — the SEC
-agent simply holds no delegation tool, which is what makes the call terminate
-by construction rather than by a guard someone could forget.
+FinVet has one delegation: the News agent asks the SEC agent whether an
+issuer's filing corroborates a reported fine or settlement. It runs in that
+direction only, in-process, one hop deep. This is not a network protocol and
+implies no interoperability with external agents. The SEC agent holds no
+delegation tool, so the call terminates by construction rather than by a guard.
 
-`status` is the audit-facing outcome and is deliberately richer than the raw
-verdict, because "the filing does not mention this", "no filing could yet cover
-this event", and "the nested agent failed" are three different facts and none
-of them is a contradiction.
+status is the audit-facing outcome and carries more than the raw verdict,
+because "the filing does not mention this", "no filing could yet cover this
+event" and "the nested agent failed" are three different facts, and none of
+them is a contradiction.
 
-Classification is **not** performed here. A status describes the relationship
-between the parent claim's verdict and the target's, and the tool runs before
-the parent verdict exists — comparing the target's verdict with itself is what
-recorded contradictions as agreement. `reclassify_corroboration` below is the
-only place status is decided, and `run_news_agent` is its only caller.
+Status is not decided here. It describes the relationship between the parent
+claim's verdict and the target's, and this tool runs before the parent verdict
+exists. reclassify_corroboration() decides it, and run_news_agent() is its only
+caller.
 """
 
 from typing import Any, Dict, List, Literal, Optional

@@ -1,29 +1,23 @@
-"""Python reads a penalty amount out of a filing, so the filing can decide.
+"""Extracts a penalty amount from filing text, in Python.
 
-`fine_amount` and `settlement_amount` have no XBRL concept -- a penalty is not
-a financial-statement line item -- so a numeric claim about one had no trusted
-observation and failed closed to NOT_ENOUGH_INFO. A claim of $1 trillion
-against a filing stating EUR 500 million went to a human for want of one
-comparison.
+fine_amount and settlement_amount have no XBRL concept, so a numeric claim
+about either has no structured value to compare and fails closed. This reads
+the amount out of the filing instead.
 
-The rule that produced that is right about the model and was being applied to
-the source. XBRL is trusted because *Python* pulls the value, not because it is
-structured. An SEC filing is the authoritative record of what a company
-disclosed; the untrustworthy step is a model reading a number out of a
-paragraph. So Python reads it, and the model is never asked for the number.
+The model is never asked for the number. XBRL is trusted because Python pulls
+the value, not because the source is structured, and the same holds here: the
+filing is the authoritative record of what a company disclosed, and the
+untrusted step is a model reading a figure out of a paragraph.
 
-What makes that safe is refusing to guess. Two real chunks from the same
-filing:
+Extraction runs only where exactly one penalty amount appears in the section
+that discloses penalties. A section listing several amounts returns None:
 
-    legal_proceedings  "...the Commission fined the Company EUR 500 million in
-                        the Article 5(4) Investigation..."     -> one amount
-    mda                $44.1B, $43.8B, EUR 14.2B, $15.4B, $21.0B, $3.9B
-                                                               -> declines
+    legal_proceedings  "...fined the Company EUR 500 million in the Article
+                        5(4) Investigation..."          -> one amount, extracted
+    mda                $44.1B, $43.8B, EUR 14.2B, ...   -> declines
 
-Extraction is allowed only where exactly one penalty amount is present in the
-section that discloses penalties. Anything else returns None and the existing
-fail-closed path runs unchanged, so this can only turn declines into verdicts,
-never verdicts into different verdicts.
+None leaves the existing fail-closed path unchanged, so this can only turn a
+decline into a verdict, never one verdict into another.
 """
 
 import re

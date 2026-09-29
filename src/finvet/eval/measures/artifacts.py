@@ -1,25 +1,20 @@
-"""Loading and normalising recorded golden runs.
+"""Loads recorded golden runs and normalises them for the measure modules.
 
 The only shared module in this package. Every measure is a pure function of what
 this returns, so the layers stay independent of each other and of how a run was
 produced.
 
-Three decisions live here because getting any of them wrong would corrupt every
-layer at once:
+Three normalisations happen here, because every layer depends on them.
 
-**A blocked claim is a verdict.** An input guardrail refuses with HTTP 400 and
-no `verdict` field. Reading `verdict` alone recorded a correct block as an empty
-answer, and six guard rows scored as failures. Artifacts written before the
-runner mapped this still carry `http`, so the mapping is derived here too.
+A guardrail block counts as a verdict. A blocked claim returns HTTP 400 with no
+verdict field, and is mapped to a recorded block. Artifacts written before the
+runner did this carry `http` instead, and are mapped the same way.
 
-**Correctness compares against the row's own expectation.** A row whose
-`expected.verdict` is null (the known-defect rows, recorded and never asserted)
-has no notion of correct and is excluded rather than counted as a failure.
+Correctness is judged against each row's own expectation. A row whose
+expected.verdict is null has no notion of correct and is excluded.
 
-**A run that changed between artifacts is not a stability signal.** Row 88 was
-fixed mid-series, so its verdict differs across runs for a reason that has
-nothing to do with non-determinism. `stable_ids` excludes rows a code change
-moved, which otherwise inflate every reliability figure.
+stable_ids() lists rows whose verdict changed for a reason outside the system,
+so reliability does not read a code change as non-determinism.
 """
 
 import json

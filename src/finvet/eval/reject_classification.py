@@ -1,10 +1,9 @@
-"""Reject classification — what does FinVet do with a claim it should not verify?
+"""Reject classification — what FinVet does with a claim it should not verify.
 
-Two independent mechanisms can stop a claim, and they are not interchangeable:
-the input guardrail raises before the parser ever sees the text, or the parser
-classifies the claim as "reject" and the graph routes it to reject_handler.
-Both are correct outcomes; a single pass rate would hide which layer is carrying
-the load, and therefore what breaks if one is disabled.
+Two mechanisms can stop a claim: the input guardrail raises before the parser
+sees the text, or the parser classifies the claim as reject and the graph routes
+it to reject_handler. Both are correct outcomes, and they are counted separately
+so the report shows which layer is carrying the load.
 
 Every row lands in exactly one outcome:
 
@@ -14,15 +13,15 @@ Every row lands in exactly one outcome:
     gold non-reject + rejected either way     -> false_reject        (FAILURE)
     gold non-reject + routed to an agent      -> accepted            (correct)
 
-Only input_guardrails and claim_parser are run. Those two make the entire reject
-decision, so invoking the full pipeline would spend agent calls on claims that
-get rejected anyway. A "missed" row is one that *would* have run the full
-pipeline in production — this harness stops short of doing so.
+Only input_guardrails and claim_parser run. Those two make the whole reject
+decision, so running the full pipeline would spend agent calls on claims that
+get rejected anyway. A missed row is one that would have run the full pipeline
+in production; this harness stops short of doing so.
 
-Ground truth is the fine-tuned claim-parser project's gold sets, where the label
-already exists as claim_type + reject_reason. Those sets are contamination-
-sensitive and are NOT redistributed with FinVet — they are read by path from the
-sibling repo.
+Ground truth is the claim-parser project's gold sets, where the label already
+exists as claim_type plus reject_reason. Those sets are contamination-sensitive
+and are not redistributed with FinVet; they are read by path from the sibling
+repo.
 
 Usage:
     python -m finvet.eval.reject_classification --claim-type reject --limit 20
