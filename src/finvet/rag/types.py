@@ -1,21 +1,14 @@
 """The typed contract for one retrieved filing passage.
 
-Search used to return bare dicts, and two things went wrong in them that a type
-would have caught.
+Scores and ranks are separate fields, and ranks are integers. Search previously
+returned bare dicts in which ts_rank, a relevance score around 0.06, was
+emitted as keyword_rank, a name that promises an ordinal position; the dense
+arm's position and the fused RRF score were not emitted at all.
 
-`ts_rank` returns a relevance *score*; it was emitted as `keyword_rank`, a name
-that promises an ordinal position. Anything reading it as "the 1st keyword hit"
-was reading a float around 0.06 that never meant that. Meanwhile the dense
-arm's actual position and the fused RRF score were not emitted at all, so a
-reader could not see how a result had been reached.
-
-Scores and ranks are separate fields here, and the ranks are integers, so the
-confusion is not expressible.
-
-`evidence_role` is fixed to "supporting" rather than being a caller's choice.
-Filing text can show what a company said; it cannot become the number a verdict
-rests on. Release A enforces that at the trust boundary, and this field records
-it in the audit trail.
+evidence_role is fixed to "supporting" and is not a caller's choice. Filing
+text can show what a company said; it cannot become the number a verdict rests
+on. The trust boundary enforces that, and this field records it in the audit
+trail.
 """
 
 from typing import Literal, Optional

@@ -1,14 +1,12 @@
 """Exactly-once terminalization for a verification request.
 
-Both `/verify` and `/verify-stream` run the same graph and must end a request
-the same way. They did not: the streaming success path emitted its verdict
-without committing an execution at all, streaming HITL omitted the data_sources
-the synchronous path sent, and no error path released the request's event
-buffer. Four copies of the lifecycle had drifted four ways.
+/verify and /verify-stream run the same graph and end a request the same way.
+A route builds one ExecutionFinalizer, calls finish() exactly once, and lets
+release() clean up even when the request ends in an exception.
 
-This module owns that lifecycle. A route builds one `ExecutionFinalizer`, calls
-`finish` exactly once, and lets `release` guarantee cleanup even when the
-request ends in an exception.
+resolve_prior_verification() looks up a past result by request id for the
+optional claim-memory path, and begin_request() assembles the initial graph
+state.
 """
 
 from dataclasses import dataclass, field

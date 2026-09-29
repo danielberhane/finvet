@@ -1,31 +1,19 @@
-"""Routing — did the pipeline reach its answer by the intended path.
+"""Routing — whether the pipeline reached its answer by the intended path.
 
-A verdict can be right for the wrong reason. An `sec/xbrl` claim answered out of
-filing text instead of an XBRL fact still reads SUPPORTS; an `a2a` claim the
-News agent never delegated still reads SUPPORTS. Nothing in the outcome layer
-can see the difference, because the outcome is identical.
+A verdict can be right for the wrong reason. An sec/xbrl claim answered from
+filing text still reads SUPPORTS, and an a2a claim the News agent never
+delegated still reads SUPPORTS. The outcome layer cannot tell the difference,
+because the outcome is identical.
 
-The dataset already says which path each claim should take -- `expected.sources`
-names `xbrl`, `rag`, `a2a`, or nothing -- and the runner already records which
-were used. The two were never compared. Backtested against three recorded runs,
-this finds two reproducible cases: id 51 answered from `rag` when the delegation
-should have fired, and id 55 recorded no source at all. Both returned the
-expected verdict in every run.
+Compares expected.sources from the dataset, which names xbrl, rag, a2a or
+nothing, against the sources the runner recorded.
 
-Reported, not asserted. It is a measurement of routing, and a row failing it has
-not necessarily answered incorrectly -- what was concluded and how it was
-reached are separate questions, measured separately.
+Reported, not asserted. A row that fails this has not necessarily answered
+incorrectly; what was concluded and how it was reached are separate questions.
 
-**Observe rows are skipped.** A row with no expected verdict carries
-`sources: []` meaning "not labelled", not "no source may be used": the
-known-defect rows consult XBRL and RAG by design. Treating that empty list as an
-assertion produced two false failures, so the guard matches the one
-`test_golden.py` already applies to verdicts -- no expected verdict, no claim
-about the row.
-
-`data_sources` tracks `xbrl`, `rag` and `a2a` only. Market quotes are not a
-tracked source, so a `market/quote` row legitimately records `[]` and its
-expectation is `[]` too. Verified: no market row is scored as a mismatch.
+Rows with no expected verdict are skipped: their empty sources list means "not
+labelled", not "no source may be used". data_sources tracks xbrl, rag and a2a
+only, so a market row records an empty list and expects one.
 """
 
 from dataclasses import dataclass, field

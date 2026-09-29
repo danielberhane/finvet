@@ -1,23 +1,28 @@
-"""Metric vocabulary — vendored from the fine-tuned claim parser.
+"""The metric vocabulary, copied from the fine-tuned claim parser.
 
-Source: the companion claim-parser project's vocabulary module
-Vendored: 2026-08-20 (separate repos — copied, not imported).
+Copied rather than imported because the two live in separate repos.
 tests/unit/test_metrics_vocab.py compares this copy against the source when the
-sibling repo is present, so drift is caught rather than accumulated.
+sibling repo is present, so the two cannot drift apart unnoticed.
 
-Four structures:
+    METRIC_WHITELIST    the 74 canonical metrics, scoped by claim_type with no
+                        overlap between classes, so claim_type alone determines
+                        the candidate set
+    METRIC_REMAPS       aliases a model plausibly emits, mapped to canonical
+                        names
+    METRIC_HARD_DROPS   names that look like metrics but must resolve to null:
+                        segment and product-line figures (iphone_revenue), KPIs
+                        (subscriber_count), corporate events (buyback).
+                        Resolving one of these to its parent metric compares the
+                        wrong number
+    SERVABLE_METRICS    the subset FinVet can retrieve today. The full whitelist
+                        is carried to stay in step with the parser and its gold
+                        sets; this set is what turns "valid metric, no data
+                        source" into a stated limitation
 
-- METRIC_WHITELIST — the 74 canonical metrics, scoped by claim_type with zero
-  cross-class overlap, so a claim_type fully determines the candidate set.
-- METRIC_REMAPS — aliases a model plausibly emits, mapped to canonical names.
-- METRIC_HARD_DROPS — names that look like metrics but must resolve to null:
-  segment and product-line figures (iphone_revenue), KPIs (subscriber_count),
-  and corporate events (buyback). Resolving these to a parent metric is the
-  segment-shadowing bug class.
-- SERVABLE_METRICS — ours, not the parser project's: the subset FinVet can
-  actually retrieve today. The whole whitelist is carried for conformance with
-  the parser and its gold sets; this set is what turns "valid metric, no data
-  source" into a disclosed limitation instead of a silent NOT_ENOUGH_INFO.
+METRIC_TO_CONCEPTS maps a sec metric to the XBRL concepts that carry it.
+NARRATIVE_METRICS names the two that live in filing prose rather than in a
+structured field. verification_strategy_for() returns how a claim can be
+verified, or "unsupported".
 """
 
 METRIC_WHITELIST: dict[str, frozenset[str]] = {
