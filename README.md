@@ -174,39 +174,31 @@ would not send to a third party.
 
 ## Limitations
 
-Packaged for local and demo use. With SEC MCP or Ollama down, the API degrades to
-NOT_ENOUGH_INFO or review rather than failing.
+**Scope.** One English sentence stating one fact about a US-listed company. Compound claims
+are not decomposed; value ranges, relative changes ("doubled since 2020") and fourth-quarter
+derivations decline rather than guess.
 
-- **Scope**: US large-cap equities, one claim at a time — a single English sentence stating one
-  fact. Compound claims are not decomposed; fourth-quarter figures and unservable metrics are
-  declined with a stated reason; value ranges fail closed to human review; relative changes
-  ("doubled since 2020") parse to no value and are declined. Latency on the default provider,
-  p50 11s and p95 76s per claim; the slow tail is the fines and restated-year claims, which
-  read filing prose.
-- **Numeric verdicts need a structured source**: an XBRL fact, a market quote field, or the
-  deterministic fine/settlement extraction. The other 45 metrics the parser accepts, analyst
-  price targets among them, are declined up front with a stated reason.
-- **Market data is current-price only.** Finnhub's free tier provides a quote delayed 15–20
-  minutes and no price history, so only current-price claims with no stated period reach a
-  verdict; historical price claims, and figures like market cap and P/E with no observation
-  time, fail closed.
-- **A stated loss can be read as a gain.** The parser turns "a net loss of $3.63 billion" into a
-  positive value in some runs, and the comparison then refutes a true claim against the filed
-  negative figure. This is the one wrong verdict the benchmark produced (row 1073, in two of
-  four DeepSeek runs) and the parser's sign handling is the next fix.
-- **Model reasoning is not stored.** The verdict's basis — the number, its concept, period and
-  filing, and what it replaced — is recorded in the artifact and the audit trail; the prose the
-  model wrote about it is returned in the response and not persisted.
-- **Not a compliance product.** It applies model-risk-management principles; it certifies
-  nothing.
-- **Not a service.** The API has no authentication, authorization, rate limiting or tenant
-  isolation ([SECURITY.md](SECURITY.md)). Review checkpoints live in process memory, so a
-  pending review does not survive an API restart. It is single-process and has not been
-  load-, failover- or sustained-degradation-tested; the latency figures above are from
-  benchmark runs, one claim at a time.
+**Sources.** A numeric verdict needs a structured source: an XBRL fact, a market quote, or the
+deterministic fine and settlement extraction. The other 45 metrics the parser accepts, analyst
+price targets among them, decline up front with a stated reason. Market data is the current
+delayed quote only; historical prices and figures with no observation time fail closed.
 
-Next: decomposition of multi-assertion claims, a paid market-data tier with historical price
-alignment, and Q4 derivation.
+**Known defect.** A stated net loss can be parsed as a gain, and the comparison then refutes a
+true claim. This produced the benchmark's one wrong verdict, in two of eight runs. Sign handling
+in the parser is the next fix.
+
+**Audit trail.** The basis of every verdict — the number, its concept, period and filing — is
+persisted and checksummed. The model's prose about it is returned but not stored.
+
+**Deployment.** A single-process research system: no authentication, rate limiting or tenant
+isolation ([SECURITY.md](SECURITY.md)), and pending reviews live in memory, so they do not survive
+a restart. Not load- or failover-tested. With SEC MCP or Ollama down it declines or escalates
+rather than failing. Latency on DeepSeek, one claim at a time: p50 11 s, p95 76 s, the tail
+being claims that read filing prose.
+
+**Not a compliance product.** It applies model-risk principles and certifies nothing.
+
+Next: decomposition of compound claims, historical market data, and Q4 derivation.
 
 ---
 
