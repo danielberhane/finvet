@@ -61,19 +61,14 @@ Populations and method are in the [benchmark write-up](docs/eval/BENCHMARK_2026-
 
 First run of each model; pass^4 uses all four. Outcome excludes the 28 live-price claims.
 
-**Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass@1 97.0%, **pass^4 94.8%**;
-17 misses, one a wrong verdict (a net loss parsed as a gain). Qwen3.8: pass@1 96.4%,
-**pass^4 91.5%**; 28 misses, none a wrong verdict.
+**Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass^4 94.8%, 17 misses, one a wrong
+verdict (a net loss parsed as a gain). Qwen3.8: pass^4 91.5%, 28 misses, none a wrong verdict.
 
-**Models.** DeepSeek-V4.1-Flash via DeepSeek's API (`deepseek-flash`); Qwen3.8 on vLLM behind a
-LiteLLM gateway, response cache off.
+**Retrieval.** XBRL lookups 198/199 on a gold set held privately; filing-text 70/70 on a
+calibration set, not held out.
 
-**Retrieval.** XBRL lookups against SEC values: **198/199** on a held-out gold set, held privately.
-Filing-text retrieval: 70/70 on the calibration set in
-[`tests/accuracy/`](tests/accuracy/), a fit rather than a held-out result.
-
-**Evidence.** [`docs/eval/`](docs/eval/): redacted artifacts of all eight runs, layer summaries
-and dataset cards. Every table figure recomputes from them in CI.
+**Evidence.** [`docs/eval/`](docs/eval/) holds the artifacts of all eight runs; every table
+figure recomputes from them in CI.
 
 ---
 
