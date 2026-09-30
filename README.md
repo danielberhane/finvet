@@ -183,10 +183,6 @@ deterministic fine and settlement extraction. The other 45 metrics the parser ac
 price targets among them, decline up front with a stated reason. Market data is the current
 delayed quote only; historical prices and figures with no observation time fail closed.
 
-**Known defect.** A stated net loss can be parsed as a gain, and the comparison then refutes a
-true claim. This produced the benchmark's one wrong verdict, in two of eight runs. Sign handling
-in the parser is the next fix.
-
 **Audit trail.** The basis of every verdict — the number, its concept, period and filing — is
 persisted and checksummed. The model's prose about it is returned but not stored.
 
