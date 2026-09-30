@@ -35,29 +35,17 @@ returns not enough information.
 
 ## Evaluation
 
-**Claim set.** 349 financial claims (`golden_u.jsonl`), held out and frozen: 97 written claims
-over five mega-caps, and 252 claims over 65 further filers in five named hardness classes
-(non-calendar fiscal years, banks and insurers, mid-caps, filers whose primary revenue concept
-is not the usual one, and restated years), with a natural-phrasing arm. 76 tickers, none shared
-between the two parts. The numeric labels of the second part are derived from SEC `companyfacts`
-data by script, with no person choosing the number, and its pass/fail criteria are pre-registered
-— committed before any run. The dataset is hashed and frozen before the reported run. Six rows
-whose text is published in the cards are excluded from every run, so 343 are scored, 329 of them
-with an expected verdict. Composition, labelling rules and disclosed biases are in the
-[dataset card](docs/eval/DATASET_CARD.md), the [golden_g card](docs/eval/GOLDEN_G_CARD.md) and
-the [golden_u card](docs/eval/GOLDEN_U_CARD.md).
+**Claim set.** 349 held-out financial claims over 76 tickers: 97 written claims on five
+mega-caps and 252 script-labelled claims on 65 further filers in five hardness classes
+(non-calendar fiscal years, banks and insurers, mid-caps, unusual revenue concepts, restated
+years). The pass/fail criteria were committed before any run and the set was hashed and frozen
+before the reported one. 329 scored claims carry an expected verdict. Cards:
+[dataset](docs/eval/DATASET_CARD.md), [golden_g](docs/eval/GOLDEN_G_CARD.md),
+[golden_u](docs/eval/GOLDEN_U_CARD.md).
 
-**Protocol.** Two models on identical code, each run four times on 2026-09-29 to measure
-stability. Retrieval is measured separately, on its own cases. Each run is scored on seven
-layers:
-
-1. **Outcome**: the verdict.
-2. **Tool trajectory**: the tools called.
-3. **Grounding**: every decisive number traced to a source.
-4. **Calibration**: stated confidence against observed accuracy.
-5. **Asymmetric risk**: the cost of the errors made.
-6. **Reliability**: agreement across repeated runs.
-7. **Reachability**: evidence arriving by the expected path.
+**Protocol.** Two models, identical code, four runs each on 2026-09-29, scored on seven layers:
+outcome, tool trajectory, grounding, calibration, asymmetric risk, reliability, reachability.
+Populations and method are in the [benchmark write-up](docs/eval/BENCHMARK_2026-09-29.md).
 
 ### Cross-model benchmark
 
@@ -72,42 +60,29 @@ layers:
 | 6. Reliability — pass^4 | **94.8%** | **91.5%** |
 | 7. Reachability — expected path | 94.8% | 97.9% |
 
-Rows 1 to 5 and 7 are the first run of each model; row 6 uses all four. Outcome is scored on
-301 claims: the 329 with an expected verdict, excluding the 28 whose answer depends on a live
-share price. Trajectory uses DeepEval's `ToolCorrectnessMetric` over the claims whose strategy
-requires a tool (265 for DeepSeek, 266 for Qwen). Grounding covers every decisive number the run
-produced (242 and 239). Asymmetric risk is over the 329 claims with an expected verdict.
-Reliability is pass^4 over four runs on the same 329.
+First run of each model, except pass^4, which uses all four. Outcome excludes the 28 claims
+whose answer depends on a live share price. Three properties hold by construction and are not
+measured: an agent cannot call another agent's tools, the 59 claims that must spend nothing
+never reach one, and no decisive verdict is issued without a trusted observation.
 
-Three rows are enforced by the code rather than measured by the run: an agent cannot call
-another agent's tools, the 59 claims that must spend nothing never reach one, and a decisive
-numeric verdict is unreachable without a trusted observation.
+**Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass@1 97.0%, **pass^4 94.8%**;
+17 misses, 16 of them escalations and one a wrong verdict (a stated net loss the parser read as
+a gain). Qwen3.8: pass@1 96.4%, **pass^4 91.5%**; 28 misses, every one an escalation, a decline
+or a timeout, none a wrong verdict.
 
-**Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass@1 97.0%, **pass^4 94.8%**. Of the
-17 rows that missed pass^4, 16 had escalated to human review on at least one attempt; one
-returned a wrong verdict — a claim stating a net loss, which the parser read as a gain in two
-of the four runs and the comparison then refuted. Qwen3.8: pass@1 96.4%, **pass^4 91.5%**;
-every one of its 28 misses escalated, declined or timed out, and none returned a wrong verdict.
+**Models.** DeepSeek-V4.1-Flash is served by DeepSeek's API under the id `deepseek-flash`.
+Qwen3.8 is served on vLLM through a LiteLLM gateway, with the gateway's response cache disabled
+on every request so the four runs are independent.
 
-**Models.** DeepSeek-V4.1-Flash is served by DeepSeek's API under the id `deepseek-flash`
-(1M-token context). Qwen3.8 is served on vLLM by a university research cluster through a
-LiteLLM gateway (262K-token context); every request was opted out of the gateway's response
-cache, so the four runs are independent — 0 of 7,404 replies came from the cache. Neither
-service publishes the model's parameter count.
-
-**Retrieval.** XBRL lookups against SEC primary-source values: **198/199**, the one miss
-returning not enough information rather than a wrong number. Filing-text retrieval is
-measured on a separate 70-case set. Both gold sets are held privately, so unlike the table
-above these two figures are not recomputable from this repository.
+**Retrieval.** XBRL lookups against SEC primary-source values: **198/199**, the miss a decline
+rather than a wrong number. Filing-text retrieval is measured on a separate 70-case set. Both
+gold sets are held privately, so these two figures are not recomputable from this repository.
 
 **Evidence.** [`docs/eval/`](docs/eval/) holds the redacted per-claim artifacts of all eight
-runs, the layer summaries, the [benchmark write-up](docs/eval/BENCHMARK_2026-09-29.md) and the
-dataset cards. Every figure in the table recomputes from them. The claim set itself is held
-out, and available to reviewers against its published hash. Its first 97 claims were written by
-the author of the system; 57 of their parse labels have not been adjudicated by a second reader,
-and no independent validation has been performed. The earlier benchmark on those 97 claims
-alone, with `deepseek-chat` and `MiniMax-M2.7`, remains in the same folder with its
-[write-up](docs/eval/BENCHMARK_2026-08-31.md).
+runs, the layer summaries and the cards; every figure in the table recomputes from them in CI.
+The first 97 claims were written by the author of the system, and 57 of their parse labels have
+no second reader. The earlier benchmark on those 97 claims alone, with `deepseek-chat` and
+`MiniMax-M2.7`, remains in the same folder with its [write-up](docs/eval/BENCHMARK_2026-08-31.md).
 
 ---
 
