@@ -14,7 +14,6 @@ run.
 
 <p align="center">
   <a href="docs/diagrams/finvet-linkedin.png"><img src="docs/diagrams/finvet-linkedin.png" alt="Architecture" width="1000"></a>
-  <br><sub>Click the diagram for full resolution.</sub>
 </p>
 
 > **Not financial advice.** A research and demonstration system; outputs may be wrong and must
@@ -107,10 +106,11 @@ docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 Prebuilt images are published on tagged releases: `docker pull ghcr.io/danielberhane/finvet-api:latest`
 (and `finvet-ui`). Every port binds to `127.0.0.1`; read [SECURITY.md](SECURITY.md) before
 exposing the stack. Real API keys are required, since the system verifies against live data.
-Missing optional keys disable their feature rather than crashing.
+Missing optional keys disable their feature rather than crashing. `--profile sec` adds the
+SEC EDGAR MCP container, needed for SEC claims.
 
 <details>
-<summary><b>Native dev · RAG ingest · compose profiles · which key powers what</b></summary>
+<summary><b>Native dev · RAG ingest · keys</b></summary>
 
 ### Native (hot reload)
 
@@ -133,40 +133,24 @@ python -m finvet.rag.ingest                    # defaults to data/filings
 ```
 
 Requires Postgres and Ollama with `nomic-embed-text` pulled (~270 MB, no API key — embedding
-is local). The optional Llama Guard layer needs `ENABLE_LLAMA_GUARD=true` and
-`llama-guard3:8b` (~5 GB).
-
-### Profiles
-
-| Profile | Adds | For |
-|---|---|---|
-| *(default)* | Postgres + pgvector, Ollama, API, UI | always |
-| `--profile sec` | SEC EDGAR MCP (self-contained, from PyPI) | SEC claims (most demos) |
+is local).
 
 ### Keys
 
 | Key | Powers | Without it |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | the default provider fails to start; point the roles elsewhere and it is not needed |
+| `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | startup fails unless the roles point at another endpoint |
 | `TAVILY_API_KEY` | news search | **required** — nothing runs |
 | `FINNHUB_API_KEY` | market quotes, tickers | market claims → NOT_ENOUGH_INFO |
 | *(none)* | embeddings, SEC XBRL | local Ollama / free public endpoints |
+| `ENABLE_LLAMA_GUARD=true` | Llama Guard on input and output (`llama-guard3:8b`, ~5 GB) | regex and PII guards only |
 
 The LLM is pluggable ([`llm/factory.py`](src/finvet/llm/factory.py)): point any
 OpenAI-compatible chat-completions endpoint — Ollama, vLLM, LiteLLM, or a hosted vendor — at
 any of the three roles via env vars, no code change.
 
-### Tracing (LangSmith)
-
-Off by default. Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, and `LANGCHAIN_PROJECT`
-in `.env` and restart the API. Every verification then appears as one trace carrying its
-`request_id`, so it joins to its audit row at `GET /audit/{request_id}`. Trace names, what a
-trace contains, and sample timings:
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#7-configuration-reference).
-
-**Tracing is data egress.** The claim text, tool outputs (filing excerpts, quotes, news
-snippets), and model prompts leave the machine for LangSmith. Do not enable it on claims you
-would not send to a third party.
+LangSmith tracing is off by default; enabling it sends claim text, tool outputs and prompts to
+LangSmith. Setup in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#7-configuration-reference).
 
 </details>
 
@@ -183,8 +167,8 @@ deterministic fine and settlement extraction. The other 45 metrics the parser ac
 price targets among them, decline up front with a stated reason. Market data is the current
 delayed quote only; historical prices and figures with no observation time fail closed.
 
-**Audit trail.** The basis of every verdict — the number, its concept, period and filing — is
-persisted and checksummed. The model's prose about it is returned but not stored.
+**Audit trail.** The number, concept, period and filing behind a verdict are stored; the
+model's reasoning text is returned, not stored.
 
 **Deployment.** A single-process research system: no authentication, rate limiting or tenant
 isolation ([SECURITY.md](SECURITY.md)), and pending reviews live in memory, so they do not survive
@@ -193,8 +177,6 @@ rather than failing. Latency on DeepSeek, one claim at a time: p50 11 s, p95 76 
 being claims that read filing prose.
 
 **Not a compliance product.** It applies model-risk principles and certifies nothing.
-
-Next: decomposition of compound claims, historical market data, and Q4 derivation.
 
 ---
 
@@ -208,11 +190,10 @@ what this system does and does not defend against, see [SECURITY.md](SECURITY.md
 
 To cite this software, use [CITATION.cff](CITATION.cff).
 
-**Prior work.** FinVet v1, joint work with Duoduo Liao, verified claims with two retrieval
-pipelines and an external fact-check source, deciding verdicts by confidence-weighted vote
-([IEEE BigData 2025](https://ieeexplore.ieee.org/document/11400848);
-[code](https://github.com/danielberhane/finvet-v1)). This release replaces that design: one
-agent per claim, and the verdict settled by a deterministic comparator rather than a vote.
+**Prior work.** FinVet v1 ([IEEE BigData 2025](https://ieeexplore.ieee.org/document/11400848),
+with Duoduo Liao; [code](https://github.com/danielberhane/finvet-v1)) decided verdicts by
+confidence-weighted vote over two retrieval pipelines. This release replaces that with one agent
+per claim and a deterministic comparator.
 
 ## License
 
