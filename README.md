@@ -35,13 +35,18 @@ returns not enough information.
 
 ## Evaluation
 
-**Claim set.** 349 held-out financial claims over 76 tickers: 97 written claims on five
-mega-caps and 252 script-labelled claims on 65 further filers in five hardness classes
-(non-calendar fiscal years, banks and insurers, mid-caps, unusual revenue concepts, restated
-years). The pass/fail criteria were committed before any run and the set was hashed and frozen
-before the reported one. 329 scored claims carry an expected verdict. Cards:
-[dataset](docs/eval/DATASET_CARD.md), [golden_g](docs/eval/GOLDEN_G_CARD.md),
-[golden_u](docs/eval/GOLDEN_U_CARD.md).
+**Claim set.** 349 financial claims about 76 US-listed companies, from mega-caps to
+mid-caps and including banks and insurers, filers with non-calendar fiscal years, and years the
+filer later restated. The claims span annual and quarterly GAAP figures checked against filed
+XBRL, values just inside and just outside the tolerance band, directional comparisons, losses,
+fines and settlements verified through the filing, live share prices, and statements drawn from
+filing text. A further group must be handled rather than answered: claims that have to decline
+with a stated reason (derived quarters, unservable metrics, non-USD amounts), prompt injection
+and personal data, and range claims routed to human review. Thirty claims are phrasing variants
+that swap scale words, spell out quarters or name the company instead of the ticker. Every
+numeric row carries its verdict, the evidence path expected, and a pointer to the filing,
+concept and period that settles it. Full composition in the
+[golden_u card](docs/eval/GOLDEN_U_CARD.md).
 
 **Protocol.** Two models, identical code, four runs each on 2026-09-29, scored on seven layers:
 outcome, tool trajectory, grounding, calibration, asymmetric risk, reliability, reachability.
@@ -79,10 +84,9 @@ rather than a wrong number. Filing-text retrieval is measured on a separate 70-c
 gold sets are held privately, so these two figures are not recomputable from this repository.
 
 **Evidence.** [`docs/eval/`](docs/eval/) holds the redacted per-claim artifacts of all eight
-runs, the layer summaries and the cards; every figure in the table recomputes from them in CI.
-The first 97 claims were written by the author of the system, and 57 of their parse labels have
-no second reader. The earlier benchmark on those 97 claims alone, with `deepseek-chat` and
-`MiniMax-M2.7`, remains in the same folder with its [write-up](docs/eval/BENCHMARK_2026-08-31.md).
+runs, the layer summaries and the dataset cards; every figure in the table recomputes from
+them in CI. An earlier benchmark with `deepseek-chat` and `MiniMax-M2.7` on a smaller set remains
+in the same folder with its [write-up](docs/eval/BENCHMARK_2026-08-31.md).
 
 ---
 
