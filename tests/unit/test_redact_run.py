@@ -34,8 +34,14 @@ def _artifact() -> dict:
         "llm_config_client": {"parser": dict(gateway)},
         "results": [
             {"id": 1, "claim": "Apple's total revenue was $391 billion in fiscal year 2024",
+             "gold_parse": {"claim_type": "sec", "ticker": "AAPL", "metric": "revenue",
+                            "operator": "eq", "value": 391000000000, "period": "FY2024",
+                            "reject_reason": None},
              "expected": {"verdict": "SUPPORTS"}, "actual": {"verdict": "SUPPORTS"}},
             {"id": 5, "claim": "a held-out claim that must never be published",
+             "gold_parse": {"claim_type": "sec", "ticker": "XXXX", "metric": "revenue",
+                            "operator": "eq", "value": 1, "period": "FY2024",
+                            "reject_reason": None},
              "expected": {"verdict": "REFUTES"}, "actual": {"verdict": "REFUTES"}},
         ],
     }
@@ -47,6 +53,14 @@ class TestRedactRules:
         out = redact_run.redact(_artifact())
         by_id = {r["id"]: r["claim"] for r in out["results"]}
         assert by_id[1].startswith("Apple's total revenue")
+        assert by_id[5] == redact_run.WITHHELD
+
+    def test_gold_parse_is_withheld_except_for_burned_rows(self):
+        out = redact_run.redact(_artifact())
+        by_id = {r["id"]: r["gold_parse"] for r in out["results"]}
+        assert by_id[1] == {"claim_type": "sec", "ticker": "AAPL", "metric": "revenue",
+                            "operator": "eq", "value": 391000000000, "period": "FY2024",
+                            "reject_reason": None}
         assert by_id[5] == redact_run.WITHHELD
 
     def test_labels_and_behaviour_survive(self):

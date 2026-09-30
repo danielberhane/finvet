@@ -24,6 +24,17 @@ SEC_LARGE_VALUE_THRESHOLD = 1_000_000_000  # the value, not a tolerance: $1B
 TOLERANCE_APPROX_MULTIPLIER = 2.0
 
 # ---------------------------------------------------------------------------
+# SEC companyfacts feed (used in mcp/sec_edgar.py)
+# ---------------------------------------------------------------------------
+# One download per issuer holds every fact it has filed. Filings arrive a few
+# times a quarter, so six hours keeps a long-running API current without
+# fetching five megabytes per claim. A failed download is retried sooner: the
+# feed being down for a minute must not blind an issuer for six hours.
+SEC_COMPANY_FACTS_TTL_SECONDS = 6 * 60 * 60
+SEC_COMPANY_FACTS_RETRY_SECONDS = 60
+SEC_COMPANY_FACTS_TIMEOUT_SECONDS = 30.0
+
+# ---------------------------------------------------------------------------
 # Confidence adjustments (used in workflow.py _adjust_confidence)
 # ---------------------------------------------------------------------------
 CONFIDENCE_LARGE_DIFF_PCT = 20     # % magnitude diff for penalty
@@ -77,9 +88,11 @@ CORROBORATION_METRICS = frozenset({"fine_amount", "settlement_amount"})
 # model behind the `deepseek-chat` alias changed and now needs more steps. At 3
 # the nested run hit its recursion limit of 7 on every delegation, so the SEC
 # side came back with zero sources and every fine or settlement claim declined.
-# Kept well under the top-level budget, because the caller pays for it and a
-# news run may delegate more than once.
-A2A_MAX_ITERATIONS = 5
+# Raised again to 8 on 2026-09-28: a delegated SEC run under one model hit
+# its limit of 11 on a fine claim while the same run under another did not,
+# so the budget was deciding the A2A status by model. Equal to the
+# top-level budget now; the test that pinned it below allows equality.
+A2A_MAX_ITERATIONS = 8
 
 # ---------------------------------------------------------------------------
 # Confidence thresholds (used in helpers.py)

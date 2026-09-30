@@ -102,8 +102,8 @@ class TestTheResultsTableRecomputes:
     """One case per layer per model, so a failure names the cell."""
 
     @pytest.mark.parametrize("prefix,compute,parse,tolerance", LAYERS)
-    @pytest.mark.parametrize("column,label", [(0, "deepseek-c1"),
-                                              (1, "minimax-c1")])
+    @pytest.mark.parametrize("column,label", [(0, "u-ds-c1"),
+                                              (1, "u-qw-c1")])
     def test_the_published_cell_matches_the_artifact(
             self, prefix, compute, parse, tolerance, column, label):
         published = parse(_table_row(prefix)[column])
@@ -129,12 +129,16 @@ class TestTheTableNamesTheModelsTheArtifactsRecord:
     the failure the machinery exists to prevent, one layer up.
     """
 
-    @pytest.mark.parametrize("column,label", [(1, "deepseek-c1"),
-                                              (2, "minimax-c1")])
+    @pytest.mark.parametrize("column,label", [(1, "u-ds-c1"),
+                                              (2, "u-qw-c1")])
     def test_the_column_header_matches_the_artifact(self, column, label):
         header = next(line for line in README.read_text().splitlines()
                       if line.startswith("| Layer |"))
-        published = header.split("|")[column + 1].strip().strip("`")
+        cell = header.split("|")[column + 1]
+        # The header may give the model's proper name with the served id in
+        # backticks beside it; the id is what the artifact records.
+        published = (cell[cell.index("`") + 1:cell.rindex("`")]
+                     if "`" in cell else cell.strip())
 
         served = _runs(label)[0].model
 
@@ -144,42 +148,68 @@ class TestTheTableNamesTheModelsTheArtifactsRecord:
 
 
 class TestTheStabilityFiguresRecompute:
-    """pass@1 and pass^4, quoted in prose rather than the table."""
+    """pass@1 and pass^4 for each model, quoted in prose rather than the table.
 
-    def _reliability(self):
-        return reliability.measure(_runs("deepseek"))
+    The Stability paragraph names each model before its figures, so the
+    figures are matched after the model's name and checked against that
+    model's four artifacts.
+    """
 
-    def test_pass_at_1_matches(self):
-        published = float(re.search(r"pass@1 ([\d.]+)%",
-                                    README.read_text()).group(1))
-        assert abs(published - 100 * self._reliability().pass_at_1) <= 0.1
+    MODELS = [("DeepSeek-V4.1-Flash", "u-ds"), ("Qwen3.8", "u-qw")]
 
-    def test_pass_hat_4_matches(self):
-        published = float(re.search(r"pass\^4 ([\d.]+)%",
-                                    README.read_text()).group(1))
-        assert abs(published - 100 * self._reliability().pass_hat_k) <= 0.1
+    def _paragraph(self):
+        text = README.read_text()
+        start = text.index("**Stability.**")
+        return text[start:text.index("\n\n", start)]
 
-    def test_the_quoted_run_count_is_the_number_of_artifacts(self):
-        """'Four runs on one model' has to stay true as runs are published."""
-        assert "Four runs" in README.read_text()
-        assert self._reliability().k == 4
+    def _figures(self, name):
+        after = self._paragraph()[self._paragraph().index(name):]
+        at_1 = float(re.search(r"pass@1 ([\d.]+)%", after).group(1))
+        hat_4 = float(re.search(r"pass\^4 ([\d.]+)%", after).group(1))
+        return at_1, hat_4
 
-    def test_every_missed_row_escalated_rather_than_answering_wrongly(self):
-        """The README's strongest sentence about pass^4, and the one most
-        easily falsified by a later run."""
-        runs = _runs("deepseek")
+    @pytest.mark.parametrize("name,label", MODELS)
+    def test_pass_at_1_matches(self, name, label):
+        published, _ = self._figures(name)
+        assert abs(published - 100 * reliability.measure(_runs(label)).pass_at_1) <= 0.1
+
+    @pytest.mark.parametrize("name,label", MODELS)
+    def test_pass_hat_4_matches(self, name, label):
+        _, published = self._figures(name)
+        assert abs(published - 100 * reliability.measure(_runs(label)).pass_hat_k) <= 0.1
+
+    @pytest.mark.parametrize("name,label", MODELS)
+    def test_the_quoted_run_count_is_the_number_of_artifacts(self, name, label):
+        """'Four runs per model' has to stay true as runs are published."""
+        assert "Four runs per model" in README.read_text()
+        assert reliability.measure(_runs(label)).k == 4
+
+    @pytest.mark.parametrize("name,label,wrong_rows", [
+        ("DeepSeek-V4.1-Flash", "u-ds", 1),
+        ("Qwen3.8", "u-qw", 0),
+    ])
+    def test_the_account_of_the_missed_rows_holds(self, name, label, wrong_rows):
+        """The README's strongest sentences about pass^4, and the ones most
+        easily falsified by a later run: how many rows missed pass^4, and how
+        many of those ever returned a wrong verdict rather than escalating,
+        declining or being lost."""
+        runs = _runs(label)
         ids = A.stable_ids(runs)
         missed = [i for i in ids
                   if not all(A.is_correct(r.rows[i]) for r in runs)]
         decisive = {"SUPPORTS", "REFUTES"}
-
-        wrong = [(i, run.label) for i in missed for run in runs
+        wrong = {i for i in missed for run in runs
                  if A.verdict(run.rows[i]) != A.expected(run.rows[i])
-                 and A.verdict(run.rows[i]) in decisive]
+                 and A.verdict(run.rows[i]) in decisive}
 
-        assert not wrong, (
-            f"the README says every pass^4 miss escalated rather than "
-            f"answering wrongly; these answered wrongly: {wrong}")
+        after = self._paragraph()[self._paragraph().index(name):]
+        published_missed = int(re.search(r"(\d+) (?:rows that missed|misses)", after).group(1))
+        assert published_missed == len(missed), (
+            f"{name}: README says {published_missed} rows missed pass^4; "
+            f"the artifacts give {len(missed)}")
+        assert len(wrong) == wrong_rows, (
+            f"{name}: README describes {wrong_rows} wrongly answered row(s); "
+            f"the artifacts give {sorted(wrong)}")
 
 
 class TestTheClaimsAboutTheCodeHold:
@@ -215,7 +245,7 @@ class TestTheClaimsAboutTheCodeHold:
         """
         published = int(re.search(r"the (\d+) claims that must spend nothing",
                                   README.read_text()).group(1))
-        measured = trajectory.measure(_runs("deepseek-c1"))
+        measured = trajectory.measure(_runs("u-ds-c1"))
 
         assert published == measured.zero_tool_expected
         assert measured.zero_tool_breaches == [], (
