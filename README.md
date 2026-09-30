@@ -86,46 +86,27 @@ in the same folder with its [write-up](docs/eval/BENCHMARK_2026-08-31.md).
 
 ## Architecture
 
-A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each a ReAct loop
-with its own tools; routing, period resolution, confidence policy and guardrails are fixed
-pipeline stages, and within the selected agent the model chooses its own tool calls. One
-agent runs per claim.
+A LangGraph `StateGraph`. Routing, period resolution, confidence policy and guardrails are fixed
+stages; within the one domain agent selected per claim, a ReAct loop chooses its own tool calls.
 
-| Agent | Handles | Sources | Can delegate to |
-|---|---|---|---|
-| **SEC** | GAAP financials, and claims about what a filing says | SEC EDGAR (XBRL) via MCP, hybrid RAG over filing text | — |
-| **Market** | Prices, valuation, market cap | Finnhub | — |
-| **News** | Events and announcements | Tavily search | SEC |
+| Agent | Handles | Sources |
+|---|---|---|
+| **SEC** | GAAP financials, filing text | SEC EDGAR XBRL via MCP, hybrid RAG over filings |
+| **Market** | Prices, valuation, market cap | Finnhub |
+| **News** | Events, fines, settlements | Tavily search |
 
-**Delegation** runs one way: News asks SEC whether the issuer's own filing discloses a
-reported fine or settlement. One hop, in-process, no wire protocol. The SEC agent holds no
-delegation tool, so the call cannot recurse. Where the filing states an amount, the verdict follows the filing rather than the
-press.
+**Delegation** runs one way: News can ask SEC whether the issuer's own filing discloses a
+reported fine or settlement. SEC holds no delegation tool, so the call cannot recurse.
 
 <p align="center">
   <a href="docs/diagrams/finvet-delegation-run.png"><img src="docs/diagrams/finvet-delegation-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict" width="860"></a>
-  <br><sub>A news claim the news agent could not settle alone: it searched, then handed the finding
-  to the SEC agent, which found the same &euro;500 million in Apple's filing.</sub>
+  <br><sub>A news claim settled by delegation: the SEC agent found the same &euro;500 million in Apple's filing.</sub>
 </p>
 
-<p align="center">
-  <a href="docs/diagrams/finvet-delegation-evidence.png"><img src="docs/diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent" width="860"></a>
-  <br><sub>The same run's evidence: every tool call with its arguments and raw response, including the
-  delegation itself and what the SEC agent sent back. Click either image for full resolution.</sub>
-</p>
-
-**Trust boundary.** XBRL is the authoritative numeric source. Retrieved filing text is
-supporting evidence, and a model's reading of it never becomes the number a verdict rests on;
-absence of a passage is never treated as refutation. The one exception is fines and
-settlements, which have no XBRL concept: Python extracts the amount from Legal Proceedings
-text, and only when exactly one unambiguous candidate is present.
-
-**Guardrails and review.** Regex and PII checks always run, with an optional Llama Guard layer
-on input and output. The guards decide safety; the parser decides whether a claim is
-verifiable. Review triggers on low confidence, unsafe output, or a press-versus-filing
-conflict, pausing at a LangGraph checkpoint and resuming with the reviewer's decision merged
-in. Every tool call and verdict is persisted with a checksum the API re-verifies on read; see
-[SECURITY.md](SECURITY.md) for what that does and does not guarantee.
+**Review and audit.** Regex and PII guards always run, with optional Llama Guard. Low
+confidence, unsafe output or a press-versus-filing conflict pauses the graph at a checkpoint
+until a reviewer decides. Every tool call and verdict is persisted with a checksum the API
+re-verifies on read ([SECURITY.md](SECURITY.md)).
 
 Mechanics — retrieval fusion, delegation states, review recovery:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
