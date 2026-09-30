@@ -25,11 +25,8 @@ run.
 ## Deterministic verdict override
 
 Models are unreliable at comparing numbers, and that comparison decides the verdict. FinVet
-recomputes it in Python, with tolerances that depend on the source. Python's result stands
-when the two disagree, and both verdicts are kept in the response.
-
-The comparison uses only a structured value returned by a tool. A claim with no such value
-returns not enough information.
+recomputes it in Python; Python's result stands when the two disagree, and both are kept in the
+response. A claim with no structured value from a tool returns not enough information.
 
 ---
 
