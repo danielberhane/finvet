@@ -40,6 +40,13 @@ Rows 1 to 5 and 7: the first run of each model. Row 6: all four runs.
 Outcome excludes the 28 live-market rows, whose answer depends on the share price at
 the moment of the run. Every other layer includes them.
 
+Populations: outcome is scored on the 329 claims with an expected verdict minus those 28;
+trajectory uses DeepEval's `ToolCorrectnessMetric` over the claims whose strategy requires a
+tool; grounding covers every decisive number the run produced; asymmetric risk and pass^4 are
+over all 329. Three properties are enforced by the code rather than measured: an agent cannot
+call another agent's tools, the 59 claims that must spend nothing never reach one, and a
+decisive numeric verdict is unreachable without a trusted observation.
+
 ### Per run
 
 | run | model | outcome (329 rows, pass@1) | confidently wrong | declined | rows lost to timeouts or errors | p50 / p95 per claim | duration |
