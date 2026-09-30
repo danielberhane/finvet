@@ -115,9 +115,9 @@ class TestTheResultsTableRecomputes:
             f"the artifact gives {actual:.4f}")
 
 
-def _paragraph(marker: str) -> str:
-    """The README paragraph that opens with `marker`."""
-    text = README.read_text()
+def _paragraph(marker: str, doc: Path = README) -> str:
+    """The paragraph of `doc` that opens with `marker`."""
+    text = doc.read_text()
     start = text.index(marker)
     return text[start:text.index("\n\n", start)]
 
@@ -173,7 +173,7 @@ class TestTheStabilityFiguresRecompute:
     MODELS = [("DeepSeek-V4.1-Flash", "u-ds"), ("Qwen3.8", "u-qw")]
 
     def _paragraph(self):
-        return _paragraph("**Stability.**")
+        return _paragraph("**Stability.**", WRITEUP)
 
     def _pass_hat_4(self, name):
         after = self._paragraph()[self._paragraph().index(name):]
@@ -187,7 +187,8 @@ class TestTheStabilityFiguresRecompute:
     @pytest.mark.parametrize("name,label", MODELS)
     def test_the_quoted_run_count_is_the_number_of_artifacts(self, name, label):
         """'Four runs per model' has to stay true as runs are published."""
-        assert "Four runs per model" in README.read_text()
+        assert "four runs each" in README.read_text()
+        assert "Four runs per model" in WRITEUP.read_text()
         assert reliability.measure(_runs(label)).k == 4
 
     @pytest.mark.parametrize("name,label,wrong_rows", [
@@ -264,9 +265,9 @@ class TestTheUnverifiableFiguresAreMarkedAsSuch:
     contract; quietly publishing them as though they could is not."""
 
     def test_the_retrieval_numbers_declare_they_are_not_reproducible(self):
-        text = " ".join(README.read_text().split())
-        window = text[text.index("**Retrieval.**"):]
-        window = window[:window.index("**Evidence.**")]
+        text = " ".join(WRITEUP.read_text().split())
+        window = text[text.index("### Retrieval"):]
+        window = window[:window.index("## Findings")]
 
         assert "198/199" in window, "the XBRL figure moved; re-check this guard"
         assert re.search(r"held privately|not recomputable", window), (
