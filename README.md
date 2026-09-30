@@ -59,73 +59,46 @@ Populations and method are in the [benchmark write-up](docs/eval/BENCHMARK_2026-
 | 6. Reliability — pass^4 | **94.8%** | **91.5%** |
 | 7. Reachability — expected path | 94.8% | 97.9% |
 
-First run of each model, except pass^4, which uses all four. Outcome excludes the 28 claims
-whose answer depends on a live share price. Three properties hold by construction and are not
-measured: an agent cannot call another agent's tools, the 59 claims that must spend nothing
-never reach one, and no decisive verdict is issued without a trusted observation.
+First run of each model; pass^4 uses all four. Outcome excludes the 28 live-price claims.
 
 **Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass@1 97.0%, **pass^4 94.8%**;
-17 misses, 16 of them escalations and one a wrong verdict (a stated net loss the parser read as
-a gain). Qwen3.8: pass@1 96.4%, **pass^4 91.5%**; 28 misses, every one an escalation, a decline
-or a timeout, none a wrong verdict.
+17 misses, one a wrong verdict (a net loss parsed as a gain). Qwen3.8: pass@1 96.4%,
+**pass^4 91.5%**; 28 misses, none a wrong verdict.
 
-**Models.** DeepSeek-V4.1-Flash is served by DeepSeek's API under the id `deepseek-flash`.
-Qwen3.8 is served on vLLM through a LiteLLM gateway, with the gateway's response cache disabled
-on every request so the four runs are independent.
+**Models.** DeepSeek-V4.1-Flash via DeepSeek's API (`deepseek-flash`); Qwen3.8 on vLLM behind a
+LiteLLM gateway, response cache off.
 
-**Retrieval.** XBRL lookups against SEC primary-source values: **198/199**, the miss a decline
-rather than a wrong number. Filing-text retrieval is measured on a separate 70-case set. Both
-gold sets are held privately, so these two figures are not recomputable from this repository.
+**Retrieval.** XBRL lookups against SEC values: **198/199**, on a gold set held privately and not
+recomputable here.
 
-**Evidence.** [`docs/eval/`](docs/eval/) holds the redacted per-claim artifacts of all eight
-runs, the layer summaries and the dataset cards; every figure in the table recomputes from
-them in CI. An earlier benchmark with `deepseek-chat` and `MiniMax-M2.7` on a smaller set remains
-in the same folder with its [write-up](docs/eval/BENCHMARK_2026-08-31.md).
+**Evidence.** [`docs/eval/`](docs/eval/): redacted artifacts of all eight runs, layer summaries
+and dataset cards. Every table figure recomputes from them in CI.
 
 ---
 
 ## Architecture
 
-A 12-node LangGraph `StateGraph`. Three domain agents route by claim type, each a ReAct loop
-with its own tools; routing, period resolution, confidence policy and guardrails are fixed
-pipeline stages, and within the selected agent the model chooses its own tool calls. One
-agent runs per claim.
+A LangGraph `StateGraph`. Routing, period resolution, confidence policy and guardrails are fixed
+stages; within the one domain agent selected per claim, a ReAct loop chooses its own tool calls.
 
-| Agent | Handles | Sources | Can delegate to |
-|---|---|---|---|
-| **SEC** | GAAP financials, and claims about what a filing says | SEC EDGAR (XBRL) via MCP, hybrid RAG over filing text | — |
-| **Market** | Prices, valuation, market cap | Finnhub | — |
-| **News** | Events and announcements | Tavily search | SEC |
+| Agent | Handles | Sources |
+|---|---|---|
+| **SEC** | GAAP financials, filing text | SEC EDGAR XBRL via MCP, hybrid RAG over filings |
+| **Market** | Prices, valuation, market cap | Finnhub |
+| **News** | Events, fines, settlements | Tavily search |
 
-**Delegation** runs one way: News asks SEC whether the issuer's own filing discloses a
-reported fine or settlement. One hop, in-process, no wire protocol. The SEC agent holds no
-delegation tool, so the call cannot recurse. Where the filing states an amount, the verdict follows the filing rather than the
-press.
+**Delegation** runs one way: News can ask SEC whether the issuer's own filing discloses a
+reported fine or settlement. SEC holds no delegation tool, so the call cannot recurse.
 
 <p align="center">
   <a href="docs/diagrams/finvet-delegation-run.png"><img src="docs/diagrams/finvet-delegation-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict" width="860"></a>
-  <br><sub>A news claim the news agent could not settle alone: it searched, then handed the finding
-  to the SEC agent, which found the same &euro;500 million in Apple's filing.</sub>
+  <br><sub>A news claim settled by delegation: the SEC agent found the same &euro;500 million in Apple's filing.</sub>
 </p>
 
-<p align="center">
-  <a href="docs/diagrams/finvet-delegation-evidence.png"><img src="docs/diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent" width="860"></a>
-  <br><sub>The same run's evidence: every tool call with its arguments and raw response, including the
-  delegation itself and what the SEC agent sent back. Click either image for full resolution.</sub>
-</p>
-
-**Trust boundary.** XBRL is the authoritative numeric source. Retrieved filing text is
-supporting evidence, and a model's reading of it never becomes the number a verdict rests on;
-absence of a passage is never treated as refutation. The one exception is fines and
-settlements, which have no XBRL concept: Python extracts the amount from Legal Proceedings
-text, and only when exactly one unambiguous candidate is present.
-
-**Guardrails and review.** Regex and PII checks always run, with an optional Llama Guard layer
-on input and output. The guards decide safety; the parser decides whether a claim is
-verifiable. Review triggers on low confidence, unsafe output, or a press-versus-filing
-conflict, pausing at a LangGraph checkpoint and resuming with the reviewer's decision merged
-in. Every tool call and verdict is persisted with a checksum the API re-verifies on read; see
-[SECURITY.md](SECURITY.md) for what that does and does not guarantee.
+**Review and audit.** Regex and PII guards always run, with optional Llama Guard. Low
+confidence, unsafe output or a press-versus-filing conflict pauses the graph at a checkpoint
+until a reviewer decides. Every tool call and verdict is persisted with a checksum the API
+re-verifies on read ([SECURITY.md](SECURITY.md)).
 
 Mechanics — retrieval fusion, delegation states, review recovery:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
