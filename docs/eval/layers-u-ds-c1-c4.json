@@ -1,0 +1,459 @@
+{
+ "runs": [
+  "u-ds-c1",
+  "u-ds-c2",
+  "u-ds-c3",
+  "u-ds-c4"
+ ],
+ "reliability": {
+  "n": 329,
+  "k": 4,
+  "pass_at_1": 0.9696048632218845,
+  "pass_hat_k": 0.9483282674772037,
+  "unstable": [
+   45,
+   60,
+   61,
+   1027,
+   1029,
+   1067,
+   1073,
+   1114,
+   1154,
+   1155,
+   1156,
+   1185,
+   1223,
+   1241
+  ],
+  "per_run": {
+   "u-ds-c1": 0.9696048632218845,
+   "u-ds-c2": 0.9787234042553191,
+   "u-ds-c3": 0.9665653495440729,
+   "u-ds-c4": 0.9696048632218845
+  }
+ },
+ "calibration": {
+  "n": 1252,
+  "ece": 0.12105431309902917,
+  "decisive_ece": 0.05038353601495274,
+  "decisive_n": 1069,
+  "bins": [
+   {
+    "lower": 0.0,
+    "n": 17,
+    "accuracy": 0.0,
+    "mean_confidence": 0.0
+   },
+   {
+    "lower": 0.2,
+    "n": 116,
+    "accuracy": 0.9568965517241379,
+    "mean_confidence": 0.19999999999999957
+   },
+   {
+    "lower": 0.5,
+    "n": 50,
+    "accuracy": 0.74,
+    "mean_confidence": 0.5420000000000004
+   },
+   {
+    "lower": 0.8,
+    "n": 4,
+    "accuracy": 0.5,
+    "mean_confidence": 0.8500000000000001
+   },
+   {
+    "lower": 0.9,
+    "n": 1065,
+    "accuracy": 0.9990610328638497,
+    "mean_confidence": 0.949802816901423
+   }
+  ]
+ },
+ "grounding": {
+  "decisive_numeric": 969,
+  "traceable": 969,
+  "untraceable": []
+ },
+ "risk": {
+  "scored": 1316,
+  "correct": 1278,
+  "declined": 36,
+  "dangerous": [
+   [
+    "u-ds-c1",
+    1073
+   ],
+   [
+    "u-ds-c3",
+    1073
+   ]
+  ]
+ },
+ "trajectory": {
+  "scored": 1066,
+  "required_met": 1054,
+  "lane_violations": [],
+  "missing_required": [
+   [
+    1205,
+    "u-ds-c1: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1205,
+    "u-ds-c2: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1205,
+    "u-ds-c3: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1205,
+    "u-ds-c4: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1206,
+    "u-ds-c2: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1206,
+    "u-ds-c3: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1206,
+    "u-ds-c4: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1207,
+    "u-ds-c1: market needs one of ['get_stock_quote'], called ['get_daily_prices', 'search_past_verifications']"
+   ],
+   [
+    1207,
+    "u-ds-c2: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1207,
+    "u-ds-c3: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1207,
+    "u-ds-c4: market needs one of ['get_stock_quote'], called ['get_daily_prices']"
+   ],
+   [
+    1242,
+    "u-ds-c2: xbrl needs one of ['get_balance_sheet', 'get_cash_flow', 'get_income_statement'], called ['get_company_info', 'get_recent_filings', 'get_recent_filings', 'get_recent_filings', 'get_recent_filings', 'get_recent_filings', 'search_past_verifications', 'search_filing_text', 'get_recent_filings', 'get_recent_filings', 'search_filing_text', 'search_filing_text']"
+   ]
+  ],
+  "zero_tool_expected": 236,
+  "zero_tool_actual": 172,
+  "zero_tool_breaches": [],
+  "not_executed": 64,
+  "scorer": "deepeval"
+ },
+ "routing": {
+  "scored": 1316,
+  "matched": 1248,
+  "mismatches": {
+   "51": [
+    [
+     "a2a"
+    ],
+    [
+     "rag"
+    ]
+   ],
+   "55": [
+    [
+     "a2a"
+    ],
+    [
+     "rag"
+    ]
+   ],
+   "1029": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1035": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1040": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1042": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1082": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1086": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1102": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1108": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1110": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1113": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1114": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1117": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1118": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1139": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1242": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1027": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1043": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1050": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1084": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1094": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1115": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1125": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1129": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1255": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "45": [
+    [
+     "rag"
+    ],
+    []
+   ],
+   "1080": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1109": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1112": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1241": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1252": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ]
+  },
+  "skipped_unlabelled": [
+   98,
+   99,
+   100,
+   1157,
+   1160,
+   1163,
+   1164,
+   1165,
+   1202,
+   1203,
+   1204,
+   1205,
+   1206,
+   1207
+  ]
+ }
+}

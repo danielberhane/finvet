@@ -45,6 +45,15 @@ _period_target: ContextVar[Tuple[Optional[str], Optional[str]]] = ContextVar(
     "finvet_sec_period_target", default=(None, None)
 )
 
+# The fiscal label the claim itself carries -- (2025, "FY"), (2025, "Q2").
+# Beside the date target, not instead of it: the date is a calendar
+# approximation made before anyone has asked the issuer when its year ends,
+# and Home Depot's fiscal 2025 ends in February 2026. The label is what the
+# issuer's own filings can be asked about.
+_fiscal_target: ContextVar[Optional[Tuple[int, str]]] = ContextVar(
+    "finvet_sec_fiscal_target", default=None
+)
+
 # Period types that name a real reporting date. "current" and "event_relative"
 # carry today's date as a placeholder — targeting XBRL with it would match
 # nothing and flag every value unverified.
@@ -62,18 +71,41 @@ def period_target_for(canonical_period: Any) -> Optional[Tuple[str, str]]:
     return end_date, period_type
 
 
+def fiscal_target_for(canonical_period: Any) -> Optional[Tuple[int, str]]:
+    """(fiscal year, FY or Qn) for a period the claim labels as one."""
+    if canonical_period is None:
+        return None
+    year = getattr(canonical_period, "fiscal_year", None)
+    period_type = getattr(canonical_period, "period_type", None)
+    if not isinstance(year, int):
+        return None
+    if period_type == "annual":
+        return year, "FY"
+    quarter = getattr(canonical_period, "fiscal_quarter", None)
+    if period_type == "quarterly" and quarter in ("Q1", "Q2", "Q3", "Q4"):
+        return year, quarter
+    return None
+
+
 @contextmanager
-def use_period_target(period_end: Optional[str], period_type: Optional[str]):
+def use_period_target(period_end: Optional[str], period_type: Optional[str],
+                      fiscal: Optional[Tuple[int, str]] = None):
     """Apply a resolved period to every SEC tool call made inside the block."""
     token = _period_target.set((period_end, period_type))
+    fiscal_token = _fiscal_target.set(fiscal)
     try:
         yield
     finally:
+        _fiscal_target.reset(fiscal_token)
         _period_target.reset(token)
 
 
 def _current_period_target() -> Tuple[Optional[str], Optional[str]]:
     return _period_target.get()
+
+
+def _current_fiscal_target() -> Tuple[Optional[int], Optional[str]]:
+    return _fiscal_target.get() or (None, None)
 
 
 def _set_client(client: SECEdgarClient) -> None:
@@ -96,6 +128,15 @@ def _format_financial_items(financials: list) -> list[dict]:
             # subsidiary figure is not the entity-wide number a claim asks
             # about, and dropping this made the two indistinguishable.
             "consolidated": f.consolidated,
+            # Which period the issuer's filings say this is, where the value
+            # of record was filed, and what it replaced.
+            "period_start": f.period_start,
+            "fiscal_year": f.fiscal_year,
+            "fiscal_period": f.fiscal_period,
+            "superseded_values": f.superseded_values,
+            "source_accession": f.source_accession,
+            "source_form": f.source_form,
+            "source_filed": f.source_filed,
         }
         for f in financials
     ]
@@ -249,12 +290,15 @@ def get_income_statement(
     try:
         client = _get_client()
         period_end, resolved_period = _current_period_target()
+        fiscal_year, fiscal_period = _current_fiscal_target()
         financials = client.get_financials(
             identifier=cik,
             accession_number=accession_number,
             statement_type="income",
             period=resolved_period or period,
             period_end=period_end,
+            fiscal_year=fiscal_year,
+            fiscal_period=fiscal_period,
         )
         if financials:
             logger.info(f"Income statement: {len(financials)} items, periods: {set(f.period for f in financials)}")
@@ -305,12 +349,15 @@ def get_balance_sheet(
     try:
         client = _get_client()
         period_end, resolved_period = _current_period_target()
+        fiscal_year, fiscal_period = _current_fiscal_target()
         financials = client.get_financials(
             identifier=cik,
             accession_number=accession_number,
             statement_type="balance",
             period=resolved_period or "quarterly",
             period_end=period_end,
+            fiscal_year=fiscal_year,
+            fiscal_period=fiscal_period,
         )
         if financials:
             logger.info(f"Balance sheet: {len(financials)} items, periods: {set(f.period for f in financials)}")
@@ -362,12 +409,15 @@ def get_cash_flow(
     try:
         client = _get_client()
         period_end, resolved_period = _current_period_target()
+        fiscal_year, fiscal_period = _current_fiscal_target()
         financials = client.get_financials(
             identifier=cik,
             accession_number=accession_number,
             statement_type="cashflow",
             period=resolved_period or period,
             period_end=period_end,
+            fiscal_year=fiscal_year,
+            fiscal_period=fiscal_period,
         )
         if financials:
             logger.info(f"Cash flow: {len(financials)} items, periods: {set(f.period for f in financials)}")

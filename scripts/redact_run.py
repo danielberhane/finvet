@@ -9,11 +9,12 @@ to produce a published artifact, and it refuses to write anything that still
 contains a home path or an IPv4 literal.
 
 What is withheld and what is kept:
-  - `results[*].claim` is replaced for every row except the ones registered
-    as burned for that dataset in `finvet.eval.exclusions` (rows already
-    published in full in DATASET_CARD.md). Expected labels, verdicts,
-    confidences, tool calls and timings are all kept, so every published
-    metric recomputes from the redacted file.
+  - `results[*].claim` and `results[*].gold_parse` are replaced for every row
+    except the ones registered as burned for that dataset in
+    `finvet.eval.exclusions` (rows already published in full in
+    DATASET_CARD.md). Expected labels, verdicts, confidences, tool calls and
+    timings are all kept, so every published metric recomputes from the
+    redacted file.
   - `dataset` is reduced to its basename.
   - every `base_url` whose host is not a public provider is replaced with a
     placeholder. The model name, temperature and structured-output method
@@ -45,11 +46,11 @@ WITHHELD = "[withheld — see DATASET_CARD.md]"
 GATEWAY_PLACEHOLDER = "<self-hosted LiteLLM gateway>"
 PUBLIC_HOSTS = frozenset({"api.deepseek.com"})
 REDACTION_NOTE = (
-    "claim text withheld for all rows except the ones burned in "
-    "DATASET_CARD.md; expected labels and all recorded behavior retained, so "
-    "every published metric recomputes from this file. Dataset path reduced "
-    "to its basename; non-public base_url values replaced. Produced by "
-    "scripts/redact_run.py."
+    "claim text and gold_parse withheld for all rows except the ones burned "
+    "in DATASET_CARD.md; expected labels and all recorded behavior retained, "
+    "so every published metric recomputes from this file. Dataset path "
+    "reduced to its basename; non-public base_url values replaced. Produced "
+    "by scripts/redact_run.py."
 )
 
 _IPV4 = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
@@ -70,8 +71,11 @@ def redact(artifact: Dict[str, Any]) -> Dict[str, Any]:
     keep = burned_ids(dataset_name)
 
     for row in out.get("results", []):
-        if row.get("id") not in keep and "claim" in row:
-            row["claim"] = WITHHELD
+        if row.get("id") not in keep:
+            if "claim" in row:
+                row["claim"] = WITHHELD
+            if "gold_parse" in row:
+                row["gold_parse"] = WITHHELD
 
     for section in ("llm_config", "llm_config_client"):
         for role_cfg in (out.get(section) or {}).values():

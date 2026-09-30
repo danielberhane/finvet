@@ -1,0 +1,172 @@
+{
+ "runs": [
+  "u-qw-c1"
+ ],
+ "reliability": {
+  "n": 329,
+  "k": 1,
+  "pass_at_1": 0.9635258358662614,
+  "pass_hat_k": 0.9635258358662614,
+  "unstable": [],
+  "per_run": {
+   "u-qw-c1": 0.9635258358662614
+  }
+ },
+ "calibration": {
+  "n": 312,
+  "ece": 0.12362179487179865,
+  "decisive_ece": 0.05026515151515598,
+  "decisive_n": 264,
+  "bins": [
+   {
+    "lower": 0.0,
+    "n": 7,
+    "accuracy": 0.0,
+    "mean_confidence": 0.0
+   },
+   {
+    "lower": 0.2,
+    "n": 30,
+    "accuracy": 0.9333333333333333,
+    "mean_confidence": 0.2000000000000001
+   },
+   {
+    "lower": 0.4,
+    "n": 1,
+    "accuracy": 1.0,
+    "mean_confidence": 0.45
+   },
+   {
+    "lower": 0.5,
+    "n": 10,
+    "accuracy": 0.8,
+    "mean_confidence": 0.525
+   },
+   {
+    "lower": 0.9,
+    "n": 264,
+    "accuracy": 1.0,
+    "mean_confidence": 0.949734848484844
+   }
+  ]
+ },
+ "grounding": {
+  "decisive_numeric": 239,
+  "traceable": 239,
+  "untraceable": []
+ },
+ "risk": {
+  "scored": 329,
+  "correct": 317,
+  "declined": 12,
+  "dangerous": []
+ },
+ "trajectory": {
+  "scored": 266,
+  "required_met": 260,
+  "lane_violations": [],
+  "missing_required": [
+   [
+    1082,
+    "u-qw-c1: xbrl needs one of ['get_balance_sheet', 'get_cash_flow', 'get_income_statement'], called ['get_company_info', 'get_company_info', 'get_company_info', 'get_company_info', 'search_past_verifications', 'get_company_info', 'get_company_info', 'get_recent_filings', 'get_recent_filings', 'get_recent_filings', 'search_filing_text', 'get_recent_filings']"
+   ],
+   [
+    1113,
+    "u-qw-c1: xbrl needs one of ['get_balance_sheet', 'get_cash_flow', 'get_income_statement'], called ['get_company_info', 'get_company_info', 'get_company_info', 'get_company_info', 'search_past_verifications', 'search_filing_text', 'get_company_info', 'get_company_info', 'get_recent_filings']"
+   ],
+   [
+    1205,
+    "u-qw-c1: market needs one of ['get_stock_quote'], called ['get_daily_prices', 'search_past_verifications']"
+   ],
+   [
+    1206,
+    "u-qw-c1: market needs one of ['get_stock_quote'], called ['get_daily_prices', 'search_past_verifications']"
+   ],
+   [
+    1207,
+    "u-qw-c1: market needs one of ['get_stock_quote'], called ['get_daily_prices', 'search_past_verifications']"
+   ],
+   [
+    1242,
+    "u-qw-c1: xbrl needs one of ['get_balance_sheet', 'get_cash_flow', 'get_income_statement'], called ['get_company_info', 'get_recent_filings', 'get_recent_filings', 'search_filing_text', 'search_filing_text']"
+   ]
+  ],
+  "zero_tool_expected": 59,
+  "zero_tool_actual": 43,
+  "zero_tool_breaches": [],
+  "not_executed": 16,
+  "scorer": "deepeval"
+ },
+ "routing": {
+  "scored": 329,
+  "matched": 322,
+  "mismatches": {
+   "51": [
+    [
+     "a2a"
+    ],
+    [
+     "rag"
+    ]
+   ],
+   "55": [
+    [
+     "a2a"
+    ],
+    [
+     "rag"
+    ]
+   ],
+   "1027": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag",
+     "xbrl"
+    ]
+   ],
+   "1082": [
+    [
+     "xbrl"
+    ],
+    []
+   ],
+   "1101": [
+    [
+     "xbrl"
+    ],
+    []
+   ],
+   "1113": [
+    [
+     "xbrl"
+    ],
+    []
+   ],
+   "1242": [
+    [
+     "xbrl"
+    ],
+    [
+     "rag"
+    ]
+   ]
+  },
+  "skipped_unlabelled": [
+   98,
+   99,
+   100,
+   1157,
+   1160,
+   1163,
+   1164,
+   1165,
+   1203,
+   1204,
+   1205,
+   1206,
+   1207
+  ]
+ }
+}

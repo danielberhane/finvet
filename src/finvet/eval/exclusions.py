@@ -28,6 +28,19 @@ BURNED_ROWS: dict[str, dict[int, str]] = {
         68: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
         88: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
     },
+    "golden_g.jsonl": {
+        1079: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
+        1151: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
+        1186: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
+    },
+    "golden_u.jsonl": {
+        1: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+        68: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+        88: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+        1079: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
+        1151: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
+        1186: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
+    },
 }
 
 

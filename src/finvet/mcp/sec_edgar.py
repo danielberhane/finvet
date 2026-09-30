@@ -3,11 +3,25 @@
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-import httpx
-from pydantic import BaseModel, Field
+import time
 
+import httpx
+from pydantic import BaseModel, Field, ValidationError
+
+from ..config.constants import (
+    SEC_COMPANY_FACTS_RETRY_SECONDS,
+    SEC_COMPANY_FACTS_TIMEOUT_SECONDS,
+    SEC_COMPANY_FACTS_TTL_SECONDS,
+)
 from ..config.settings import settings
 from ..utils.logging import get_logger
+from .fact_selection import (
+    Calendar,
+    Decline,
+    build_fiscal_calendar,
+    is_statement_fact,
+    select_fact,
+)
 from .mcp_client import MCPClient, MCPError
 
 logger = get_logger(__name__)
@@ -52,6 +66,18 @@ class FinancialItem(BaseModel):
         description="True if confirmed as an entity-wide fact, False if unverified, "
                     "None if the concept is not consolidation-sensitive",
     )
+    # Set when the value was selected for a fiscal period the issuer's own
+    # filings name (fact_selection.select_fact). They say which period the
+    # number answers, where it was filed, and what it replaced.
+    period_start: Optional[str] = Field(None, description="Start date of the period")
+    fiscal_year: Optional[int] = Field(None, description="Fiscal year, as the issuer labels it")
+    fiscal_period: Optional[str] = Field(None, description="FY, Q1, Q2 or Q3")
+    superseded_values: List[float] = Field(
+        default_factory=list,
+        description="Values earlier statements reported for this period, since restated")
+    source_accession: Optional[str] = Field(None, description="Filing the value of record is from")
+    source_form: Optional[str] = Field(None, description="Form type of that filing")
+    source_filed: Optional[str] = Field(None, description="Date SEC received that filing")
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +148,8 @@ CONSOLIDATION_SENSITIVE_CONCEPTS = frozenset({
     "OperatingIncomeLoss",
 })
 
+SEC_COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+
 SEC_COMPANY_CONCEPT_URL = (
     "https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{concept}.json"
 )
@@ -156,6 +184,21 @@ def frame_for(period_end: Optional[str], period: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
+class SECDataUnavailable(Exception):
+    """SEC's feed could not be read, so no statement can be offered.
+
+    Raised rather than returning an empty statement: an empty list reads as
+    "the issuer reports nothing", and the tool would record a successful call.
+    """
+
+
+class CompanyFacts(BaseModel):
+    """What is kept of one issuer's companyfacts download: the concepts the
+    statement tools serve, and the issuer's fiscal calendar."""
+    concepts: Dict[str, Dict[str, Any]]
+    calendar: Calendar
+
+
 class SECEdgarClient:
     """Typed adapter for the SEC EDGAR MCP server (streamable-http)."""
 
@@ -164,6 +207,8 @@ class SECEdgarClient:
         self._mcp = MCPClient(self.base_url)
         self._concept_cache: Dict[tuple, Optional[Dict]] = {}
         self._frame_cache: Dict[tuple, Dict[int, Dict]] = {}
+        # CIK -> (expiry, facts). None is cached too, for a shorter time.
+        self._facts_cache: Dict[str, tuple] = {}
         # MMDD per CIK. None is a cached answer too: an issuer whose fiscal
         # year end could not be read must not be looked up once per concept.
         self._fiscal_year_ends: Dict[str, Optional[str]] = {}
@@ -213,8 +258,16 @@ class SECEdgarClient:
         statement_type: str = "income",
         period: str = "quarterly",
         period_end: Optional[str] = None,
+        fiscal_year: Optional[int] = None,
+        fiscal_period: Optional[str] = None,
     ) -> List[FinancialItem]:
         """Extract financial data from a specific filing using XBRL concepts.
+
+        With `fiscal_year` and `fiscal_period` the statement is not read from
+        a filing at all: it is the value of record for each concept in the
+        period the issuer's own filings give that name (`_resolve_fiscal`).
+        `accession_number` then has no effect, which is the point -- the agent
+        chooses the filing, and the number must not follow its choice.
 
         Uses get_xbrl_concepts on the MCP server (not get_financials) because
         get_xbrl_concepts accepts an accession_number for period-specific data
@@ -230,6 +283,10 @@ class SECEdgarClient:
         # Normalise cashflow → cashflow key
         key = "cashflow" if statement_type in ("cash", "cashflow") else statement_type
         concepts = CONCEPTS_BY_TYPE.get(key, CONCEPTS_BY_TYPE["income"])
+
+        if fiscal_year is not None and fiscal_period:
+            return self._resolve_fiscal(identifier, concepts, fiscal_year,
+                                        fiscal_period)
 
         args = {"identifier": identifier, "concepts": concepts}
         if accession_number:
@@ -349,7 +406,7 @@ class SECEdgarClient:
                     item.consolidated = None
                     continue
                 fallback = _select_entity_wide_fact(
-                    payload, accession_number, item.period_end
+                    payload, accession_number, item.period_end, period
                 )
                 if fallback is None:
                     logger.info(
@@ -429,37 +486,126 @@ class SECEdgarClient:
 
         return items
 
-    def _fetch_company_concept(self, cik: Any, concept: str) -> Optional[Dict]:
-        """Fetch one concept from data.sec.gov. Returns None on any failure."""
-        key = (str(cik), concept)
-        if key in self._concept_cache:
-            return self._concept_cache[key]
+    # -- fiscal-period resolution --------------------------------------------
 
-        url = SEC_COMPANY_CONCEPT_URL.format(
-            cik=str(cik).lstrip("0").zfill(10), concept=concept
-        )
+    def _resolve_fiscal(
+        self,
+        identifier: str,
+        concepts: List[str],
+        fiscal_year: int,
+        fiscal_period: str,
+    ) -> List[FinancialItem]:
+        """The statement for a fiscal period, one value of record per concept.
+
+        A concept that cannot be established is left out rather than offered
+        with a figure nothing confirmed; the reason is logged. See
+        `fact_selection` for the rules and the defects behind each.
+        """
+        cik = self._cik_for(identifier)
+        facts = self._company_facts(cik)
+        if facts is None:
+            raise SECDataUnavailable(
+                f"SEC companyfacts for CIK {cik} could not be read; no "
+                f"statement can be verified for fiscal {fiscal_year} {fiscal_period}"
+            )
+
+        items: List[FinancialItem] = []
+        for concept in concepts:
+            chosen = select_fact(facts.concepts.get(concept), facts.calendar,
+                                 fiscal_year, fiscal_period)
+            if isinstance(chosen, Decline):
+                if chosen.reason != "concept_not_reported":
+                    logger.info(
+                        f"{concept}: no value for fiscal {fiscal_year} "
+                        f"{fiscal_period} ({chosen.reason})"
+                    )
+                continue
+            if chosen.superseded:
+                earlier = ", ".join(f"{s.value:,.0f} (filed {s.filed})"
+                                    for s in chosen.superseded)
+                logger.info(
+                    f"{concept}: fiscal {fiscal_year} {fiscal_period} restated; "
+                    f"{earlier} superseded by {chosen.value:,.0f} "
+                    f"({chosen.form} filed {chosen.filed})"
+                )
+            items.append(FinancialItem(
+                line_item=concept,
+                concept=f"us-gaap:{concept}",
+                value=chosen.value,
+                period=chosen.end,
+                period_start=chosen.start,
+                period_end=chosen.end,
+                consolidated=True,
+                fiscal_year=chosen.fiscal_year,
+                fiscal_period=chosen.fiscal_period,
+                superseded_values=[s.value for s in chosen.superseded],
+                source_accession=chosen.accession,
+                source_form=chosen.form,
+                source_filed=chosen.filed,
+            ))
+        return items
+
+    def _cik_for(self, identifier: Any) -> str:
+        """Ten-digit CIK for a CIK or a ticker."""
+        text = str(identifier).strip()
+        if text.isdigit():
+            return text.zfill(10)
+        return str(self.get_company_info(text).cik).zfill(10)
+
+    def _company_facts(self, cik: Any) -> Optional[CompanyFacts]:
+        """One issuer's facts, downloaded once and kept for a while."""
+        key = str(cik).lstrip("0").zfill(10)
+        cached = self._facts_cache.get(key)
+        if cached is not None and cached[0] > time.monotonic():
+            return cached[1]
+
+        raw = self._download_company_facts(key)
+        facts: Optional[CompanyFacts] = None
+        if isinstance(raw, dict):
+            gaap = (raw.get("facts") or {}).get("us-gaap") or {}
+            tracked = {c for names in CONCEPTS_BY_TYPE.values() for c in names}
+            facts = CompanyFacts(
+                concepts={c: {"units": gaap[c].get("units") or {}}
+                          for c in tracked if isinstance(gaap.get(c), dict)},
+                calendar=build_fiscal_calendar(gaap),
+            )
+        ttl = (SEC_COMPANY_FACTS_TTL_SECONDS if facts is not None
+               else SEC_COMPANY_FACTS_RETRY_SECONDS)
+        self._facts_cache[key] = (time.monotonic() + ttl, facts)
+        return facts
+
+    def _download_company_facts(self, cik: str) -> Optional[Dict]:
+        """Fetch companyfacts from data.sec.gov. Returns None on any failure."""
         if settings.sec_user_agent_is_placeholder:
             logger.warning(
                 "SEC_EDGAR_USER_AGENT is still the placeholder contact. SEC Fair Access "
                 "requires a real name and email on automated requests; set it in .env."
             )
-
-        payload: Optional[Dict] = None
         try:
             resp = httpx.get(
-                url,
+                SEC_COMPANY_FACTS_URL.format(cik=cik),
                 headers={"User-Agent": settings.sec_edgar_user_agent},
-                timeout=10.0,
+                timeout=SEC_COMPANY_FACTS_TIMEOUT_SECONDS,
             )
             if resp.status_code == 200:
-                payload = resp.json()
-            elif resp.status_code != 404:
-                logger.warning(f"companyconcept {concept}: HTTP {resp.status_code}")
+                return resp.json()
+            logger.warning(f"companyfacts CIK {cik}: HTTP {resp.status_code}")
         except Exception as e:
-            logger.warning(f"companyconcept {concept} unavailable: {e}")
+            logger.warning(f"companyfacts CIK {cik} unavailable: {e}")
+        return None
 
-        self._concept_cache[key] = payload
-        return payload
+    def _fetch_company_concept(self, cik: Any, concept: str) -> Optional[Dict]:
+        """One concept's facts for an issuer, or None.
+
+        Read from the companyfacts download. This used to call SEC's
+        companyconcept endpoint, which returns an empty unit list for concepts
+        an issuer does file (VF Corp, Johnson Controls, PPG, Sonoco and
+        Fortive revenue among them), every one present in companyfacts.
+        """
+        facts = self._company_facts(cik)
+        if facts is None:
+            return None
+        return facts.concepts.get(concept)
 
     def _frames_fallback(
         self, cik: Any, concept: str, period_end: str, period: str
@@ -549,16 +695,28 @@ class SECEdgarClient:
                 logger.debug(f"Skipping non-numeric concept {concept_name}: value={value!r}")
                 continue
 
-            items.append(FinancialItem(
-                line_item=concept_name,
-                concept=f"us-gaap:{concept_name}" if concept_name else None,
-                value=value,
-                units=data.get("unit") or "USD",
-                period=data.get("period", ""),
-                period_end=data.get("period") or filing_date,
-                decimals=data.get("decimals"),
-                context_ref=data.get("context"),
-            ))
+            # One line at a time. The server sends `period: null` for some
+            # concepts, and `.get("period", "")` returns that null rather than
+            # the default; the constructor then raised and took every other
+            # line of the statement with it, including the `Assets` fact a
+            # total-assets claim asks about. A line that cannot be built is
+            # skipped alone.
+            try:
+                items.append(FinancialItem(
+                    line_item=concept_name,
+                    concept=f"us-gaap:{concept_name}" if concept_name else None,
+                    value=value,
+                    units=data.get("unit") or "USD",
+                    period=data.get("period") or "",
+                    period_end=data.get("period") or filing_date,
+                    decimals=data.get("decimals"),
+                    context_ref=data.get("context"),
+                ))
+            except ValidationError as e:
+                logger.warning(
+                    f"Skipping malformed line item {concept_name!r}: "
+                    f"{e.errors()[0].get('loc')} {e.errors()[0].get('msg')}"
+                )
 
         return items
 
@@ -568,10 +726,23 @@ class SECEdgarClient:
         self._mcp.close()
 
 
+def _from_statements(facts: List[Dict]) -> List[Dict]:
+    """Drop facts filed on a form that is not a financial statement.
+
+    A proxy statement or an 8-K can tag a us-gaap concept without being bound
+    by its definition or its scale: FedEx's proxy reports net income as 4,433,
+    MetLife's reports income available to common shareholders under the net
+    income concept. A fact naming no form is kept -- it cannot be excluded on
+    a form it does not state, and every fact SEC serves states one.
+    """
+    return [f for f in facts if f.get("form") is None or is_statement_fact(f)]
+
+
 def _select_entity_wide_fact(
     payload: Dict,
     accession_number: Optional[str],
     period_end: Optional[str],
+    period: Optional[str] = None,
 ) -> Optional[float]:
     """Pick the entity-wide fact matching this filing's reporting period.
 
@@ -579,21 +750,75 @@ def _select_entity_wide_fact(
     comparative years, so the period end is what disambiguates them. Facts from
     the filing under inspection win; otherwise any filing reporting the same
     period end is acceptable.
+
+    With a `period` kind, a duration fact must also span it. A 10-K tags the
+    fourth quarter with the same end date as the year, and for GE the
+    contract-revenue concept carries only that quarter: matched on the end
+    date alone it was served as fiscal 2023 revenue ($18.5B for a $35B
+    year), and a true claim was refuted.
     """
     if not period_end:
         return None
 
     units = (payload.get("units") or {}).get("USD") or []
-    matches = [f for f in units if f.get("end") == period_end and f.get("val") is not None]
+    matches = _from_statements(
+        [f for f in units if f.get("end") == period_end and f.get("val") is not None])
+    window = _PERIOD_DURATION_DAYS.get(period) if period else None
+    if window:
+        lo, hi = window
+        matches = [f for f in matches
+                   if (d := _fact_duration_days(f)) is None or lo <= d <= hi]
     if not matches:
         return None
 
+    matches = _supersede_restated(matches)
     same_filing = [f for f in matches if f.get("accn") == accession_number]
     chosen = same_filing or matches
     try:
         return float(chosen[0]["val"])
     except (TypeError, ValueError):
         return None
+
+
+def _filed_order(fact: Dict) -> tuple:
+    """Sort key for filing recency. `filed` is the date SEC received the
+    filing; accession prefixes belong to filing agents and do not order
+    filings, so they only break ties."""
+    return (fact.get("filed") or "", fact.get("fy") or 0, fact.get("accn") or "")
+
+
+def _supersede_restated(facts: List[Dict]) -> List[Dict]:
+    """Where filings disagree on the same (start, end), keep only the most
+    recently filed fact for that period.
+
+    A restatement is the issuer telling the SEC that the earlier figure no
+    longer describes the period; SEC's frames feed resolves the same conflict
+    by taking the latest filing. GE's fiscal 2023 10-K reports $67.954B, its
+    fiscal 2024 and 2025 10-Ks recast the year to $35.348B after the Vernova
+    spin, and preferring the filing under inspection refuted a true claim.
+    Agreeing filings pass through untouched, so the filing-under-inspection
+    preference downstream still applies to them.
+    """
+    by_period: Dict[tuple, List[Dict]] = {}
+    for f in facts:
+        by_period.setdefault((f.get("start"), f.get("end")), []).append(f)
+    kept: List[Dict] = []
+    for group in by_period.values():
+        if len({f["val"] for f in group}) > 1:
+            latest = max(group, key=_filed_order)
+            earlier = ", ".join(
+                f"{f['val']:,} (filed {f.get('filed')})"
+                for f in group if f is not latest
+            )
+            logger.info(
+                f"restated {group[0].get('start')}..{group[0].get('end')}: "
+                f"{earlier} superseded by {latest['val']:,} "
+                f"(filed {latest.get('filed')})"
+            )
+            kept.append(latest)
+        else:
+            kept.extend(group)
+    return kept
 
 
 # Expected fact duration in days, by period kind. A single end date does not
@@ -698,7 +923,8 @@ def _choose_fact_for_period(
         return None
 
     units = payload.get("units") or {}
-    facts = [f for unit in units.values() for f in unit if isinstance(f, dict)]
+    facts = _from_statements(
+        [f for unit in units.values() for f in unit if isinstance(f, dict)])
 
     if anchor is not None and period == "annual":
         matches = [
@@ -726,6 +952,7 @@ def _choose_fact_for_period(
             return None
         matches = sized
 
+    matches = _supersede_restated(matches)
     same_filing = [f for f in matches if f.get("accn") == accession_number]
     chosen = same_filing or matches
 
