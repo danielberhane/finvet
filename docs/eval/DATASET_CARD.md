@@ -1,112 +1,128 @@
-# FinVet Golden Evaluation Set — dataset card
+# FinVet golden evaluation set — dataset card
 
-**v1 · 97 claims · frozen 2026-09-01 · held out privately**
-SHA-256 `ae0ba8bf2140cbcf98e2d4aeac003c7695a6403459606340f9f1181dc49335bf`
+**golden_u v1.1 · 349 claims · 76 companies · frozen 2026-09-29 · held out privately**
+SHA-256 `fb2f98ca965492558573a489c14d34e735f6ba037b94552cf09c70f4ba3f23c2`
 
 ## Summary
 
-A held-out test set for the end-to-end FinVet pipeline. Each of the 97
-financial claims carries three labels: the verdict the system should reach,
-the evidence path it should take, and the parse its claim parser should emit.
+A held-out test set for the end-to-end FinVet pipeline. Each claim carries three
+labels: the verdict the system should reach, the evidence path it should take, and the
+parse its claim parser should emit. The claims and labels are not published, because a
+released test enters training corpora and stops measuring anything. This card is the
+public record of what the set contains, how it was built and sealed, and how a result
+on it can be checked without seeing it.
 
-The claims and labels are **not published** — a released test enters training
-corpora and stops measuring anything. This card is the public
-record: what the set contains, how it was built and sealed, and how its
-results can be checked without seeing it. Three rows are published in full
-below and permanently retired from scoring.
+The set is the union of two parts built at different times and sharing no ticker:
+
+| | Set C | Set G | golden_u |
+|---|---|---|---|
+| Rows | 97 | 252 | 349 |
+| Ids | 1–100 (gaps 35/36/97) | 1001–1257 (gaps 1158/1159/1161/1162/1171) | both |
+| Filers | 5 mega-caps (AAPL, AMZN, MSFT, NVDA, TSLA) | 71, chosen to be hard | 76 |
+| Claims written by | the author | a script, from the filer's own XBRL | |
+| Strength | 66 strict · 28 safe · 3 observe | 210 strict · 31 safe · 11 observe | 276 · 59 · 14 |
+
+Set G's own card, [`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md), is the pre-registration
+record: its pass/fail criteria A1–A13 were committed before the set was run, and it is
+not edited after the fact.
+
+## Uses
+
+A run of this set measures whether FinVet reaches the labelled verdict by the labelled
+path, on claims the system was not developed on. Six rows pause for human review and are
+decided through the review endpoint before scoring. Market rows are run after US market
+close and labelled from a snapshot quote at run start.
+
+Out of scope: the set does not measure retrieval on its own (that has separate cases),
+resistance to novel attacks (guard rows test wiring, not adversaries), or anything about
+non-US filers, multi-assertion claims or historical share prices, none of which it
+contains.
 
 ## Structure
 
-One claim per line (JSONL). Ids run 1–100 with gaps at 35/36/97 — removed
-rows are never renumbered or reused.
+One claim per line (JSONL). Removed ids are never renumbered or reused.
 
 | Field | Contents |
 |---|---|
+| `id` | stable row id |
 | `claim` | the input text — the only thing sent to the system under test |
-| `category` | pipeline path exercised (table below) |
+| `category` | pipeline path exercised |
 | `strength` | `strict` (must match) · `safe` (only the opposite verdict fails) · `observe` (recorded only) |
 | `expected` | verdict, required limitation, and the evidence sources to use — so a right answer by the wrong path is detectable |
 | `ground_truth` | why the label is correct (filed value and distance, or the design rule) |
-| `source` | verification pointer: SEC accession + XBRL concept, or the decision record |
+| `source` | verification pointer: SEC accession + XBRL concept + period, the filing section quoted, or the decision record |
 | `gold_parse` | the 7-field parse the parser should emit, with a per-row `label_source` |
+| `tags` | set G only: hardness class, the edge case the row exists for, phrasing-twin links |
+| `recipe` | set G's 20 market rows: ticker, operator and offset; the runner fills the price at run start |
 
-| Category | Rows | Tests |
-|---|---|---|
-| `sec/xbrl` | 22 | GAAP figures vs filed XBRL facts |
-| `reject` | 16 | claims that must be refused |
-| `sec/qualitative` | 12 | what a filing says, from retrieved text |
-| `declined` | 10 | claims declined with a stated limitation |
-| `a2a` | 8 | fines/settlements via News→SEC delegation |
-| `market/quote` | 8 | live prices (excluded from cross-run comparison) |
-| `sec/tolerance` | 6 | values just inside / outside the comparison band |
-| `sec/operator` | 6 | `>` `≥` `<` `≤` `approx` |
-| `guard` | 6 | injection and PII — blocked before any model call |
-| `known-defect` | 3 | observed only, never asserted |
+**Set C by category.** `sec/xbrl` 22 · `reject` 16 · `sec/qualitative` 12 · `declined` 10 ·
+`a2a` 8 (fines via News→SEC delegation) · `market/quote` 8 · `sec/tolerance` 6 ·
+`sec/operator` 6 · `guard` 6 · `known-defect` 3 (observed, never asserted).
 
-Strength: 66 strict · 28 safe · 3 observe.
+**Set G by stratum.** Generalization 130 (65 filers × one SUPPORTS and one REFUTES, in
+five hardness classes: non-calendar fiscal years, banks and insurers, mid-caps,
+non-primary revenue concepts, restated periods) · boundary 20 · fines and settlements 16 ·
+limitation controls 20 · guard 10 · fail-closed 6 · live-price recipes 20 · phrasing
+twins 30. Class membership rules and per-stratum detail are in the G card.
 
 ## Creation
 
-**Verdict labels** were read from primary sources: every numeric SEC label
-carries the accession number and XBRL concept it was checked against;
-behavioral labels (rejects, declines, guards) cite the design rule that
-forces them.
+**Verdict labels.** Every numeric label carries the accession number, XBRL concept and
+period it was checked against. Set C's were read from the filing by the author; set G's
+were derived by script from SEC `companyfacts`, with no person choosing the number, and
+re-fetched in full before the freeze. Behavioural labels (rejects, declines, guards) cite
+the design rule that forces them.
 
-**Parse labels** record their own provenance per row:
+**Parse labels** record their own provenance. No `gold_parse` was ever produced by
+running the parser under test.
 
-| `label_source` | Rows | |
-|---|---|---|
-| `derived_from_source` | 34 | derived from the row's accession/concept/period; `value` always from the claim text, never the filed figure |
-| `needs_review` | 57 | drafted from the claim text, **not yet human-adjudicated** |
-| `n/a` | 6 | guard rows — blocked before the parser runs |
+| `label_source` | Set C | Set G | |
+|---|---|---|---|
+| `derived_from_source` | 34 | 200 | from the row's accession/concept/period; `value` always from the claim text |
+| `filing_transcribed` | — | 16 | the fine or settlement sentence transcribed from the filing |
+| `needs_review` | 57 | 26 | drafted from the claim text, not human-adjudicated |
+| `n/a` | 6 | 10 | guard rows, blocked before the parser runs |
 
-No `gold_parse` was ever produced by running the parser under test. Labelled
-by a single annotator against primary sources.
+**The union** is built by `scripts/build_golden_u.py`, which refuses to write on a
+duplicate id, a schema deviation, two rows with the same normalised claim text, or two
+rows asking the same fact unless one is a phrasing twin of the other.
 
-## Considerations — biases and limitations
+**Personal data.** None. The PII guard rows use invented identifiers.
 
-- **Author-designed test of the author's own system.** For numeric rows the
-  ground truth is external (the filing decides). For behavioral rows the
-  "correct" answer is the design's own rule — those rows test conformance to
-  the spec, not the spec itself. This is not independent validation.
-- **Easiest tier of filers.** Numeric claims cover a handful of US mega-caps
-  with the cleanest XBRL. Results do not generalize to messier filers, and no
-  such claim is made.
-- **Authored phrasing.** Claims were written by the author: grammatical,
-  unambiguous, one fact each. Real user input is messier; this set has no
-  naturally-phrased arm.
-- **57 parse labels unadjudicated** — parse-accuracy numbers are provisional;
-  verdict-accuracy numbers are unaffected.
-- **Small strata.** `a2a` (8) and `guard` (6) exercise paths; their
-  per-category rates carry no statistical weight.
-- **No canary string.** Contamination would not be detectable from model
-  output; the freeze and hash mitigate but do not replace one.
+## Bias, risks and limitations
 
-## How results are checked without the data
+- **Author-built test of the author's own system.** For numeric rows the filing decides;
+  for behavioural rows the "correct" answer is the design's own rule, so those rows test
+  conformance to the spec, not the spec. This is not independent validation. What set G
+  adds is that challenge is possible for someone else: no human judgment enters a numeric
+  label, the build and scoring scripts are published, and the criteria were committed
+  before the run.
+- **83 parse labels unadjudicated** (57 in set C, 26 in set G). Parse-accuracy figures on
+  those rows are provisional; verdict accuracy is unaffected.
+- **Phrasing is tidy.** Set C was written by hand and set G's numeric claims come from
+  sentence templates. The 30 phrasing twins are the only naturally-phrased arm.
+- **Small strata.** Set C's `a2a` (8) and `guard` (6), and set G's fines stratum (16 rows,
+  6 decisive, concentrated on two filers), exercise paths; their rates carry no
+  statistical weight.
+- **Market labels are live, not frozen.** The 28 live-price rows are labelled from a
+  quote at run start and excluded from cross-run comparison.
+- **The restated class tests recasts**, not error corrections: all 13 qualifying filers
+  are spin-off or divestiture recasts. No 10-K/A appears in the set.
+- **Guard rows test wiring, not resistance.** All 16 match documented patterns.
+- **Data gaps**: non-US filers; numeric news claims other than fines; historical share
+  prices as an answerable question; claims with more than one assertion; news claims that
+  name a period; accounting restatements as distinct from recasts.
+- **No canary string.** Contamination would not be detectable from model output; the
+  freeze and the published hash mitigate but do not replace one.
 
-1. **Redacted run artifacts** (beside this card): every per-row record of
-   each published run (MiniMax c1; DeepSeek c1–c4) — expected and actual
-   verdicts, confidence, tools, retrieved values, timings — with the claim
-   text withheld. They are produced by `scripts/redact_run.py`, which also
-   reduces the dataset path to its basename, replaces any non-public
-   endpoint, and refuses to write a file that still carries a home path or an
-   IP address. Every published metric recomputes from these files.
-2. **Layer summaries** (`layers-*.json`, including the pooled
-   `layers-deepseek-c1-c4.json`) and the benchmark write-up, verbatim.
-3. **The recipe**: labels come from public primary sources under the rules
-   above, so an equivalent set can be built independently and the pipeline
-   re-scored on it.
-4. **Hash commitment**: the SHA-256 above pins every published result to one
-   immutable file.
-5. **Access on request**: available privately to reviewers; verify what you
-   receive against the hash.
+Set G's card carries the longer form of each point, and the diagnoses behind them.
 
-## Sample rows (published in full, and therefore burned)
+## Burned rows
 
-Per the exclusion policy (`src/finvet/eval/exclusions.py`), a row whose claim
-text becomes public never counts in a scored benchmark again. Ids 1, 68, 88
-are excluded from all runs after `*-c1`; they come from the three largest
-categories, so the loss of coverage is smallest.
+A row whose claim text becomes public never counts in a scored run again
+(`src/finvet/eval/exclusions.py`). Six rows are burned: **1, 68, 88** (set C, published
+below) and **1079, 1151, 1186** (set G, published in its card). A scored run is therefore
+343 rows, 329 of them with an expected verdict.
 
 **id 1 — the happy path** (`sec/xbrl`, strict): claimed value vs the filed
 XBRL fact, provenance pinning the exact filing.
@@ -156,10 +172,42 @@ number attached to an unidentifiable entity</summary>
 ```
 </details>
 
+## How results are checked without the data
+
+1. **Redacted run artifacts** in [`runs/`](runs/): every per-row record of each published
+   run — expected and actual verdicts, confidence, tools, retrieved values, timings — with
+   the claim text withheld. `scripts/redact_run.py` produces them, strips the dataset path
+   and any non-public endpoint, and refuses to write a file that still carries either.
+   Every published figure recomputes from these files, and CI does so on every run.
+2. **Layer summaries** (`runs/layers-*.json`) and the [evaluation report](README.md).
+3. **The recipe**: labels come from public primary sources under the rules above, so an
+   equivalent set can be built independently and the pipeline re-scored on it.
+4. **Hash commitment**: the SHA-256 above pins every published result to one file.
+5. **Access on request**: available privately to reviewers; verify what you receive
+   against the hash.
+
+## Which criteria apply where
+
+- The **strength contract** (`strict`/`safe`/`observe`) applies to all 349 rows and is
+  judged by `tests/integration/test_golden.py`.
+- The pre-registered **A1–A13** apply to the whole file via `scripts/score_golden_g.py`.
+  A3's baseline is computed from the set C `sec/xbrl` rows of the same run
+  (`--baseline auto`).
+
+## Run procedure
+
+Run with `--dataset golden_u.jsonl` from the private evaluation repository, with
+vendor-free labels (`u-ds-c1`, `u-qw-c1`). Before any paid run,
+`scripts/replay_fact_selection.py` replays the 214 XBRL-backed rows through the
+production path with no model and must report no unexplained miss. Market rows run after
+US market close; the six fail-closed rows are decided through `POST /review/{request_id}`
+before scoring. The full procedure is `.claude/skills/benchmark-run/SKILL.md`.
+
 ## Versions
 
-- **v0** (2026-08-30) — 100 rows, frozen.
-- **v1** (2026-09-01) — parse labels added on every row; three range claims
-  removed after range support was withdrawn (D18); frozen at the hash above.
-  Benchmark runs `deepseek-c1` / `minimax-c1` executed against it.
-- 2026-09-04 — ids 1, 68, 88 burned by publication here.
+- **Set C v1** (2026-09-01) — 97 rows, SHA-256 `ae0ba8bf…9335bf`. Ids 1, 68, 88 burned
+  2026-09-04.
+- **Set G v1.2** (2026-09-29) — 252 rows, SHA-256 `bd88c1cd…`; history in its card.
+- **golden_u v1** (2026-09-28) — 349 rows, the union.
+- **golden_u v1.1** (2026-09-29) — built from set G v1.2, same 349 rows and ids, frozen
+  at the hash above. The version every reported run uses.

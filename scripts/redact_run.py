@@ -26,7 +26,7 @@ that directory, and never overwrites an existing output.
 
 Usage:
     FINVET_GOLDEN_DIR=... .venv/bin/python scripts/redact_run.py --label deepseek-c2
-    .venv/bin/python scripts/redact_run.py --src path/to/run-...json --out-dir docs/eval
+    .venv/bin/python scripts/redact_run.py --src path/to/run-...json --out-dir docs/eval/runs
 """
 
 import argparse
@@ -158,7 +158,7 @@ def main() -> int:
     parser.add_argument("--src", help="explicit artifact path (overrides --label)")
     parser.add_argument("--dir", default=os.environ.get("FINVET_GOLDEN_DIR"),
                         help="where to look for --label (default: $FINVET_GOLDEN_DIR)")
-    parser.add_argument("--out-dir", default="docs/eval")
+    parser.add_argument("--out-dir", default="docs/eval/runs")
     parser.add_argument("--force", action="store_true",
                         help="replace an existing redacted output")
     args = parser.parse_args()
