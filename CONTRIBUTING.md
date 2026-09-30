@@ -54,7 +54,7 @@ fixture asserts the shape you remembered, not the shape the system emits.
 
 The golden dataset is held out privately, so benchmark runs are not
 reproducible from a fork. What is public is the method: redacted per-claim run
-artifacts, layer summaries, and the dataset card in `docs/eval/`, from which
+artifacts and layer summaries in `docs/eval/runs/` and the dataset card in `docs/eval/`, from which
 every published number recomputes. If you change anything the evaluation
 measures, say so in the PR; the numbers in the README are tied to specific
 recorded runs.

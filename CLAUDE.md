@@ -105,10 +105,11 @@ rather than publishing the model's reading.
   redundant Chevron threshold-boilerplate rows dropped before freeze). Lives in
   `$FINVET_GOLDEN_DIR/u/`; run with `--dataset golden_u.jsonl` and `FINVET_GOLDEN_DIR`
   pointed at `u/`; labels are vendor-free (`u-ds-c1`, `u-qw-c1`) because the README
-  recompute test pools every `docs/eval` artifact whose name contains `deepseek`; scored
+  recompute test selects `docs/eval/runs/` artifacts by label substring; scored
   by `scripts/score_golden_g.py --baseline auto` (the A3 baseline is computed from the
   golden_c rows of the same run, not a fixed constant) against the criteria in
-  `docs/eval/GOLDEN_G_CARD.md` and `docs/eval/GOLDEN_U_CARD.md`. Built by
+  `docs/eval/GOLDEN_G_CARD.md` (pre-registration record, never edited after the run)
+  and `docs/eval/DATASET_CARD.md`. Built by
   `scripts/build_golden_u.py`, which refuses to write on a duplicate-claim or
   duplicate-fact check failure. The same `run-*.json` protection applies. Old
   golden_c-only runs are superseded, not deleted.
@@ -149,8 +150,10 @@ Never attempt to route around a block — the guard firing means the action
 was in the exact class that caused the original incident.
 
 ## Also in the repo / local only
-- `docs/eval/` is the public evidence pack: dataset card, benchmark
-  write-up, redacted run artifacts, layer summaries.
+- `docs/eval/` is the public evidence pack: `README.md` (the evaluation report),
+  `DATASET_CARD.md`, `GOLDEN_G_CARD.md`, and `runs/` (redacted artifacts, layer
+  summaries). Superseded generations are removed from the tree, not kept beside
+  the current one.
   `.claude/skills/benchmark-run/` is the freeze-safe run procedure.
 - The UI calls `/verify-stream`; other routes: `/review/*`, `/memory-*`,
   `/audit/*`, `/health` (reports the models this process will actually use).

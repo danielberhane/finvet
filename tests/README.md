@@ -63,7 +63,7 @@ records; it asserts nothing. `tests/integration/test_golden.py` reads the
 recorded artifact and judges it under the strict / safe / observe strength
 contract. `scripts/eval_layers.py` reports the measurement layers over
 recorded runs. The dataset is private; redacted run artifacts and the
-dataset card live in `docs/eval/`.
+dataset card live in `docs/eval/`, the artifacts under `runs/`.
 
 ## The one rule
 
