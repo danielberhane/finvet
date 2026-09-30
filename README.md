@@ -23,9 +23,9 @@ run.
 
 ## Deterministic verdict override
 
-Models are unreliable at comparing numbers, and that comparison decides the verdict. FinVet
-recomputes it in Python; Python's result stands when the two disagree, and both are kept in the
-response. A claim with no structured value from a tool returns not enough information.
+The AI finds the number. Python compares it to the claim, because AI models make mistakes with
+numbers. If they disagree, Python's answer wins, and the response shows both. If no source
+returns a number, FinVet says "not enough information" instead of guessing.
 
 ---
 
