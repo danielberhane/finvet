@@ -59,28 +59,20 @@ Populations and method are in the [benchmark write-up](docs/eval/BENCHMARK_2026-
 | 6. Reliability — pass^4 | **94.8%** | **91.5%** |
 | 7. Reachability — expected path | 94.8% | 97.9% |
 
-First run of each model, except pass^4, which uses all four. Outcome excludes the 28 claims
-whose answer depends on a live share price. Three properties hold by construction and are not
-measured: an agent cannot call another agent's tools, the 59 claims that must spend nothing
-never reach one, and no decisive verdict is issued without a trusted observation.
+First run of each model; pass^4 uses all four. Outcome excludes the 28 live-price claims.
 
 **Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass@1 97.0%, **pass^4 94.8%**;
-17 misses, 16 of them escalations and one a wrong verdict (a stated net loss the parser read as
-a gain). Qwen3.8: pass@1 96.4%, **pass^4 91.5%**; 28 misses, every one an escalation, a decline
-or a timeout, none a wrong verdict.
+17 misses, one a wrong verdict (a net loss parsed as a gain). Qwen3.8: pass@1 96.4%,
+**pass^4 91.5%**; 28 misses, none a wrong verdict.
 
-**Models.** DeepSeek-V4.1-Flash is served by DeepSeek's API under the id `deepseek-flash`.
-Qwen3.8 is served on vLLM through a LiteLLM gateway, with the gateway's response cache disabled
-on every request so the four runs are independent.
+**Models.** DeepSeek-V4.1-Flash via DeepSeek's API (`deepseek-flash`); Qwen3.8 on vLLM behind a
+LiteLLM gateway, response cache off.
 
-**Retrieval.** XBRL lookups against SEC primary-source values: **198/199**, the miss a decline
-rather than a wrong number. Filing-text retrieval is measured on a separate 70-case set. Both
-gold sets are held privately, so these two figures are not recomputable from this repository.
+**Retrieval.** XBRL lookups against SEC values: **198/199**, on a gold set held privately and not
+recomputable here.
 
-**Evidence.** [`docs/eval/`](docs/eval/) holds the redacted per-claim artifacts of all eight
-runs, the layer summaries and the dataset cards; every figure in the table recomputes from
-them in CI. An earlier benchmark with `deepseek-chat` and `MiniMax-M2.7` on a smaller set remains
-in the same folder with its [write-up](docs/eval/BENCHMARK_2026-08-31.md).
+**Evidence.** [`docs/eval/`](docs/eval/): redacted artifacts of all eight runs, layer summaries
+and dataset cards. Every table figure recomputes from them in CI.
 
 ---
 

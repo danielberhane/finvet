@@ -39,6 +39,7 @@ from finvet.eval.measures import (  # noqa: E402
 )
 
 README = Path("README.md")
+WRITEUP = Path("docs/eval/BENCHMARK_2026-09-29.md")
 EVAL_DIR = Path("docs/eval")
 
 
@@ -154,11 +155,11 @@ class TestTheTableNamesTheModelsTheArtifactsRecord:
         # must tie that name to the id the artifact records.
         models = _paragraph("**Models.**")
         assert re.search(
-            rf"{re.escape(published)} is served by .*? under the id "
-            rf"`{re.escape(served)}`", models, re.DOTALL), (
+            rf"{re.escape(published)}\b[^;]*`{re.escape(served)}`", models,
+            re.DOTALL), (
             f"the table column reads {published!r}, but the Models "
-            f"paragraph does not say it is served under the id {served!r}, "
-            f"which the {label} artifact records")
+            f"paragraph does not give its served id {served!r}, which the "
+            f"{label} artifact records")
 
 
 class TestTheStabilityFiguresRecompute:
@@ -256,7 +257,7 @@ class TestTheClaimsAboutTheCodeHold:
         burned-row exclusions moved it after c1.
         """
         published = int(re.search(r"the (\d+) claims that must spend nothing",
-                                  README.read_text()).group(1))
+                                  WRITEUP.read_text()).group(1))
         measured = trajectory.measure(_runs("u-ds-c1"))
 
         assert published == measured.zero_tool_expected
