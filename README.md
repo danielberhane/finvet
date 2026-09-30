@@ -78,17 +78,13 @@ and dataset cards. Every table figure recomputes from them in CI.
 
 ## Architecture
 
-A LangGraph `StateGraph`. Routing, period resolution, confidence policy and guardrails are fixed
-stages; within the one domain agent selected per claim, a ReAct loop chooses its own tool calls.
+One agent runs per claim, chosen by claim type.
 
 | Agent | Handles | Sources |
 |---|---|---|
 | **SEC** | GAAP financials, filing text | SEC EDGAR XBRL via MCP, hybrid RAG over filings |
 | **Market** | Prices, valuation, market cap | Finnhub |
-| **News** | Events, fines, settlements | Tavily search |
-
-**Delegation** runs one way: News can ask SEC whether the issuer's own filing discloses a
-reported fine or settlement. SEC holds no delegation tool, so the call cannot recurse.
+| **News** | Events, fines, settlements | Tavily search, and one-way delegation to SEC (cannot recurse) |
 
 <p align="center">
   <a href="docs/diagrams/finvet-delegation-run.png"><img src="docs/diagrams/finvet-delegation-run.png" alt="FinVet verifying a news claim: the pipeline steps, the delegation to the SEC agent, and the verdict" width="860"></a>
