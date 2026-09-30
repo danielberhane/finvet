@@ -13,7 +13,7 @@ of it was caught by anything; all of it was found by a person reading closely,
 which does not scale and does not run on every push.
 
 So this reads the README, pulls the published figures out of it, recomputes
-each one from the redacted artifacts in `docs/eval/`, and fails when they
+each one from the redacted artifacts in `docs/eval/runs/`, and fails when they
 disagree. The README's own claim is that "every figure in the table recomputes
 from them" -- this is that sentence, executed.
 
@@ -39,8 +39,8 @@ from finvet.eval.measures import (  # noqa: E402
 )
 
 README = Path("README.md")
-WRITEUP = Path("docs/eval/BENCHMARK_2026-09-29.md")
-EVAL_DIR = Path("docs/eval")
+WRITEUP = Path("docs/eval/README.md")
+EVAL_DIR = Path("docs/eval/runs")
 
 
 def _runs(label):

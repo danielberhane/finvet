@@ -69,7 +69,7 @@ export FINVET_GOLDEN_DIR=/path/to/the/private/golden/repo/u
 .venv/bin/python scripts/run_golden.py --dataset golden_u.jsonl --label <label>
 ```
 Labels for golden_u are vendor-free (`u-ds-c1`, `u-qw-c1`): the README
-recompute test pools every docs/eval artifact whose name contains "deepseek".
+recompute test selects docs/eval/runs artifacts by label substring.
 Market recipe rows fetch a snapshot quote at start — run after US market close.
 The 6 fail-closed rows (from golden_g) pause for review; after the run, decide each with
 ```
@@ -94,7 +94,7 @@ For golden_u (or golden_g alone):
 golden_c sec/xbrl rows of this same run set, not a fixed constant — printed
 along with the row count it came from. A numeric override, e.g. `--baseline
 1.00`, is still accepted. See `docs/eval/GOLDEN_G_CARD.md` and
-`docs/eval/GOLDEN_U_CARD.md`.)
+`docs/eval/DATASET_CARD.md`.)
 NEVER `--json <artifact path>` — --json is an OUTPUT path and once
 overwrote 100 paid rows. (A hook now blocks this; the rule stands anyway.)
 
@@ -112,7 +112,6 @@ overwritten by a later, better-looking run.
   next didn't; that difference is the vendor, not the model). On golden_u
   (and on golden_g alone) both `market/quote` **and** `a2a` are live rows —
   the fines stratum's news search results can also change between runs.
-- One run per model gives pass@1 only. Differences of ≤3 rows out of ~86
-  are within the measured noise floor (DeepSeek pass^4 = 0.945 over c1–c4 on
-  the frozen set, `docs/eval/layers-deepseek-c1-c4.json`); claiming a model
-  difference needs ~3 runs per model.
+- One run per model gives pass@1 only. Differences of a point or two are
+  within the run-to-run spread (`docs/eval/runs/layers-u-*-c1-c4.json`);
+  claiming a model difference needs ~3 runs per model.

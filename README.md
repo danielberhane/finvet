@@ -36,11 +36,11 @@ including banks and insurers, non-calendar fiscal years and restated periods. Cl
 annual and quarterly GAAP figures, tolerance boundaries, fines and settlements, live share
 prices and filing text, plus cases that must decline, escalate or be blocked. Each row carries
 its expected verdict, evidence path and a pointer to the filing, concept and period. Full
-composition in the [golden_u card](docs/eval/GOLDEN_U_CARD.md).
+composition in the [dataset card](docs/eval/DATASET_CARD.md).
 
 **Protocol.** Two models, identical code, four runs each on 2026-09-29, scored on seven layers:
 outcome, tool trajectory, grounding, calibration, asymmetric risk, reliability, reachability.
-Populations and method are in the [benchmark write-up](docs/eval/BENCHMARK_2026-09-29.md).
+Populations and method are in the [evaluation report](docs/eval/README.md).
 
 ### Cross-model benchmark
 
@@ -63,8 +63,8 @@ verdict (a net loss parsed as a gain). Qwen3.8: pass^4 91.5%, 28 misses, none a 
 **Retrieval.** XBRL lookups 198/199 on a gold set held privately; filing-text 70/70 on a
 calibration set, not held out.
 
-**Evidence.** [`docs/eval/`](docs/eval/) holds the artifacts of all eight runs; every table
-figure recomputes from them in CI.
+**Evidence.** [`docs/eval/runs/`](docs/eval/runs/) holds the artifacts of all eight runs; every
+table figure recomputes from them in CI.
 
 ---
 
