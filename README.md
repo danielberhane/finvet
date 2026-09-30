@@ -61,7 +61,7 @@ layers:
 
 ### Cross-model benchmark
 
-| Layer | DeepSeek-V4.1-Flash (`deepseek-flash`) | `Qwen3.8` |
+| Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
 | 1. Outcome — verdict accuracy | **97.0%** | **96.7%** |
 | 2. Tool trajectory — tools called | 99.2% | 97.7% |

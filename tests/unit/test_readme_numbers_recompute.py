@@ -114,6 +114,13 @@ class TestTheResultsTableRecomputes:
             f"the artifact gives {actual:.4f}")
 
 
+def _paragraph(marker: str) -> str:
+    """The README paragraph that opens with `marker`."""
+    text = README.read_text()
+    start = text.index(marker)
+    return text[start:text.index("\n\n", start)]
+
+
 class TestTheTableNamesTheModelsTheArtifactsRecord:
     """The header was checked by nothing, and it was wrong.
 
@@ -134,17 +141,24 @@ class TestTheTableNamesTheModelsTheArtifactsRecord:
     def test_the_column_header_matches_the_artifact(self, column, label):
         header = next(line for line in README.read_text().splitlines()
                       if line.startswith("| Layer |"))
-        cell = header.split("|")[column + 1]
-        # The header may give the model's proper name with the served id in
-        # backticks beside it; the id is what the artifact records.
-        published = (cell[cell.index("`") + 1:cell.rindex("`")]
-                     if "`" in cell else cell.strip())
+        published = header.split("|")[column + 1].strip()
+        assert "`" not in published and "(" not in published, (
+            f"the table column reads {published!r}; it should be the "
+            "model's plain name, with the served id stated under Models")
 
         served = _runs(label)[0].model
+        if published == served:
+            return
 
-        assert published == served, (
-            f"the table column reads {published!r}; the {label} artifact "
-            f"records {served!r}")
+        # The header gives the model's proper name; the Models paragraph
+        # must tie that name to the id the artifact records.
+        models = _paragraph("**Models.**")
+        assert re.search(
+            rf"{re.escape(published)} is served by .*? under the id "
+            rf"`{re.escape(served)}`", models, re.DOTALL), (
+            f"the table column reads {published!r}, but the Models "
+            f"paragraph does not say it is served under the id {served!r}, "
+            f"which the {label} artifact records")
 
 
 class TestTheStabilityFiguresRecompute:
@@ -158,9 +172,7 @@ class TestTheStabilityFiguresRecompute:
     MODELS = [("DeepSeek-V4.1-Flash", "u-ds"), ("Qwen3.8", "u-qw")]
 
     def _paragraph(self):
-        text = README.read_text()
-        start = text.index("**Stability.**")
-        return text[start:text.index("\n\n", start)]
+        return _paragraph("**Stability.**")
 
     def _figures(self, name):
         after = self._paragraph()[self._paragraph().index(name):]
