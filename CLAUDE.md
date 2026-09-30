@@ -32,6 +32,14 @@ rather than publishing the model's reading.
   the server resolves it into the `prior_verification` state field; the
   free-form `memory_context` field was removed as a prompt-injection channel.
   Do not reintroduce it.
+- **Fact selection** (`mcp/fact_selection.py`, pure functions): a claim naming
+  a fiscal period is answered from SEC companyfacts, one download per issuer,
+  cached. Only statement forms (10-K, 10-Q, amendments) supply a number; the
+  issuer's own filings say what "fiscal 2025" means; the most recently filed
+  statement is the value of record and earlier figures travel with it as
+  `superseded_values`. The filing the agent opened is not an input. A claim
+  that fails against the value of record but matches a superseded figure is
+  declined with limitation `matches_superseded_value`.
 - Provenance: `_provenance_tool_names` on BaseVerificationAgent captures full
   tool results; response metadata reports `xbrl` / `rag` / `a2a` under
   `data_sources`.
@@ -74,7 +82,13 @@ rather than publishing the model's reading.
    with no code path — it fails closed to NOT_ENOUGH_INFO. Never add
    midpoint comparison: it refutes true claims whose band exceeds the
    tolerance.
-8. **Sourcing a provider-specific `.env` file then running pytest gives ~8 false failures**
+8. **Fact-selection tests use payloads recorded from SEC**
+   (`scripts/record_companyfacts_fixture.py`, `tests/fixtures/sec_companyfacts/`),
+   never written by hand, and `scripts/replay_fact_selection.py` must report no
+   unexplained miss before a paid run and after any change to selection. A
+   hand-written payload contains the cases its author thought of; SEC's data
+   held a proxy statement tagged in millions, which nobody had.
+9. **Sourcing a provider-specific `.env` file then running pytest gives ~8 false failures**
    (`LLM_*__MODEL` leaks into the test env and breaks tests that assert the
    DeepSeek defaults). Run tests from a clean shell.
 
@@ -86,6 +100,18 @@ rather than publishing the model's reading.
   in full in the dataset card); `run_golden.py` skips them, so a scored run
   is 94 rows, and the pass^k population is 91 (minus three known-defect rows
   with no expected verdict).
+- `golden_u.jsonl` (349 rows) is now the run set: the union of golden_c (97) and
+  golden_g (252 rows, ids 1001–1257, gaps at 1171 and 1158/1159/1161/1162 — four
+  redundant Chevron threshold-boilerplate rows dropped before freeze). Lives in
+  `$FINVET_GOLDEN_DIR/u/`; run with `--dataset golden_u.jsonl` and `FINVET_GOLDEN_DIR`
+  pointed at `u/`; labels are vendor-free (`u-ds-c1`, `u-qw-c1`) because the README
+  recompute test pools every `docs/eval` artifact whose name contains `deepseek`; scored
+  by `scripts/score_golden_g.py --baseline auto` (the A3 baseline is computed from the
+  golden_c rows of the same run, not a fixed constant) against the criteria in
+  `docs/eval/GOLDEN_G_CARD.md` and `docs/eval/GOLDEN_U_CARD.md`. Built by
+  `scripts/build_golden_u.py`, which refuses to write on a duplicate-claim or
+  duplicate-fact check failure. The same `run-*.json` protection applies. Old
+  golden_c-only runs are superseded, not deleted.
 - **`run-*.json` files there are PAID artifacts — never overwrite or
   delete.** `scripts/eval_layers.py --json` is an OUTPUT path, not a
   selector; use `--label` to choose runs. Publishing an artifact goes

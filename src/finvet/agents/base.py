@@ -6,12 +6,13 @@ about which tool to call, observes the result, and continues until it can
 make a verification decision.
 """
 
+import json
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Literal, Optional
 
-from langchain_core.callbacks import UsageMetadataCallbackHandler
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.callbacks import BaseCallbackHandler, UsageMetadataCallbackHandler
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langchain.agents import create_agent
 from pydantic import BaseModel, Field
@@ -29,7 +30,7 @@ from ..config.constants import (
     TOLERANCE_SEC_SMALL_VALUES,
 )
 from ..config.settings import settings
-from ..tools.sec_tools import _DATABLE_PERIOD_TYPES
+from ..tools.sec_tools import _DATABLE_PERIOD_TYPES, fiscal_target_for
 from ..llm import create_llm
 from ..llm.usage import tokens_of
 from ..config.metrics import verification_strategy_for
@@ -169,6 +170,50 @@ def settle_confidence(prior_verdict, new_verdict, prior_confidence,
     return max(prior_confidence, comparator_confidence)
 
 
+SUPERSEDED_LIMITATION = "matches_superseded_value"
+
+
+def superseded_value_match(parsed_claim, observation,
+                           agent_type="sec") -> Optional[float]:
+    """The restated figure a claim holds against, if it holds against one.
+
+    Asked only of a claim that fails against the value of record. Bank of
+    America reported 26.463B for a quarter and recast it to 27.443B a year
+    later; "revenue was 26.3B" is then not the current figure and not a false
+    statement either -- the issuer filed it. Refuting it says the claim is
+    wrong, supporting it rests a verdict on a number the issuer has replaced,
+    and both were observed. Neither is published: the claim is declined and
+    both figures are shown.
+    """
+    if observation is None:
+        return None
+    for earlier in getattr(observation, "superseded_values", None) or []:
+        verdict, _, _ = compare_observation(
+            parsed_claim, observation.model_copy(update={"value": earlier}),
+            agent_type)
+        if verdict == "SUPPORTS":
+            return earlier
+    return None
+
+
+def superseded_reasoning(parsed_claim, observation, earlier: float) -> str:
+    """Why a claim matching a restated figure was declined, in Python's words."""
+    claimed = getattr(parsed_claim, "value", None)
+    metric = getattr(parsed_claim, "metric", None) or "the claimed metric"
+    period = (f" for the period ending {observation.period_end}"
+              if observation.period_end else "")
+    filed = (f", in a {observation.source_form} filed {observation.source_filed}"
+             if observation.source_form and observation.source_filed else "")
+    return (
+        f"Declined rather than refuted. The claim states {metric} "
+        f"{claimed:,.0f}. The issuer first reported {earlier:,.0f}{period}, "
+        f"which the claim matches, and later restated it to "
+        f"{observation.value:,.0f}{filed}. The claim agrees with a figure "
+        f"the issuer filed and has since replaced, so it is neither supported "
+        f"on the current figure nor refuted."
+    )
+
+
 def deterministic_reasoning(parsed_claim, observation, verdict) -> str:
     """Python's own account of a comparison it made.
 
@@ -197,6 +242,70 @@ def _usage_total(handler: UsageMetadataCallbackHandler) -> int:
     """Total tokens the handler saw, across however many models answered."""
     return sum(int(u.get("total_tokens") or 0)
                for u in handler.usage_metadata.values())
+
+
+class _ToolTrace(BaseCallbackHandler):
+    """Every tool call the loop makes, seen as it happens.
+
+    A loop that hits its recursion limit raises with no state to read, and
+    the evidence then said `tools_called: []` for an agent that had run five
+    tools and held the answer. The
+    callbacks fire per call regardless of how the run ends, so the trace is
+    what survives a failure. `messages()` rebuilds the AIMessage/ToolMessage
+    pairs in the shape the loop itself returns, so the one extraction path
+    serves both outcomes.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._calls: Dict[str, Dict[str, Any]] = {}
+        self._order: List[str] = []
+
+    def on_tool_start(self, serialized, input_str, *, run_id, inputs=None,
+                      **kwargs) -> None:
+        key = str(run_id)
+        name = kwargs.get("name") or (serialized or {}).get("name") or "unknown"
+        self._calls[key] = {"name": name,
+                            "args": inputs if isinstance(inputs, dict) else {},
+                            "output": None, "done": False}
+        self._order.append(key)
+
+    def on_tool_end(self, output, *, run_id, **kwargs) -> None:
+        call = self._calls.get(str(run_id))
+        if call is not None:
+            call["output"] = output
+            call["done"] = True
+
+    def on_tool_error(self, error, *, run_id, **kwargs) -> None:
+        call = self._calls.get(str(run_id))
+        if call is not None:
+            call["output"] = f"Error: {error}"
+            call["done"] = True
+            call["error"] = True
+
+    def messages(self) -> List[Any]:
+        out: List[Any] = []
+        for key in self._order:
+            call = self._calls[key]
+            if not call["done"]:
+                continue
+            output = call["output"]
+            if isinstance(output, ToolMessage):
+                content = output.content
+            elif isinstance(output, str):
+                content = output
+            else:
+                try:
+                    content = json.dumps(output, default=str)
+                except (TypeError, ValueError):
+                    content = str(output)
+            out.append(AIMessage(content="", tool_calls=[
+                {"id": key, "name": call["name"], "args": call["args"]}]))
+            out.append(ToolMessage(
+                content=content if isinstance(content, str) else str(content),
+                tool_call_id=key, name=call["name"],
+                status="error" if call.get("error") else "success"))
+        return out
 
 
 class VerdictOutput(BaseModel):
@@ -293,6 +402,7 @@ class BaseVerificationAgent(ABC):
         # raises with no messages to sum and had still spent its tokens.
         self._tokens_used = 0
         usage = UsageMetadataCallbackHandler()
+        trace = _ToolTrace()
         context = self._build_context(state)
 
         # Run LangGraph react agent (handles ReAct loop internally)
@@ -300,14 +410,19 @@ class BaseVerificationAgent(ABC):
             agent_result = self.react_agent.invoke(
                 {"messages": [HumanMessage(content=context)]},
                 config={"recursion_limit": self.max_iterations * 2 + 1,
-                        "callbacks": [usage]},
+                        "callbacks": [usage, trace]},
             )
             messages = agent_result["messages"]
         except Exception as e:
             self._tokens_used += _usage_total(usage)
             logger.error(f"{self.agent_type} react agent failed: {e}")
             execution_time_ms = int((time.time() - start_time) * 1000)
-            return self._error_evidence(str(e), execution_time_ms)
+            # The loop's state is gone with the exception; the trace is not.
+            tools_called, tool_calls_detail, provenance, _ = \
+                self._extract_tool_info(trace.messages())
+            return self._error_evidence(str(e), execution_time_ms,
+                                        tools_called, tool_calls_detail,
+                                        provenance)
 
         self._tokens_used += _usage_total(usage)
 
@@ -367,6 +482,10 @@ class BaseVerificationAgent(ABC):
             # The claim usually names its own currency in plain text
             # ("500 million euros"); ParsedClaim has no field for it.
             claim_text=state.get("claim_raw"),
+            # The fiscal period as the claim labels it. A statement selected
+            # from the issuer's own fiscal calendar is matched on this, since
+            # the dates above cannot know when the issuer's year ends.
+            expected_fiscal=fiscal_target_for(usable_period),
         )
 
         # Only the SEC route runs period_resolver, so canonical_period is None
@@ -417,6 +536,24 @@ class BaseVerificationAgent(ABC):
             # is a fact about the run, not about the evidence.
             fallback, fb_confidence, fb_diff = compare_observation(
                 parsed_claim, observation, self.agent_type)
+            if fallback == "REFUTES":
+                earlier = superseded_value_match(
+                    parsed_claim, observation, self.agent_type)
+                if earlier is not None:
+                    logger.info(
+                        f"{self.agent_type} claim matches a restated figure "
+                        f"({earlier:,.0f}); REFUTES -> NOT_ENOUGH_INFO"
+                    )
+                    evidence = self._deterministic_evidence(
+                        parsed_claim, observation, "NOT_ENOUGH_INFO",
+                        min(fb_confidence, 0.5), fb_diff, temporal_status,
+                        execution_time_ms, tools_called, tool_calls_detail,
+                        provenance, str(e),
+                    )
+                    evidence["limitation"] = SUPERSEDED_LIMITATION
+                    evidence["reasoning"] = superseded_reasoning(
+                        parsed_claim, observation, earlier)
+                    return evidence
             if fallback != "NOT_ENOUGH_INFO":
                 logger.warning(
                     f"{self.agent_type} verdict extraction failed; deciding "
@@ -456,6 +593,24 @@ class BaseVerificationAgent(ABC):
             confidence = min(verdict_output.confidence,
                              settings.confidence_threshold_hitl)
             magnitude_diff = None
+
+        # A claim that fails against the value of record but holds against a
+        # figure the issuer filed and later restated is declined, not refuted.
+        superseded_limitation = None
+        reasoning = verdict_output.reasoning
+        if verdict == "REFUTES" and comparator_error is None:
+            earlier = superseded_value_match(
+                parsed_claim, observation, self.agent_type)
+            if earlier is not None:
+                logger.info(
+                    f"{self.agent_type} claim matches a restated figure "
+                    f"({earlier:,.0f}); REFUTES -> NOT_ENOUGH_INFO"
+                )
+                verdict = "NOT_ENOUGH_INFO"
+                confidence = min(confidence, 0.5)
+                superseded_limitation = SUPERSEDED_LIMITATION
+                reasoning = superseded_reasoning(
+                    parsed_claim, observation, earlier)
 
         # The same decision the override made, recorded so the response can say
         # why rather than handing back a bare NOT_ENOUGH_INFO. Its presence
@@ -501,8 +656,8 @@ class BaseVerificationAgent(ABC):
             "trusted_observation": observation.model_dump() if observation else None,
             # Whether the claim's period could be aligned with the evidence.
             "temporal_status": temporal_status,
-            "limitation": qualitative_limitation,
-            "reasoning": verdict_output.reasoning,
+            "limitation": superseded_limitation or qualitative_limitation,
+            "reasoning": reasoning,
             "execution_time_ms": execution_time_ms,
             "override_applied": override_applied,
             "llm_original_verdict": original_verdict,
@@ -904,6 +1059,7 @@ class BaseVerificationAgent(ABC):
         execution_time_ms: int,
         tools_called: Optional[List[str]] = None,
         tool_calls_detail: Optional[List[Dict[str, Any]]] = None,
+        provenance: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Build fallback evidence dict on failure."""
         return {
@@ -916,7 +1072,7 @@ class BaseVerificationAgent(ABC):
             "magnitude_difference_percent": None,
             "tools_called": tools_called or [],
             "tool_calls_detail": tool_calls_detail or [],
-            "provenance": [],
+            "provenance": provenance or [],
             "reasoning": compose_failure_reasoning(error_msg),
             "execution_time_ms": execution_time_ms,
             # Same shape as the success path — consumers read these keys

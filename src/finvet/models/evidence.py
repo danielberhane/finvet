@@ -22,7 +22,7 @@ NOT_ENOUGH_INFO.
 
 from datetime import date
 from math import isfinite
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -126,6 +126,16 @@ class TrustedObservation(BaseModel):
     observed_at: Optional[str] = None
     concept: Optional[str] = None
     source_id: Optional[str] = None
+    # Set when the value was selected for a fiscal period the issuer's own
+    # filings name. `superseded_values` are figures earlier statements
+    # reported for the same period, since restated: the comparator will not
+    # refute a claim that matches one of them.
+    period_start: Optional[str] = None
+    fiscal_year: Optional[int] = None
+    fiscal_period: Optional[str] = None
+    superseded_values: List[float] = Field(default_factory=list)
+    source_form: Optional[str] = None
+    source_filed: Optional[str] = None
 
 
 def _coerce_number(raw: Any) -> Optional[float]:
@@ -182,9 +192,18 @@ def _period_matches(period_end: Optional[str],
     return period_end == expected_end
 
 
+def _fiscal_label(item: Dict[str, Any]) -> Optional[Tuple[int, str]]:
+    """The fiscal period an item was selected for, if it was."""
+    year, period = item.get("fiscal_year"), item.get("fiscal_period")
+    if isinstance(year, int) and isinstance(period, str) and period:
+        return year, period
+    return None
+
+
 def _observation_from_items(record: ToolExecutionRecord, metric: str,
                             expected_start: Optional[str] = None,
                             expected_end: Optional[str] = None,
+                            expected_fiscal: Optional[Tuple[int, str]] = None,
                             ) -> Optional[TrustedObservation]:
     """Resolve a SEC line item by XBRL concept, from the claim's own period.
 
@@ -218,8 +237,21 @@ def _observation_from_items(record: ToolExecutionRecord, metric: str,
         if item.get("consolidated") is False:
             continue
         period_end = item.get("period_end") or record.payload.get("period_end")
-        if not _period_matches(period_end, expected_start, expected_end):
+        # A fact selected for a fiscal period is matched on that period's
+        # name, not its dates. The expected dates are a calendar
+        # approximation made upstream, and the issuer's own are what the
+        # selection used: Home Depot's fiscal 2025 ends 2026-02-01, outside
+        # any window built from the number 2025. A fact selected for a
+        # different fiscal period is the wrong evidence however its dates fall.
+        label = _fiscal_label(item)
+        if label is not None and expected_fiscal is not None:
+            if label != tuple(expected_fiscal):
+                continue
+        elif not _period_matches(period_end, expected_start, expected_end):
             continue
+        superseded = [v for v in (_coerce_number(x) for x in
+                                  item.get("superseded_values") or [])
+                      if v is not None]
         return TrustedObservation(
             tool=record.tool,
             metric=metric,
@@ -227,7 +259,14 @@ def _observation_from_items(record: ToolExecutionRecord, metric: str,
             units=item.get("units"),
             period_end=period_end,
             concept=name,
-            source_id=record.payload.get("filing_accession"),
+            source_id=(item.get("source_accession")
+                       or record.payload.get("filing_accession")),
+            period_start=item.get("period_start"),
+            fiscal_year=label[0] if label else None,
+            fiscal_period=label[1] if label else None,
+            superseded_values=superseded,
+            source_form=item.get("source_form"),
+            source_filed=item.get("source_filed"),
         )
     return None
 
@@ -486,6 +525,7 @@ def resolve_trusted_observation(
     expected_period_start: Optional[str] = None,
     narrative_metric: Optional[str] = None,
     claim_text: Optional[str] = None,
+    expected_fiscal: Optional[Tuple[int, str]] = None,
 ) -> Optional[TrustedObservation]:
     """The one number a numeric verdict may rest on, or None.
 
@@ -531,7 +571,8 @@ def resolve_trusted_observation(
 
         observation = (
             _observation_from_items(record, metric,
-                                    expected_period_start, expected_period_end)
+                                    expected_period_start, expected_period_end,
+                                    expected_fiscal)
             or _observation_from_field(record, metric)
             or _observation_from_macro(record, metric))
         if observation is None:
@@ -554,8 +595,19 @@ def resolve_trusted_observation(
         # The window still rejects the wrong year and the wrong quarter; it
         # only stops requiring the pipeline to have guessed the issuer's
         # calendar correctly in advance.
-        if not _period_matches(observation.period_end,
-                               expected_period_start, expected_period_end):
+        #
+        # An observation selected for the fiscal period the claim names has
+        # already been matched on that name, which is the stronger check: the
+        # window is a guess at the issuer's calendar and the name is the
+        # issuer's own. Home Depot's fiscal 2025 ends 2026-02-01, outside the
+        # window and correct.
+        named = (expected_fiscal is not None
+                 and observation.fiscal_year is not None
+                 and (observation.fiscal_year, observation.fiscal_period)
+                 == tuple(expected_fiscal))
+        if not named and not _period_matches(
+                observation.period_end,
+                expected_period_start, expected_period_end):
             continue
 
         return observation

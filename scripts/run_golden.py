@@ -65,6 +65,26 @@ def is_frozen(row: dict) -> bool:
     return row.get("category") in FROZEN_CATEGORIES
 
 
+def fill_recipe(row: dict, price: float, latest_trading_day, source_mode: str = "live") -> dict:
+    """Fill a live-price recipe from a snapshot quote.
+
+    The dataset row stores only the recipe; the number is unknowable in
+    advance. The verdict is fixed by the offset sign, so `expected` stays
+    frozen — only the threshold is live, and it is recorded so the label can
+    be checked against the quote that produced it.
+    """
+    if source_mode != "live":
+        raise RuntimeError("snapshot from a mock quote is not an observation")
+    threshold = round(price * (1 + row["recipe"]["offset_pct"] / 100), 2)
+    out = dict(row)
+    out["claim"] = row["claim"].replace("{threshold}", f"${threshold:,.2f}")
+    out["gold_parse"] = dict(row["gold_parse"], value=threshold)
+    out["snapshot"] = {"price": price, "latest_trading_day": latest_trading_day,
+                       "threshold": threshold,
+                       "taken_utc": datetime.now(timezone.utc).isoformat()}
+    return out
+
+
 def api_llm_config():
     """Ask the API which models it will use, or None if it cannot say.
 
@@ -82,6 +102,63 @@ def api_llm_config():
     return served if isinstance(served, dict) and served else None
 
 
+def prefetch_quotes(selected: list) -> dict:
+    """Fetch every distinct ticker's quote up front, one FinnhubClient for all of them.
+
+    A recipe row's quote used to be fetched inline, in the middle of the scored
+    loop: one bad ticker raised out of `get_quote` and killed the whole run,
+    discarding every row already paid for. Fetching everything first, with each
+    failure caught and stored rather than raised, means one bad quote costs
+    exactly the rows that needed it.
+    """
+    tickers = sorted({r["recipe"]["ticker"] for r in selected if "recipe" in r})
+    if not tickers:
+        return {}
+    from finvet.mcp.finnhub import FinnhubClient
+    client = FinnhubClient()
+    out: dict = {}
+    for ticker in tickers:
+        try:
+            out[ticker] = client.get_quote(ticker)
+        except Exception as e:
+            out[ticker] = e
+    return out
+
+
+def _quote_error_record(row: dict, exc: Exception) -> dict:
+    """An errored record for a recipe row whose quote could not be fetched.
+
+    Shaped like `run_one`'s record so the artifact stays uniform, but the API
+    is never called -- there is no threshold to verify a claim against.
+    """
+    return {
+        "id": row.get("id"),
+        "claim": row.get("claim"),
+        "category": row.get("category"),
+        "strength": row.get("strength"),
+        "frozen": is_frozen(row),
+        "expected": row.get("expected"),
+        "snapshot": row.get("snapshot"),
+        "gold_parse": row.get("gold_parse"),
+        "actual": None,
+        "error": f"quote unavailable: {exc}",
+        "elapsed_s": 0.0,
+    }
+
+
+def _claim_length_refused(body: dict) -> bool:
+    """Whether a validation error is the claim being too short or too long."""
+    errors = body.get("detail")
+    if not isinstance(errors, list):
+        return False
+    return any(
+        isinstance(e, dict)
+        and e.get("type") in ("string_too_short", "string_too_long")
+        and list(e.get("loc") or [])[-1:] == ["claim"]
+        for e in errors
+    )
+
+
 def run_one(row: dict) -> dict:
     """One claim through the live route. Never raises: a failure is an outcome."""
     started = time.time()
@@ -92,6 +169,8 @@ def run_one(row: dict) -> dict:
         "strength": row.get("strength"),
         "frozen": is_frozen(row),
         "expected": row.get("expected"),
+        "snapshot": row.get("snapshot"),
+        "gold_parse": row.get("gold_parse"),
     }
     try:
         response = httpx.post(f"{API}/verify", json={"claim": row["claim"]},
@@ -113,6 +192,13 @@ def run_one(row: dict) -> dict:
     # already maps this; the mapping belongs wherever a response is read.
     verdict = body.get("verdict")
     if verdict is None and response.status_code == 400:
+        verdict = "BLOCKED"
+    # The API's own length validation answers before the guard does, with
+    # HTTP 422. It is the same outcome -- refused at the door, no model call --
+    # and recording it as an empty verdict scored two correct refusals as
+    # wrong answers. Only a 422 about the claim's length counts: a rejected
+    # field elsewhere in the request is a malformed request, not a block.
+    if verdict is None and response.status_code == 422 and _claim_length_refused(body):
         verdict = "BLOCKED"
 
     record.update(
@@ -172,9 +258,11 @@ def main() -> int:
     parser.add_argument("--allow-model-drift", action="store_true",
                         help="run even though the API serves a different model "
                              "than this shell's env names")
+    parser.add_argument("--dataset", default="golden_c.jsonl",
+                        help="golden file inside $FINVET_GOLDEN_DIR")
     args = parser.parse_args()
 
-    path = golden_data_file()
+    path = golden_data_file(args.dataset)
     if path is None or not path.exists():
         print("FINVET_GOLDEN_DIR is unset or the dataset is missing.",
               file=sys.stderr)
@@ -191,8 +279,12 @@ def main() -> int:
                 and (not args.frozen_only or is_frozen(r))
                 and r.get("id") not in burned]
 
+    # Count the burned rows this file actually carries, not the size of the
+    # registry: a second dataset's ids are registered too, and reporting those
+    # would claim rows were skipped that were never in the file.
+    burned_here = sum(1 for r in rows if r.get("id") in burned)
     print(f"  dataset : {path}  ({len(rows)} rows, {len(selected)} selected, "
-          f"{len(burned)} burned ids skipped)")
+          f"{burned_here} burned ids skipped)")
     print(f"  api     : {API}")
 
     # What the *serving process* will use. Reading our own environment answers
@@ -262,7 +354,20 @@ def main() -> int:
         }, indent=1))
 
     results, began = [], time.time()
+    quotes = prefetch_quotes(selected)
     for n, row in enumerate(selected, 1):
+        if "recipe" in row:
+            q = quotes[row["recipe"]["ticker"]]
+            if isinstance(q, Exception):
+                record = _quote_error_record(row, q)
+                results.append(record)
+                write(results, time.time() - began, complete=False)
+                print(f"  ERR {n:>3}/{len(selected)}  id {record['id']:>3} "
+                      f"[{record['category']:<15}] {'None':<16} "
+                      f"{record['elapsed_s']:>5.1f}s  {row.get('claim', '')[:44]}",
+                      flush=True)
+                continue
+            row = fill_recipe(row, q.price, q.latest_trading_day, q.source_mode)
         record = run_one(row)
         results.append(record)
         write(results, time.time() - began, complete=False)

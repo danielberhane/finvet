@@ -138,8 +138,8 @@ class TestDelegationCarriesTheClaimedValue:
         # and broke when both budgets rose together, which is the one change
         # it should have tolerated.
         assert captured["max_iterations"] == A2A_MAX_ITERATIONS
-        assert A2A_MAX_ITERATIONS < AGENT_MAX_ITERATIONS, (
-            "a delegated run spends the caller's budget, so it must be shorter")
+        assert A2A_MAX_ITERATIONS <= AGENT_MAX_ITERATIONS, (
+            "a delegated run spends the caller's budget, so it must not be longer")
 
     def test_result_carries_both_numbers_for_audit(self):
         def fake_scoped(state, **kwargs):

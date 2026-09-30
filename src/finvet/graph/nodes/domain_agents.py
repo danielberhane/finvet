@@ -13,7 +13,11 @@ from ...models.a2a import reclassify_corroboration
 from ...models.state import VerificationState
 from ...agents import SECAgent, MarketAgent, NewsAgent
 from ...agents.base import BaseVerificationAgent, compose_failure_reasoning
-from ...tools.sec_tools import period_target_for, use_period_target
+from ...tools.sec_tools import (
+    fiscal_target_for,
+    period_target_for,
+    use_period_target,
+)
 from ...utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -365,7 +369,9 @@ def run_sec_agent_scoped(
     kwargs = {}
     if max_iterations is not None:
         kwargs["max_iterations"] = max_iterations
-    with use_period_target(*(target or (None, None))):
+    fiscal = (fiscal_target_for(state.get("canonical_period"))
+              if scope_retrieval else None)
+    with use_period_target(*(target or (None, None)), fiscal=fiscal):
         return _run_agent(SECAgent, "sec", "SEC EDGAR", state, **kwargs)
 
 
