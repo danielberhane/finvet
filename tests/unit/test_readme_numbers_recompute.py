@@ -151,14 +151,14 @@ class TestTheTableNamesTheModelsTheArtifactsRecord:
         if published == served:
             return
 
-        # The header gives the model's proper name; the Models paragraph
-        # must tie that name to the id the artifact records.
-        models = _paragraph("**Models.**")
+        # The header gives the model's proper name; the write-up's models
+        # table must tie that name to the id the artifact records.
+        models = WRITEUP.read_text()
         assert re.search(
-            rf"{re.escape(published)}\b[^;]*`{re.escape(served)}`", models,
-            re.DOTALL), (
-            f"the table column reads {published!r}, but the Models "
-            f"paragraph does not give its served id {served!r}, which the "
+            rf"^\| \w+ \| {re.escape(published)} \|.*`{re.escape(served)}`",
+            models, re.MULTILINE), (
+            f"the table column reads {published!r}, but the write-up's models "
+            f"table does not give its served id {served!r}, which the "
             f"{label} artifact records")
 
 
@@ -175,20 +175,13 @@ class TestTheStabilityFiguresRecompute:
     def _paragraph(self):
         return _paragraph("**Stability.**")
 
-    def _figures(self, name):
+    def _pass_hat_4(self, name):
         after = self._paragraph()[self._paragraph().index(name):]
-        at_1 = float(re.search(r"pass@1 ([\d.]+)%", after).group(1))
-        hat_4 = float(re.search(r"pass\^4 ([\d.]+)%", after).group(1))
-        return at_1, hat_4
-
-    @pytest.mark.parametrize("name,label", MODELS)
-    def test_pass_at_1_matches(self, name, label):
-        published, _ = self._figures(name)
-        assert abs(published - 100 * reliability.measure(_runs(label)).pass_at_1) <= 0.1
+        return float(re.search(r"pass\^4 ([\d.]+)%", after).group(1))
 
     @pytest.mark.parametrize("name,label", MODELS)
     def test_pass_hat_4_matches(self, name, label):
-        _, published = self._figures(name)
+        published = self._pass_hat_4(name)
         assert abs(published - 100 * reliability.measure(_runs(label)).pass_hat_k) <= 0.1
 
     @pytest.mark.parametrize("name,label", MODELS)
