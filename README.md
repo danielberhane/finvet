@@ -46,10 +46,14 @@ identical code, four runs each.
 | 6. Reliability — pass^4 | **94.8%** | **91.5%** |
 | 7. Reachability — expected path | 94.8% | 97.9% |
 
-First run of each model; pass^4 uses all four. Accuracy excludes the 28 live-price claims. The
-one wrong verdict in eight runs was a net loss parsed as a gain; every other miss was a decline
-or an escalation. Dataset, method, per-run results and the artifacts every figure recomputes
-from: [`docs/eval/`](docs/eval/).
+The table shows each model's first run; the pass^4 row uses all four. Accuracy leaves out the
+28 claims about live stock prices.
+
+Across all eight runs, FinVet gave one wrong answer: it read a net loss as a gain. Every other
+miss was a "not enough information" answer or a hand-off to a human reviewer.
+
+The dataset, method and every run's results, with the files each number is computed from, are
+in [`docs/eval/`](docs/eval/).
 
 ---
 
