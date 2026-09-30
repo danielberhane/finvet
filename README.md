@@ -31,18 +31,9 @@ response. A claim with no structured value from a tool returns not enough inform
 
 ## Evaluation
 
-**Claim set.** 349 financial claims across 76 US-listed companies, from mega-caps to mid-caps,
-including banks and insurers, non-calendar fiscal years and restated periods. Claims cover
-annual and quarterly GAAP figures, tolerance boundaries, fines and settlements, live share
-prices and filing text, plus cases that must decline, escalate or be blocked. Each row carries
-its expected verdict, evidence path and a pointer to the filing, concept and period. Full
-composition in the [dataset card](docs/eval/DATASET_CARD.md).
-
-**Protocol.** Two models, identical code, four runs each on 2026-09-29, scored on seven layers:
-outcome, tool trajectory, grounding, calibration, asymmetric risk, reliability, reachability.
-Populations and method are in the [evaluation report](docs/eval/README.md).
-
-### Cross-model benchmark
+349 held-out financial claims across 76 US-listed companies, from mega-caps to mid-caps,
+including banks and insurers, non-calendar fiscal years and restated periods. Two models on
+identical code, four runs each.
 
 | Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
@@ -55,16 +46,10 @@ Populations and method are in the [evaluation report](docs/eval/README.md).
 | 6. Reliability — pass^4 | **94.8%** | **91.5%** |
 | 7. Reachability — expected path | 94.8% | 97.9% |
 
-First run of each model; pass^4 uses all four. Outcome excludes the 28 live-price claims.
-
-**Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass^4 94.8%, 17 misses, one a wrong
-verdict (a net loss parsed as a gain). Qwen3.8: pass^4 91.5%, 28 misses, none a wrong verdict.
-
-**Retrieval.** XBRL lookups 198/199 on a gold set held privately; filing-text 70/70 on a
-calibration set, not held out.
-
-**Evidence.** [`docs/eval/runs/`](docs/eval/runs/) holds the artifacts of all eight runs; every
-table figure recomputes from them in CI.
+First run of each model; pass^4 uses all four. Accuracy excludes the 28 live-price claims. The
+one wrong verdict in eight runs was a net loss parsed as a gain; every other miss was a decline
+or an escalation. Dataset, method, per-run results and the artifacts every figure recomputes
+from: [`docs/eval/`](docs/eval/).
 
 ---
 

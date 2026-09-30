@@ -123,6 +123,10 @@ figure is recomputable from this repository.
    was handed carried the wrong sign. Nine restated-period claims were declined because
    they matched a figure the issuer had since replaced.
 
+**Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass^4 94.8%, 17 misses on at
+least one run, one of them the wrong verdict above. Qwen3.8: pass^4 91.5%, 28 misses, none a
+wrong verdict.
+
 Qwen's gap to DeepSeek is caution: its declines cluster on restated years, where it
 reaches the step limit and escalates, and on live-price claims, where its parser
 sometimes names no measure. It also lost eight rows across four runs to timeouts or an
