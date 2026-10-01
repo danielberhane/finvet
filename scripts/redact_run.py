@@ -12,9 +12,16 @@ What is withheld and what is kept:
   - `results[*].claim` and `results[*].gold_parse` are replaced for every row
     except the ones registered as burned for that dataset in
     `finvet.eval.exclusions` (rows already published in full in
-    DATASET_CARD.md). Expected labels, verdicts, confidences, tool calls and
-    timings are all kept, so every published metric recomputes from the
-    redacted file.
+    DATASET_CARD.md).
+  - the recorded parse and the retrieved figure are withheld too, because
+    together they rebuild the claim: ticker, value, period and operator leave
+    `actual.parsed_claim`, which keeps only `claim_type` and `metric` (the
+    tool-trajectory measure routes on those two), and `retrieved_value` and
+    `observation_period_end` are replaced, since a filed value and its period
+    end can be looked up in SEC data to name the company. Grounding only asks
+    whether a value was retrieved, which the placeholder preserves.
+  - expected labels, verdicts, confidences, tool calls and timings are kept,
+    so every published metric recomputes from the redacted file.
   - `dataset` is reduced to its basename.
   - every `base_url` whose host is not a public provider is replaced with a
     placeholder. The model name, temperature and structured-output method
@@ -46,12 +53,18 @@ WITHHELD = "[withheld — see DATASET_CARD.md]"
 GATEWAY_PLACEHOLDER = "<self-hosted LiteLLM gateway>"
 PUBLIC_HOSTS = frozenset({"api.deepseek.com"})
 REDACTION_NOTE = (
-    "claim text and gold_parse withheld for all rows except the ones burned "
-    "in DATASET_CARD.md; expected labels and all recorded behavior retained, "
-    "so every published metric recomputes from this file. Dataset path "
-    "reduced to its basename; non-public base_url values replaced. Produced "
-    "by scripts/redact_run.py."
+    "claim text, gold_parse, and the parse fields and retrieved figure that "
+    "would rebuild the claim withheld for all rows except the ones burned in "
+    "DATASET_CARD.md; expected labels, verdicts, confidences, tool calls and "
+    "timings retained, so every published metric recomputes from this file. "
+    "Dataset path reduced to its basename; non-public base_url values "
+    "replaced. Produced by scripts/redact_run.py."
 )
+# The parse fields a measure reads. Everything else in the recorded parse is
+# withheld: ticker, value and period are the claim.
+PARSE_FIELDS_KEPT = ("claim_type", "metric")
+# Recorded behaviour that pins the claim through a filing lookup.
+ACTUAL_FIELDS_WITHHELD = ("retrieved_value", "observation_period_end")
 
 _IPV4 = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
 _HOME = re.compile(r"/(?:Users|home)/[A-Za-z0-9_.-]+")
@@ -76,6 +89,15 @@ def redact(artifact: Dict[str, Any]) -> Dict[str, Any]:
                 row["claim"] = WITHHELD
             if "gold_parse" in row:
                 row["gold_parse"] = WITHHELD
+            actual = row.get("actual")
+            if isinstance(actual, dict):
+                parsed = actual.get("parsed_claim")
+                if isinstance(parsed, dict):
+                    actual["parsed_claim"] = {
+                        k: parsed.get(k) for k in PARSE_FIELDS_KEPT}
+                for field in ACTUAL_FIELDS_WITHHELD:
+                    if actual.get(field) is not None:
+                        actual[field] = WITHHELD
 
     for section in ("llm_config", "llm_config_client"):
         for role_cfg in (out.get(section) or {}).values():

@@ -175,8 +175,9 @@ number attached to an unidentifiable entity</summary>
 ## How results are checked without the data
 
 1. **Redacted run artifacts** in [`runs/`](runs/): every per-row record of each published
-   run — expected and actual verdicts, confidence, tools, retrieved values, timings — with
-   the claim text withheld. `scripts/redact_run.py` produces them, strips the dataset path
+   run — expected and actual verdicts, confidence, tools, timings — with the claim text
+   withheld, along with the parsed ticker, value and period and the retrieved figure,
+   which together would rebuild it. `scripts/redact_run.py` produces them, strips the dataset path
    and any non-public endpoint, and refuses to write a file that still carries either.
    Every published figure recomputes from these files, and CI does so on every run.
 2. **Layer summaries** (`runs/layers-*.json`) and the [evaluation report](README.md).
