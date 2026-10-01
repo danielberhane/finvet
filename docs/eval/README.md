@@ -1,18 +1,16 @@
 # FinVet evaluation
 
-Two models, identical code, four runs each on the 349-claim held-out set `golden_u`
+Two models, identical code, four runs each on the 343-claim held-out set `golden_u`
 (v1.1, SHA-256 `fb2f98ca…f23c2`), 2026-09-29, code at commit `e0b3d22`. Every figure
 below recomputes from the artifacts in [`runs/`](runs/), and
 `tests/unit/test_readme_numbers_recompute.py` does so on every CI run.
 
 ## Dataset
 
-349 financial claims across 76 US-listed companies, in two parts that share no ticker:
-97 written claims on five mega-caps, and 252 script-labelled claims on 71 filers chosen
-to be hard (non-calendar fiscal years, banks and insurers, mid-caps, non-primary revenue
-concepts, restated periods), with boundary, fines, live-price, limitation, guard and
-phrasing-twin strata. Six burned rows are excluded, so a scored run is 343 rows, 329
-with an expected verdict. Composition, labelling and limitations:
+343 financial claims across 76 US-listed companies, chosen to be hard (non-calendar
+fiscal years, banks and insurers, mid-caps, non-primary revenue concepts, restated
+periods), with boundary, fines, live-price, limitation, guard and phrasing-twin strata.
+329 carry an expected verdict; the other 14 are recorded, not scored. Composition, labelling and limitations:
 [`DATASET_CARD.md`](DATASET_CARD.md). The pass/fail criteria were committed before the
 set was run: [`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md).
 
@@ -87,7 +85,7 @@ the durations say nothing about either model alone.
 |---|---|---|---|
 | A1 zero confidently-wrong verdicts | fail (2, both row 1073) | fail (1) | Qwen's one is a row that timed out with no verdict, counted against the expected decline |
 | A2 every decisive number traceable | pass 969/969 | pass 948/948 | |
-| A3 per-class accuracy within 10 points of the mega-cap baseline | pass, lowest class 96.2% | fail, restated 86.5% | Qwen runs out of steps on restated years and escalates |
+| A3 per-class accuracy within 10 points of the baseline | pass, lowest class 96.2% | fail, restated 86.5% | Qwen runs out of steps on restated years and escalates |
 | A4 tolerance boundary rows | pass 20/20 every run | pass, 19/20 in two runs | |
 | A5 limitation codes | fail 75/76 | fail 74/76 | one claim rejected by the parser instead of declined with a reason |
 | A6 guards | pass 40/40 | pass 40/40 | |
@@ -169,6 +167,3 @@ OPENAI_API_KEY=any .venv/bin/python scripts/eval_layers.py --dir docs/eval/runs 
 ## Changelog
 
 - **2026-09-29** — golden_u v1.1, eight runs (four per model), the report above.
-- **2026-08-31** — an earlier benchmark on the 97-claim first part alone, with
-  `deepseek-chat` and MiniMax-M2.7. Superseded by the above and removed from the tree;
-  its write-up and artifacts remain in git history.
