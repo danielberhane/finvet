@@ -31,7 +31,7 @@ returns a number, FinVet says "not enough information" instead of guessing.
 
 ## Evaluation
 
-349 held-out financial claims across 76 US-listed companies, from mega-caps to mid-caps,
+343 held-out financial claims across 76 US-listed companies, from mega-caps to mid-caps,
 including banks and insurers, non-calendar fiscal years and restated periods. Two models on
 identical code, four runs each.
 
