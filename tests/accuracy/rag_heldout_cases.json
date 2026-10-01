@@ -1,0 +1,1551 @@
+{
+ "_comment": "Held-out retrieval evaluation for FinVet's filing-text RAG. 30 known-item queries written by the evaluator from passages drawn by a seeded, stratified sample (random.Random(20261001); 10 risk_factors, 8 legal_proceedings, 6 mda, 6 financial_statements_and_notes; token_count >= 200; one company each; none of the five calibration companies AAPL/AMZN/MSFT/NVDA/TSLA; one bare-table passage, CVX, skipped and replaced by the next in seeded order), 12 off-topic queries that must return nothing, 8 near-miss queries scoped to a filing the corpus does not hold. Positives carry no section filter: they measure retrieval by content. Frozen before any search was run; thresholds in docs/eval/RAG_CARD.md.",
+ "frozen": "2026-10-01",
+ "top_k": 5,
+ "corpus_sha256": "7364dc317834820ea5e54e5aebd066f8635a239d4a486a4edf873aef989f9a3b",
+ "corpus": {
+  "filings": 127,
+  "chunks": 24560,
+  "tickers": 115,
+  "list": [
+   {
+    "ticker": "AA",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 231
+   },
+   {
+    "ticker": "AAPL",
+    "filing_type": "10-Q",
+    "period_end": "2025-06-28",
+    "chunks": 33
+   },
+   {
+    "ticker": "AAPL",
+    "filing_type": "10-K",
+    "period_end": "2025-09-27",
+    "chunks": 96
+   },
+   {
+    "ticker": "AAPL",
+    "filing_type": "10-Q",
+    "period_end": "2025-12-27",
+    "chunks": 29
+   },
+   {
+    "ticker": "ABBV",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 186
+   },
+   {
+    "ticker": "ADBE",
+    "filing_type": "10-K",
+    "period_end": "2025-11-28",
+    "chunks": 161
+   },
+   {
+    "ticker": "AES",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 409
+   },
+   {
+    "ticker": "AIG",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 236
+   },
+   {
+    "ticker": "ALB",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 114
+   },
+   {
+    "ticker": "AMZN",
+    "filing_type": "10-Q",
+    "period_end": "2025-06-30",
+    "chunks": 88
+   },
+   {
+    "ticker": "AMZN",
+    "filing_type": "10-Q",
+    "period_end": "2025-09-30",
+    "chunks": 89
+   },
+   {
+    "ticker": "AMZN",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 128
+   },
+   {
+    "ticker": "APD",
+    "filing_type": "10-K",
+    "period_end": "2025-09-30",
+    "chunks": 218
+   },
+   {
+    "ticker": "ASH",
+    "filing_type": "10-K",
+    "period_end": "2025-09-30",
+    "chunks": 243
+   },
+   {
+    "ticker": "AXP",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 209
+   },
+   {
+    "ticker": "BA",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 190
+   },
+   {
+    "ticker": "BAC",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 453
+   },
+   {
+    "ticker": "BAX",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 216
+   },
+   {
+    "ticker": "BMY",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 248
+   },
+   {
+    "ticker": "CARR",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 170
+   },
+   {
+    "ticker": "CC",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 145
+   },
+   {
+    "ticker": "CE",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 226
+   },
+   {
+    "ticker": "CF",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 243
+   },
+   {
+    "ticker": "CHTR",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 138
+   },
+   {
+    "ticker": "CLF",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 204
+   },
+   {
+    "ticker": "CNP",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 355
+   },
+   {
+    "ticker": "COP",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 223
+   },
+   {
+    "ticker": "CROX",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 135
+   },
+   {
+    "ticker": "CSCO",
+    "filing_type": "10-K",
+    "period_end": "2026-07-25",
+    "chunks": 190
+   },
+   {
+    "ticker": "CVS",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 290
+   },
+   {
+    "ticker": "CVX",
+    "filing_type": "10-K",
+    "period_end": "2024-12-31",
+    "chunks": 111
+   },
+   {
+    "ticker": "CVX",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 194
+   },
+   {
+    "ticker": "DAL",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 114
+   },
+   {
+    "ticker": "DD",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 128
+   },
+   {
+    "ticker": "DG",
+    "filing_type": "10-K",
+    "period_end": "2026-01-30",
+    "chunks": 119
+   },
+   {
+    "ticker": "DINO",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 266
+   },
+   {
+    "ticker": "DIS",
+    "filing_type": "10-K",
+    "period_end": "2025-09-27",
+    "chunks": 124
+   },
+   {
+    "ticker": "DUK",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 431
+   },
+   {
+    "ticker": "DXCM",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 215
+   },
+   {
+    "ticker": "ECL",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 198
+   },
+   {
+    "ticker": "EMN",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 195
+   },
+   {
+    "ticker": "EQT",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 237
+   },
+   {
+    "ticker": "ES",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 299
+   },
+   {
+    "ticker": "ET",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 404
+   },
+   {
+    "ticker": "ETSY",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 197
+   },
+   {
+    "ticker": "EXC",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 339
+   },
+   {
+    "ticker": "F",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 145
+   },
+   {
+    "ticker": "FDX",
+    "filing_type": "10-K",
+    "period_end": "2026-05-31",
+    "chunks": 178
+   },
+   {
+    "ticker": "FE",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 395
+   },
+   {
+    "ticker": "FTV",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 162
+   },
+   {
+    "ticker": "GM",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 218
+   },
+   {
+    "ticker": "GOOGL",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 102
+   },
+   {
+    "ticker": "GPRO",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 126
+   },
+   {
+    "ticker": "GS",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 563
+   },
+   {
+    "ticker": "HAL",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 8
+   },
+   {
+    "ticker": "HD",
+    "filing_type": "10-K",
+    "period_end": "2026-02-01",
+    "chunks": 147
+   },
+   {
+    "ticker": "HOG",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 213
+   },
+   {
+    "ticker": "HRL",
+    "filing_type": "10-K",
+    "period_end": "2025-10-26",
+    "chunks": 152
+   },
+   {
+    "ticker": "HUN",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 85
+   },
+   {
+    "ticker": "IBKR",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 221
+   },
+   {
+    "ticker": "IP",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 186
+   },
+   {
+    "ticker": "JNJ",
+    "filing_type": "10-K",
+    "period_end": "2025-12-28",
+    "chunks": 199
+   },
+   {
+    "ticker": "JPM",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 83
+   },
+   {
+    "ticker": "KO",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 249
+   },
+   {
+    "ticker": "LYB",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 124
+   },
+   {
+    "ticker": "MAT",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 179
+   },
+   {
+    "ticker": "MET",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 548
+   },
+   {
+    "ticker": "META",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 251
+   },
+   {
+    "ticker": "MMM",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 213
+   },
+   {
+    "ticker": "MPC",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 237
+   },
+   {
+    "ticker": "MRK",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 9
+   },
+   {
+    "ticker": "MSFT",
+    "filing_type": "10-K",
+    "period_end": "2025-06-30",
+    "chunks": 160
+   },
+   {
+    "ticker": "MSFT",
+    "filing_type": "10-Q",
+    "period_end": "2025-09-30",
+    "chunks": 103
+   },
+   {
+    "ticker": "MSFT",
+    "filing_type": "10-Q",
+    "period_end": "2025-12-31",
+    "chunks": 113
+   },
+   {
+    "ticker": "MSFT",
+    "filing_type": "10-K",
+    "period_end": "2026-06-30",
+    "chunks": 165
+   },
+   {
+    "ticker": "MU",
+    "filing_type": "10-K",
+    "period_end": "2025-08-28",
+    "chunks": 163
+   },
+   {
+    "ticker": "NKE",
+    "filing_type": "10-K",
+    "period_end": "2026-05-31",
+    "chunks": 183
+   },
+   {
+    "ticker": "NUE",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 143
+   },
+   {
+    "ticker": "NVDA",
+    "filing_type": "10-K",
+    "period_end": "2025-01-26",
+    "chunks": 119
+   },
+   {
+    "ticker": "NVDA",
+    "filing_type": "10-Q",
+    "period_end": "2025-07-27",
+    "chunks": 69
+   },
+   {
+    "ticker": "NVDA",
+    "filing_type": "10-Q",
+    "period_end": "2025-10-26",
+    "chunks": 78
+   },
+   {
+    "ticker": "ORCL",
+    "filing_type": "10-K",
+    "period_end": "2026-05-31",
+    "chunks": 130
+   },
+   {
+    "ticker": "OXY",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 183
+   },
+   {
+    "ticker": "PBF",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 197
+   },
+   {
+    "ticker": "PCG",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 267
+   },
+   {
+    "ticker": "PFE",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 242
+   },
+   {
+    "ticker": "PG",
+    "filing_type": "10-K",
+    "period_end": "2026-06-30",
+    "chunks": 142
+   },
+   {
+    "ticker": "PLD",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 100
+   },
+   {
+    "ticker": "PLNT",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 221
+   },
+   {
+    "ticker": "PNC",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 286
+   },
+   {
+    "ticker": "PPG",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 142
+   },
+   {
+    "ticker": "PRU",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 540
+   },
+   {
+    "ticker": "PSX",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 214
+   },
+   {
+    "ticker": "PTON",
+    "filing_type": "10-K",
+    "period_end": "2026-06-30",
+    "chunks": 195
+   },
+   {
+    "ticker": "RIVN",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 233
+   },
+   {
+    "ticker": "RJF",
+    "filing_type": "10-K",
+    "period_end": "2025-09-30",
+    "chunks": 329
+   },
+   {
+    "ticker": "RPM",
+    "filing_type": "10-K",
+    "period_end": "2026-05-31",
+    "chunks": 191
+   },
+   {
+    "ticker": "RRC",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 126
+   },
+   {
+    "ticker": "RSG",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 137
+   },
+   {
+    "ticker": "SF",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 241
+   },
+   {
+    "ticker": "SHAK",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 190
+   },
+   {
+    "ticker": "SNAP",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 291
+   },
+   {
+    "ticker": "SO",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 49
+   },
+   {
+    "ticker": "SON",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 245
+   },
+   {
+    "ticker": "SPG",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 274
+   },
+   {
+    "ticker": "STLD",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 93
+   },
+   {
+    "ticker": "T",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 160
+   },
+   {
+    "ticker": "TEVA",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 233
+   },
+   {
+    "ticker": "TGT",
+    "filing_type": "10-K",
+    "period_end": "2026-01-31",
+    "chunks": 110
+   },
+   {
+    "ticker": "TROX",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 191
+   },
+   {
+    "ticker": "TRV",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 261
+   },
+   {
+    "ticker": "TSLA",
+    "filing_type": "10-Q",
+    "period_end": "2025-06-30",
+    "chunks": 58
+   },
+   {
+    "ticker": "TSLA",
+    "filing_type": "10-Q",
+    "period_end": "2025-09-30",
+    "chunks": 59
+   },
+   {
+    "ticker": "TSLA",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 176
+   },
+   {
+    "ticker": "TXRH",
+    "filing_type": "10-K",
+    "period_end": "2025-12-30",
+    "chunks": 91
+   },
+   {
+    "ticker": "UAL",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 185
+   },
+   {
+    "ticker": "UNH",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 145
+   },
+   {
+    "ticker": "USB",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 63
+   },
+   {
+    "ticker": "VFC",
+    "filing_type": "10-K",
+    "period_end": "2026-03-28",
+    "chunks": 128
+   },
+   {
+    "ticker": "VLO",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 166
+   },
+   {
+    "ticker": "VZ",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 197
+   },
+   {
+    "ticker": "W",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 180
+   },
+   {
+    "ticker": "WEC",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 308
+   },
+   {
+    "ticker": "WEN",
+    "filing_type": "10-K",
+    "period_end": "2025-12-28",
+    "chunks": 194
+   },
+   {
+    "ticker": "WMB",
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "chunks": 278
+   },
+   {
+    "ticker": "WMT",
+    "filing_type": "10-K",
+    "period_end": "2026-01-31",
+    "chunks": 159
+   },
+   {
+    "ticker": "WOLF",
+    "filing_type": "10-K",
+    "period_end": "2026-06-28",
+    "chunks": 204
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "pos-01",
+   "kind": "positive",
+   "ticker": "PLNT",
+   "query": "what happens to the company if its whole-business securitization enters rapid amortization or the notes cannot be refinanced",
+   "filters": {},
+   "expected_evidence_ids": [
+    "6b95063229b87cba614c2569f3e7962466697740b30241aa108fd5dcd2356dc2",
+    "403db733566b41e9ff88f189af5ce9b84c374f038ecacd055d7908ec6caaafea",
+    "a9b5c08c3cff94c1d63bf728a722c606553a913c7992abeb1e3ae463a35150bb"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "risk_factors",
+    "chunk_index": 61,
+    "evidence_id": "403db733566b41e9ff88f189af5ce9b84c374f038ecacd055d7908ec6caaafea",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-02",
+   "kind": "positive",
+   "ticker": "PBF",
+   "query": "California energy regulator rules on refinery turnaround timing and a cap on gasoline refining margins",
+   "filters": {},
+   "expected_evidence_ids": [
+    "ec515f46cb670c054f73c0aaf539a065d8c850d99c077b2b17b1dc024cc381e3",
+    "7df42556d30cb3c2edc643069406634398562a6fb2be198528f6c6f73be2877e",
+    "b9c8b2e076a58c0b5c8d7f70ac1299f52e802549049bb0867315c3e9a31b9b19"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "risk_factors",
+    "chunk_index": 31,
+    "evidence_id": "7df42556d30cb3c2edc643069406634398562a6fb2be198528f6c6f73be2877e",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-03",
+   "kind": "positive",
+   "ticker": "W",
+   "query": "founders hold a majority of the votes through a dual-class share structure, limiting other stockholders' influence",
+   "filters": {},
+   "expected_evidence_ids": [
+    "cff1ad3afce4159d64812fc4f37240d018c546010d72a73cade1e17ccef2e61b",
+    "f3da8c3bff4238987e2796e8b377ad8cf4627dcca5e4e84dbc64c97cc9e9031d",
+    "08923cff2499d7e6b3d3c5559fab1e8360a47fddb72b2dc5715e6c542bbd1027"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "risk_factors",
+    "chunk_index": 75,
+    "evidence_id": "f3da8c3bff4238987e2796e8b377ad8cf4627dcca5e4e84dbc64c97cc9e9031d",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-04",
+   "kind": "positive",
+   "ticker": "SNAP",
+   "query": "federal trade regulator complaint about an AI chatbot feature and the risk to younger users",
+   "filters": {},
+   "expected_evidence_ids": [
+    "623378ba454b00c4b3c57e35c079f4ad3d2cc99ccecbc7dded88682b66fe38ad",
+    "9495d4940b7774e0d5b60f72f7c6549cdaa6d5cdca292114fa45e675e85bd78d",
+    "88af9b407986efb72f61722341f2cef30488645c06a19bb83aeaa96817d53207"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "risk_factors",
+    "chunk_index": 81,
+    "evidence_id": "9495d4940b7774e0d5b60f72f7c6549cdaa6d5cdca292114fa45e675e85bd78d",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-05",
+   "kind": "positive",
+   "ticker": "TGT",
+   "query": "card processing fee costs and reliance on the health of the American consumer",
+   "filters": {},
+   "expected_evidence_ids": [
+    "2d1950a61d9c5dbbb3007d6572815f4a0aaea96bbe5eea46d070c1a6d22b73ff",
+    "0ad0dac0d3b2921d888f3e947b9bda35f82c48b4795489adff0c3c9c58d4134f",
+    "c6a190abfec13461df0c2b5903715f62e2a63933d6cc45965f69c4dc86275937"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2026-01-31",
+    "section": "risk_factors",
+    "chunk_index": 20,
+    "evidence_id": "0ad0dac0d3b2921d888f3e947b9bda35f82c48b4795489adff0c3c9c58d4134f",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-06",
+   "kind": "positive",
+   "ticker": "CF",
+   "query": "how much long-term borrowing the fertilizer maker carries and when its bonds mature",
+   "filters": {},
+   "expected_evidence_ids": [
+    "ed67571578d0a3db31d51bf53d18922c9242f30ce2d111dd74da19e569f30544",
+    "90bde60aa076277d6424e8b43dbc48ba88feceb9389949230cc6c7cd0e662119",
+    "cc09e6658865ec09fde5a941a88ed8e347aaec1926bbc7442b483790ae9feffc"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "risk_factors",
+    "chunk_index": 28,
+    "evidence_id": "90bde60aa076277d6424e8b43dbc48ba88feceb9389949230cc6c7cd0e662119",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-07",
+   "kind": "positive",
+   "ticker": "DIS",
+   "query": "carriage dispute that took the company's channels off a streaming TV service",
+   "filters": {},
+   "expected_evidence_ids": [
+    "3c100fda5e7998b86800a2dd36c66f4d25c66c7d54002128d00c3518ba5fe672",
+    "8d66a32a67a7f6cf839992d471546c883d68ad90ac08fea66b920f8b5503da46",
+    "053db053db385e321104f83bcec6f74f842ae1b41cdeba014ddce495f9a4fb48"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-09-27",
+    "section": "risk_factors",
+    "chunk_index": 13,
+    "evidence_id": "8d66a32a67a7f6cf839992d471546c883d68ad90ac08fea66b920f8b5503da46",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-08",
+   "kind": "positive",
+   "ticker": "WOLF",
+   "query": "sale of the lighting products unit and the treatment of contract costs under revenue accounting",
+   "filters": {},
+   "expected_evidence_ids": [
+    "85b8a75c404e4a426450f1ca3d391c4e236a5b3ea6488001591c85d97cb51aff",
+    "3942a7e71f12b1ed06e223fe13c8cd2fb8c211a59ccfc902bba547d98052ad38",
+    "1430f61eb5589e48dc5d5843e367bea4376d88324d23f1527ac2a68b4b53e47a"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2026-06-28",
+    "section": "risk_factors",
+    "chunk_index": 151,
+    "evidence_id": "3942a7e71f12b1ed06e223fe13c8cd2fb8c211a59ccfc902bba547d98052ad38",
+    "section_label_matches_content": false
+   }
+  },
+  {
+   "id": "pos-09",
+   "kind": "positive",
+   "ticker": "GS",
+   "query": "anti-money-laundering and sanctions obligations in the corporate cash management business",
+   "filters": {},
+   "expected_evidence_ids": [
+    "298a22aec101da2c24c1c1161a381792dd6534f7f9093eb6317792c142ac29f9",
+    "c9237852671bd3b10ac69ebf932c5e593dad67cac153d30007a128b13b89c2fc",
+    "debadc39f50c540dd6d4cc8efd7a21446d952fd1d60338d4e4dc8c1ef90dd64d"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "risk_factors",
+    "chunk_index": 74,
+    "evidence_id": "c9237852671bd3b10ac69ebf932c5e593dad67cac153d30007a128b13b89c2fc",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-10",
+   "kind": "positive",
+   "ticker": "SHAK",
+   "query": "why the burger chain does not plan to pay a dividend and what limits its ability to do so",
+   "filters": {},
+   "expected_evidence_ids": [
+    "ae0b2d4577f6bdf3efe635dcbd397ef06869ab30a9f16156783313d4f9e77525",
+    "b3e7e0c124a217e93960bfff74df29c4cc58eeef2dd07987ea79d7ed784f6479",
+    "70c82909a014cb8502f3ccf50b56c125c9e504c8a37da1d67b9472f06314e911"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "risk_factors",
+    "chunk_index": 62,
+    "evidence_id": "b3e7e0c124a217e93960bfff74df29c4cc58eeef2dd07987ea79d7ed784f6479",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-11",
+   "kind": "positive",
+   "ticker": "DD",
+   "query": "hazardous waste storage allegations at the Richmond, Virginia plant and a state settlement over forever chemicals",
+   "filters": {},
+   "expected_evidence_ids": [
+    "2ee649620e77b9e250b70fade1317f3ca1e8d1af652273fbb27239dc4f2b2a8f"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "legal_proceedings",
+    "chunk_index": 0,
+    "evidence_id": "2ee649620e77b9e250b70fade1317f3ca1e8d1af652273fbb27239dc4f2b2a8f",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-12",
+   "kind": "positive",
+   "ticker": "DXCM",
+   "query": "lawsuits by patients claiming the glucose monitoring devices were mislabelled or did not work as promised",
+   "filters": {},
+   "expected_evidence_ids": [
+    "f3588916904eaff6a42f519f5a805e3a938e2e55d5dc336f49e68384e8e56ddc",
+    "6de30c7a6a93d32080d7e39f3fed0e0f5bd5689bbd56d109263979e22a5114ce",
+    "468b939bc3baab5a067e64d5df11bab55bb4f8036ce01096b544fc0e80184674"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "legal_proceedings",
+    "chunk_index": 3,
+    "evidence_id": "6de30c7a6a93d32080d7e39f3fed0e0f5bd5689bbd56d109263979e22a5114ce",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-13",
+   "kind": "positive",
+   "ticker": "LYB",
+   "query": "dividend policy of the Dutch-domiciled chemicals company and its UK tax residency",
+   "filters": {},
+   "expected_evidence_ids": [
+    "d9c57af7eb5ce12becbc1e95309ebcf1a8b0efbca0f25500c6fae285fd81b9b5",
+    "64bbd27e8ddf009227c35a0cf1bce3113db613d62f3a9b6efff22f4997924e6b",
+    "5f22a6dae6277735ac400bcddc363983fddfa72ad3d0a3accc6659f6605c3bb3"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "legal_proceedings",
+    "chunk_index": 1,
+    "evidence_id": "64bbd27e8ddf009227c35a0cf1bce3113db613d62f3a9b6efff22f4997924e6b",
+    "section_label_matches_content": false
+   }
+  },
+  {
+   "id": "pos-14",
+   "kind": "positive",
+   "ticker": "SF",
+   "query": "why compensation costs rose in the institutional brokerage segment in 2025",
+   "filters": {},
+   "expected_evidence_ids": [
+    "e57bebf0819cfe0b1785b49b90b10f780e5dc2038c9d3b9c102a724e7fb77d4d",
+    "a263dd89bd186b92bc98a784bb0aed2cdc3ad8abb31914a1e56d27e1d4c4fb70",
+    "944a6354fc83b7f07b40cee2fed98d6f167c96a550155e94436af5cdb7e3a103"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "legal_proceedings",
+    "chunk_index": 52,
+    "evidence_id": "a263dd89bd186b92bc98a784bb0aed2cdc3ad8abb31914a1e56d27e1d4c4fb70",
+    "section_label_matches_content": false
+   }
+  },
+  {
+   "id": "pos-15",
+   "kind": "positive",
+   "ticker": "WMT",
+   "query": "how the retailer tests goodwill for impairment and whether it amortizes acquired brand names",
+   "filters": {},
+   "expected_evidence_ids": [
+    "4aaec10a1208c54c74473b03152638acec768aff7eaeca3cb6629cf22ced2ff9",
+    "de85f75f05667f0735bea84b8237f67121c8929115e62ff3d54496d621553de6",
+    "416fd5a2ffcbe41b7cdafc52db67d71f82733ab973b2099452947b0261fd9f56"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2026-01-31",
+    "section": "legal_proceedings",
+    "chunk_index": 21,
+    "evidence_id": "de85f75f05667f0735bea84b8237f67121c8929115e62ff3d54496d621553de6",
+    "section_label_matches_content": false
+   }
+  },
+  {
+   "id": "pos-16",
+   "kind": "positive",
+   "ticker": "AES",
+   "query": "environmental regulator charges against the Chilean hydroelectric project",
+   "filters": {},
+   "expected_evidence_ids": [
+    "610f20052278401a186486abf7f25bb9c295354f0438d6032392edd9cff3db08",
+    "fac04e874b4616fe76a5ed01b5373df8c0f0d196b119815ac4a3bfeecc47b214",
+    "5a77350b38dda2d33cb259595b6f0d8905c22394549dd1541d6feef2ac1887f4"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "legal_proceedings",
+    "chunk_index": 11,
+    "evidence_id": "fac04e874b4616fe76a5ed01b5373df8c0f0d196b119815ac4a3bfeecc47b214",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-17",
+   "kind": "positive",
+   "ticker": "UNH",
+   "query": "which reporting segment the banking unit moved to in the 2026 reorganization",
+   "filters": {},
+   "expected_evidence_ids": [
+    "be2542ca3bdd200be1e2d7a0fec4809c30061a468f1ae8be8236c29304566724",
+    "951a576be05f3a4bcc77022d13825615f1d0aaba79719ca60d4bed96fe3fd824",
+    "e8495402028ad15a3457ce55844442120bfc49afa20673fb534273c79b17a3dd"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "legal_proceedings",
+    "chunk_index": 3,
+    "evidence_id": "951a576be05f3a4bcc77022d13825615f1d0aaba79719ca60d4bed96fe3fd824",
+    "section_label_matches_content": false
+   }
+  },
+  {
+   "id": "pos-18",
+   "kind": "positive",
+   "ticker": "META",
+   "query": "class actions alleging the company collected people's health and tax data through its tracking tools on third-party sites",
+   "filters": {},
+   "expected_evidence_ids": [
+    "5a632d16b46d193a9ebf42cfec30637803ee364b1c15560b3424a50259a1b5e9",
+    "c9d6f84e9f78da671d676080b47fdecc2c5c94922aa14a311b2a696b8d64d010",
+    "4ad06326e026d65e3f82f1bb00e5cf96f7599967abf83cf317efc6655a99b98a"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "legal_proceedings",
+    "chunk_index": 9,
+    "evidence_id": "c9d6f84e9f78da671d676080b47fdecc2c5c94922aa14a311b2a696b8d64d010",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-19",
+   "kind": "positive",
+   "ticker": "EMN",
+   "query": "year-by-year movement in shareholders' equity including buybacks and dividends paid",
+   "filters": {},
+   "expected_evidence_ids": [
+    "d8b9ccd6b0bddbbbbea7f47f3942911091d54263249abe4220cc8d8db64bba4b",
+    "dde8c54f89aaea173e133a17fa2aebdf816cd02f42e1ba755548f22ed2aa2d39",
+    "573183d931d6b86beb4bcb9398325fa268c13ed379c964807227021c791f73d4"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "mda",
+    "chunk_index": 101,
+    "evidence_id": "dde8c54f89aaea173e133a17fa2aebdf816cd02f42e1ba755548f22ed2aa2d39",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-20",
+   "kind": "positive",
+   "ticker": "ABBV",
+   "query": "upfront research charges from buying early-stage biotech companies in 2025",
+   "filters": {},
+   "expected_evidence_ids": [
+    "46720961528b1d62783cd587c9c34628f9b4ba80c775fccac274fa2cf32f92f8",
+    "13df6bfdf8c82cae0b95fd5f319ced7764c050c2d33b6da01ded8adbecc9c3bc",
+    "285642b13a725c2baefe4bdfcefbad8536a6aeb42757553b519e7160fcfebce8"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "mda",
+    "chunk_index": 19,
+    "evidence_id": "13df6bfdf8c82cae0b95fd5f319ced7764c050c2d33b6da01ded8adbecc9c3bc",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-21",
+   "kind": "positive",
+   "ticker": "CHTR",
+   "query": "list of the cable operator's outstanding bonds inherited from the Time Warner Cable merger with their interest rates",
+   "filters": {},
+   "expected_evidence_ids": [
+    "11e261d97d370082d19c4ff1ae7dab72d0e76d788b60687e8e048cf41df8ab30",
+    "98787de1f8dd458472a249f3a5530e7441051d65156632f9cc7777f1d63d367a",
+    "8df4c405349567a3553a7190e486db5eb8ea27b35d6f2a840a110848e97e47a1"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "mda",
+    "chunk_index": 31,
+    "evidence_id": "98787de1f8dd458472a249f3a5530e7441051d65156632f9cc7777f1d63d367a",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-22",
+   "kind": "positive",
+   "ticker": "FE",
+   "query": "cross-state air pollution rule limits on sulfur dioxide and nitrogen oxide emissions for the utility",
+   "filters": {},
+   "expected_evidence_ids": [
+    "bbbe99303f5d3c167603e82b31928ffd5fd723b5c6918ea20fd3ff3fc7cebae0",
+    "75f26e3e0ff2996d5257b6cc1694ca6bcaebb653d57f920ee8cb3014365748c0",
+    "0984e1185554f0c120a0855bbc3e46152f8c39095171bf86f0d1b0d5d8f72d2a"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "mda",
+    "chunk_index": 120,
+    "evidence_id": "75f26e3e0ff2996d5257b6cc1694ca6bcaebb653d57f920ee8cb3014365748c0",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-23",
+   "kind": "positive",
+   "ticker": "HRL",
+   "query": "write-down of a minority stake in Indonesia and of the Planters brand name",
+   "filters": {},
+   "expected_evidence_ids": [
+    "809159c47af04cd97ac45ff7610857abe17bc11b319f144fdc9ee73cbac20f4c",
+    "573688ca28071f8a3e18ff2e206ed640af123cff9900080ba3c82644aacac3c4",
+    "d4773b40afad60bc511b94198155ddd3402e88ac71783b76bb6b2cc36eef1ce3"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-10-26",
+    "section": "mda",
+    "chunk_index": 7,
+    "evidence_id": "573688ca28071f8a3e18ff2e206ed640af123cff9900080ba3c82644aacac3c4",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-24",
+   "kind": "positive",
+   "ticker": "WEN",
+   "query": "how many restaurants are company-operated versus franchised and how the fiscal year is defined",
+   "filters": {},
+   "expected_evidence_ids": [
+    "d76dbc091ecd4207c7505801048df951b8a4ac39f13a4029aa648b0f9c0d4c5a",
+    "5f48d4ea759dbece2ea689cbaa0c4bed00b15b5a287881beea4886e6998c65d1",
+    "ab47a316a7a3107a51d4d23a94736d8ecc6551400a1991982c2d31133355e5f2"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-28",
+    "section": "mda",
+    "chunk_index": 2,
+    "evidence_id": "5f48d4ea759dbece2ea689cbaa0c4bed00b15b5a287881beea4886e6998c65d1",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-25",
+   "kind": "positive",
+   "ticker": "MMM",
+   "query": "funding of the company's pension plans and changes in the benefit obligation",
+   "filters": {},
+   "expected_evidence_ids": [
+    "f4a6625e5801c637d2b07adbacb69db6693ab4e61e985b0583cdf4217be6fe13",
+    "dd8a090c313623646fc111f6842cc982200177c4eff6296d82ab243f2e25e816",
+    "35a06c9907b352d377d2262644850d6ddc60724950fcb8432e1648dd2b543cd0"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "financial_statements_and_notes",
+    "chunk_index": 39,
+    "evidence_id": "dd8a090c313623646fc111f6842cc982200177c4eff6296d82ab243f2e25e816",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-26",
+   "kind": "positive",
+   "ticker": "PRU",
+   "query": "how basic and diluted earnings per share are calculated and how foreign operations are translated",
+   "filters": {},
+   "expected_evidence_ids": [
+    "54e2d723df3e0de54b29ee2800db41a3a77ba35d4ae6cf55d84b3b6857fc5d84",
+    "3888cc9d334ccd504c3dcd98d5b6b36b8f356b5db571e8a01aff0ff8d8901066",
+    "601cb6b10b953abeb7d8c2ad5d4e254eb402b60f94d3ac553c98cc6f26c92e64"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "financial_statements_and_notes",
+    "chunk_index": 58,
+    "evidence_id": "3888cc9d334ccd504c3dcd98d5b6b36b8f356b5db571e8a01aff0ff8d8901066",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-27",
+   "kind": "positive",
+   "ticker": "TRV",
+   "query": "estimating claims reserves after hurricanes and wildfires and the use of reinsurance to limit exposure",
+   "filters": {},
+   "expected_evidence_ids": [
+    "ce922bb392bde007b2f3e9ff7e33459b21ca95dbac5ef5a3a5e2db3db039f9af",
+    "f9b3dc815a5c9f5c582df25a411f89f0f69a47ad407e88aa50803986f0e501b5",
+    "c4cd2a94b2e77b2062825e268e8f3a6d700a05c70d40ab1343d6501d7c1d4f27"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "financial_statements_and_notes",
+    "chunk_index": 83,
+    "evidence_id": "f9b3dc815a5c9f5c582df25a411f89f0f69a47ad407e88aa50803986f0e501b5",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-28",
+   "kind": "positive",
+   "ticker": "OXY",
+   "query": "what the midstream and marketing segment does, from the notes to the financial statements",
+   "filters": {},
+   "expected_evidence_ids": [
+    "fe9cd883e9ba845333692807796c67844edf00bd233646cc4ef8d9643b8a118e",
+    "776e2a62f5dab4410327389990d1cf9b4e80c807deb90d3b450c8980e2210188",
+    "e03efd1b9128ec1a1ad89c76841dcbb6a637825cabd9600d7069b8960c27bf44"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "financial_statements_and_notes",
+    "chunk_index": 13,
+    "evidence_id": "776e2a62f5dab4410327389990d1cf9b4e80c807deb90d3b450c8980e2210188",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-29",
+   "kind": "positive",
+   "ticker": "MET",
+   "query": "redeemable noncontrolling interests classified outside permanent equity and notes issued by consolidated loan vehicles",
+   "filters": {},
+   "expected_evidence_ids": [
+    "e711574c30137130b9f38e5485ee2c4ff9eaf7ba118aea5260bc7eab817d67ab",
+    "026f95f084fa8400e68513b00e52d6285855461891c11d15991056c69224da45",
+    "1364ac7a01454a5fa58c118ffebc5b26dcb89577b1b5db07ede13db878ae1e92"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "financial_statements_and_notes",
+    "chunk_index": 56,
+    "evidence_id": "026f95f084fa8400e68513b00e52d6285855461891c11d15991056c69224da45",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "pos-30",
+   "kind": "positive",
+   "ticker": "MAT",
+   "query": "the auditor's critical audit matter on management's estimate of customer sales allowances",
+   "filters": {},
+   "expected_evidence_ids": [
+    "f6d274f4e83dc9b9e0bec62326c225dfd72fdeaa3eb2c89a6ec9bf692951fae1",
+    "a5c9e6c88704c2bdc393312f4aad4f482c63de0a3d48ad129c9b2b5218d8abcf",
+    "c5211fe4959ee60d014588fa7b5fc5cec58c066fc9248e29e071e7d94ee0b977"
+   ],
+   "source": {
+    "filing_type": "10-K",
+    "period_end": "2025-12-31",
+    "section": "financial_statements_and_notes",
+    "chunk_index": 5,
+    "evidence_id": "a5c9e6c88704c2bdc393312f4aad4f482c63de0a3d48ad129c9b2b5218d8abcf",
+    "section_label_matches_content": true
+   }
+  },
+  {
+   "id": "off-01",
+   "kind": "off_topic",
+   "ticker": "PLNT",
+   "query": "best recipe for a sourdough bread starter",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-02",
+   "kind": "off_topic",
+   "ticker": "GS",
+   "query": "how to train for a marathon in sixteen weeks",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-03",
+   "kind": "off_topic",
+   "ticker": "META",
+   "query": "the orbital period of Jupiter's moon Europa",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-04",
+   "kind": "off_topic",
+   "ticker": "WMT",
+   "query": "rules of cricket for a five-day test match",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-05",
+   "kind": "off_topic",
+   "ticker": "TRV",
+   "query": "the Ottoman siege of Vienna in 1683",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-06",
+   "kind": "off_topic",
+   "ticker": "DIS",
+   "query": "how to repot an orchid",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-07",
+   "kind": "off_topic",
+   "ticker": "CF",
+   "query": "symptoms and treatment of the common cold",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-08",
+   "kind": "off_topic",
+   "ticker": "ABBV",
+   "query": "chord progressions in twelve-bar blues",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-09",
+   "kind": "off_topic",
+   "ticker": "AES",
+   "query": "Mount Everest base camp trekking route",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-10",
+   "kind": "off_topic",
+   "ticker": "MMM",
+   "query": "Python list comprehension syntax",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-11",
+   "kind": "off_topic",
+   "ticker": "UNH",
+   "query": "scuba diving decompression stop tables",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "off-12",
+   "kind": "off_topic",
+   "ticker": "TGT",
+   "query": "the plot of Shakespeare's Hamlet",
+   "filters": {},
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-01",
+   "kind": "near_miss",
+   "ticker": "PLNT",
+   "query": "securitized notes rapid amortization risk",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-02",
+   "kind": "near_miss",
+   "ticker": "META",
+   "query": "class actions over the Pixel tracking tool",
+   "filters": {
+    "period_end": "2024-12-31"
+   },
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-03",
+   "kind": "near_miss",
+   "ticker": "GS",
+   "query": "anti-money-laundering obligations in transaction banking",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-04",
+   "kind": "near_miss",
+   "ticker": "WMT",
+   "query": "goodwill impairment testing approach",
+   "filters": {
+    "period_end": "2025-01-31"
+   },
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-05",
+   "kind": "near_miss",
+   "ticker": "TRV",
+   "query": "catastrophe reinsurance and hurricane reserve estimation",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-06",
+   "kind": "near_miss",
+   "ticker": "DXCM",
+   "query": "consumer class actions over the G6 and G7 devices",
+   "filters": {
+    "period_end": "2024-12-31"
+   },
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-07",
+   "kind": "near_miss",
+   "ticker": "HRL",
+   "query": "impairment of a minority investment in Indonesia",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "expected_evidence_ids": []
+  },
+  {
+   "id": "near-08",
+   "kind": "near_miss",
+   "ticker": "CHTR",
+   "query": "schedule of Time Warner Cable senior debentures",
+   "filters": {
+    "period_end": "2024-12-31"
+   },
+   "expected_evidence_ids": []
+  }
+ ]
+}
