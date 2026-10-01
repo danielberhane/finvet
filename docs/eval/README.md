@@ -102,9 +102,23 @@ the durations say nothing about either model alone.
 ### Retrieval, measured separately
 
 XBRL lookups against SEC primary-source values: 198/199, the miss a decline rather than
-a wrong number, on a gold set held privately. Filing-text retrieval: 70/70 on the
-calibration set in `tests/accuracy/`, a fit rather than a held-out result. Neither
-figure is recomputable from this repository.
+a wrong number, on a gold set held privately and not recomputable here.
+
+Filing-text retrieval, on a held-out set of 50 queries frozen before the run
+([`RAG_CARD.md`](RAG_CARD.md), artifacts in `runs/`). The first four rows are scored by
+passage id with no judge; the last is scored by DeepSeek through DeepEval:
+
+| measure | bar | result |
+|---|---|---|
+| labelled passage in the top five (hit rate@5) | ≥ 0.87 | 0.80, 24/30 |
+| mean reciprocal rank | ≥ 0.70 | 0.68 |
+| off-topic queries returning nothing | 12/12 | 12/12 |
+| wrong-period or wrong-form queries returning nothing | 8/8 | 8/8 |
+| faithfulness of the model's reading, 12 qualitative claims (judge-scored) | ≥ 0.85 | 0.974 |
+
+Four of the six misses returned a same-subject passage from another section of the same
+filing; two returned text off the subject. The earlier 70-case calibration set, on which the
+relevance floor was tuned, is a fit and is not reported as a result.
 
 ## Findings
 
