@@ -8,7 +8,7 @@ the SEC agent gets), and scores by chunk id. No model takes part in scoring.
 Three kinds of case, three questions:
 
   positive   the passage exists -- is one of its ids in the top five, and how
-             high? (recall@5, MRR, nDCG@5)
+             high? (hit rate@5, MRR, nDCG@5)
   off_topic  nothing relevant exists -- does the floor return nothing?
   near_miss  the topic exists but the filter names a filing the corpus does
              not hold -- do the period and form filters return nothing?
@@ -18,7 +18,8 @@ is refused, because a retrieval number is a property of the corpus it was
 measured on.
 
 The metrics are the textbook definitions (binary relevance, one query at a
-time, averaged): recall@k = any expected id in the top k; reciprocal rank =
+time, averaged): hit rate@k = any expected id in the top k (ranx's hit_rate,
+not its recall, which divides by the number of expected ids); reciprocal rank =
 1 / rank of the first expected id, 0 if none; nDCG@k with gain 1 and log2
 discount, ideal DCG from the number of expected ids. The implementation was
 checked against ranx 0.3.21 on this set; the library is not a dependency
@@ -132,7 +133,7 @@ def main() -> int:
     near = [c for c in per_case if c["kind"] == "near_miss"]
     summary = {
         "positives": len(pos),
-        "recall_at_k": sum(c["hit"] for c in pos) / len(pos),
+        "hit_rate_at_k": sum(c["hit"] for c in pos) / len(pos),
         "hits": sum(c["hit"] for c in pos),
         "mrr": sum(c["reciprocal_rank"] for c in pos) / len(pos),
         "ndcg_at_k": sum(c["ndcg"] for c in pos) / len(pos),
@@ -157,7 +158,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(artifact, indent=1))
 
-    print(f"recall@{k}  {summary['hits']}/{summary['positives']} = {summary['recall_at_k']:.3f}")
+    print(f"hit rate@{k}  {summary['hits']}/{summary['positives']} = {summary['hit_rate_at_k']:.3f}")
     print(f"MRR        {summary['mrr']:.3f}")
     print(f"nDCG@{k}    {summary['ndcg_at_k']:.3f}")
     print(f"off-topic rejected  {summary['off_topic_rejected']}")
