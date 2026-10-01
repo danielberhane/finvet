@@ -1,0 +1,1908 @@
+{
+ "kind": "rag_heldout",
+ "run_utc": "2026-10-01T17:09:08+00:00",
+ "cases_file": "tests/accuracy/rag_heldout_cases.json",
+ "cases_frozen": "2026-10-01",
+ "corpus_sha256": "7364dc317834820ea5e54e5aebd066f8635a239d4a486a4edf873aef989f9a3b",
+ "corpus_matches_frozen": true,
+ "embedding_model": "nomic-embed-text",
+ "vector_floor": 0.55,
+ "summary": {
+  "positives": 30,
+  "hit_rate_at_k": 0.8,
+  "hits": 24,
+  "mrr": 0.6833333333333333,
+  "ndcg_at_k": 0.49078784775861334,
+  "off_topic_rejected": "12/12",
+  "near_miss_rejected": "8/8",
+  "k": 5
+ },
+ "cases": [
+  {
+   "id": "pos-01",
+   "kind": "positive",
+   "ticker": "PLNT",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "403db733566b41e9ff88f189af5ce9b84c374f038ecacd055d7908ec6caaafea",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.794,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "6b95063229b87cba614c2569f3e7962466697740b30241aa108fd5dcd2356dc2",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7144,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "a9b5c08c3cff94c1d63bf728a722c606553a913c7992abeb1e3ae463a35150bb",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7115,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "6ed37d2b80271975f1827e646623eecd4db47eda80cc1306bb3b060642b0e59f",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.707,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "eb674e75eddf1b0bdf888281e5a64545226ca95a8b9a0a2b11bb7578610196e0",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6766,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 1.0
+  },
+  {
+   "id": "pos-02",
+   "kind": "positive",
+   "ticker": "PBF",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "ec515f46cb670c054f73c0aaf539a065d8c850d99c077b2b17b1dc024cc381e3",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7758,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "7df42556d30cb3c2edc643069406634398562a6fb2be198528f6c6f73be2877e",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7693,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "b9c8b2e076a58c0b5c8d7f70ac1299f52e802549049bb0867315c3e9a31b9b19",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7652,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "670ce3e69667e37fa6303556c0f1a46ebf07b4581ee4e6a7a7498f3dcd832a26",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.748,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "01da298e9dbdac4d5efea356861cf1e63b672abc4f7c2e78cf436aa226a541df",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.7479,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 1.0
+  },
+  {
+   "id": "pos-03",
+   "kind": "positive",
+   "ticker": "W",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "f3da8c3bff4238987e2796e8b377ad8cf4627dcca5e4e84dbc64c97cc9e9031d",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7281,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "cff1ad3afce4159d64812fc4f37240d018c546010d72a73cade1e17ccef2e61b",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7016,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "84ab5b03fa1339506201c64f27d05cdfdb23f1bdb326a8af5ed14d03dbd50286",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6645,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "08923cff2499d7e6b3d3c5559fab1e8360a47fddb72b2dc5715e6c542bbd1027",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6454,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "181861258e440ae472aab88eb0c60bdf400004e68cdeef2812512060c6496a25",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.618,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.9674679834891693
+  },
+  {
+   "id": "pos-04",
+   "kind": "positive",
+   "ticker": "SNAP",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "1a0e22353d0624a09d478beaaf9fd55a2f7b44b0d59b790c757d34606282bc83",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6969,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "ee118ee2de6c1bf3f0094909fbc6f3dbc13a1cb695814ec5c02e882791aab699",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6728,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "c746af4be5fc978c2bf8d9b8cf10ab6117a1bf41ddc07e0ee87fbbe766d27414",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6658,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "bdf2267ee70782e82088f6fbd3a384a2e2f859afec8508067bfd3eef1db75be5",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6521,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "b17861a55b07aca80f0831c7c7f86e4ef5524211c4b2aee6f35e70749d807425",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6417,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": false,
+   "first_rank": null,
+   "reciprocal_rank": 0.0,
+   "ndcg": 0.0
+  },
+  {
+   "id": "pos-05",
+   "kind": "positive",
+   "ticker": "TGT",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "0ad0dac0d3b2921d888f3e947b9bda35f82c48b4795489adff0c3c9c58d4134f",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7147,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "2d1950a61d9c5dbbb3007d6572815f4a0aaea96bbe5eea46d070c1a6d22b73ff",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6528,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f5449884bdee02f87be7bb548991914ec6fc097658855e54d2f9710db7164e40",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6016,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "1ce5bd896ba010050af65d1b6d3d2df1991579398290c047bc1d187a39a12a48",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.5949,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "6bc37695dbd338624146f91105a4864acd9eaef434bf618add743588324ae9f1",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.5917,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.7653606369886217
+  },
+  {
+   "id": "pos-06",
+   "kind": "positive",
+   "ticker": "CF",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "aba920c5954cf5fd75e65b79b9d84be2ed48ad47a51eb9b193e86c0bd75cba25",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6769,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "95c25354be8b0baef7d05e2587e3a1e5f566aa19918f58ba1e4d29895558ef42",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6527,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "0a5f8d09a20faebf1f0b54a2263e82932ad003bdb9e4f5ca71e7167da43ae040",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6435,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "065bb4b8c5bac7bc04c063cfafbab7778004c850634622251c436c0d84d206e8",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6393,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "c57f4678b83150d6e004fa40faf4a7dfc64006cc43b45a7a991e3b3a5d5a0e17",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6355,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": false,
+   "first_rank": null,
+   "reciprocal_rank": 0.0,
+   "ndcg": 0.0
+  },
+  {
+   "id": "pos-07",
+   "kind": "positive",
+   "ticker": "DIS",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "0713e3eeea6cb3672c2b3af5a6b3b5fbbdbb1e34eac919e240cd9f23122f8044",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-09-27",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6646,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "7610c4cdb0be69d7bfdb9fb8f46e982f704b8d54feb0aee5d5e7886328ff407f",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-09-27",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6428,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "85878c9858ea9d553d0cde5aee8d30229b64eb580e240bc1edfb060825ebd235",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-09-27",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6299,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "d9e4a154958937a6e35d0a7d8b38d2616723e94339d484467712dc96aebf947d",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-09-27",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6287,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "21f0f70b807953c9ee1b1eed19364e35ce607f389cf42dddaa95e38f35c63bbb",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-09-27",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6254,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": false,
+   "first_rank": null,
+   "reciprocal_rank": 0.0,
+   "ndcg": 0.0
+  },
+  {
+   "id": "pos-08",
+   "kind": "positive",
+   "ticker": "WOLF",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "3942a7e71f12b1ed06e223fe13c8cd2fb8c211a59ccfc902bba547d98052ad38",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-06-28",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.721,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "3ebe7a96661564cb72978a1f40e54daa868f0f68c209ede4f681ca0ab1473ab0",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-06-28",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6689,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "1c8a6ff435036350526c83189488c934430bdfd6eadfb8feafaf33ccbe593f07",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-06-28",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6494,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "a13de2ac0a4a91ed8281b91ad5283b9e18593a1db66507c244d1d61c0a3a9b87",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-06-28",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6493,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "1430f61eb5589e48dc5d5843e367bea4376d88324d23f1527ac2a68b4b53e47a",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2026-06-28",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6444,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.6508205185601091
+  },
+  {
+   "id": "pos-09",
+   "kind": "positive",
+   "ticker": "GS",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "4343c3ebc004675bc6c1c4d3f0353ba65fc5569fb5a805abdf3a116a1d57d70f",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7356,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "65dbd9aa5051ab11a868e8e8ea15e89771f36d35c7732fd3cd0e747197722cf2",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7004,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "ac5d539be7f08e38f96da69e4c6b99edc7cdebd971bb04ad8203112c1cffd0f5",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6922,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "36f11f1737e0033f36bf6c3f9615d751a740787931cc41bfa5af1df9ce6375ac",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6904,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "c6b6926a017ef34104f2c11367bd995623ddfb8df5af7a165da78da259c0e24f",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6794,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": false,
+   "first_rank": null,
+   "reciprocal_rank": 0.0,
+   "ndcg": 0.0
+  },
+  {
+   "id": "pos-10",
+   "kind": "positive",
+   "ticker": "SHAK",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "b3e7e0c124a217e93960bfff74df29c4cc58eeef2dd07987ea79d7ed784f6479",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6326,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "8ff2709660c9576aff35dd777be085f9217a1c326e17a154e3abef853097aca1",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6317,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "3ab6ae39cee490e162aa237eb937665476f1db7c6d785d0083fd463f209f3f1c",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6312,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "5baebcdd5ab1d862e437253d77ed4fa2bd21a19a0ae5b4b9fe8c610476f8f1f3",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.605,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "ca876c94702a70af7b16dc60afd37e57051442302e9654fd632004cde7eff799",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6024,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.46927872602275644
+  },
+  {
+   "id": "pos-11",
+   "kind": "positive",
+   "ticker": "DD",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "2ee649620e77b9e250b70fade1317f3ca1e8d1af652273fbb27239dc4f2b2a8f",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.743,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "3989e65bb0955204e57e79083762ad01eb5f7bf1a9a6c92279d68a4e5aa901d8",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.663,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "bdc57dec6077752f46e79396e71ffec8dfdcc6b6718772f00b395b2dac033b12",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6626,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "e43e43a001fc7373f0a16bf0592764942b5535518658380d448ba5f49783b3ae",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6381,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "e6ed1bf95ec3ba151a5ac4168fd572f00a29f017b0e839c50205fad1e63b644c",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6315,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 1.0
+  },
+  {
+   "id": "pos-12",
+   "kind": "positive",
+   "ticker": "DXCM",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "6de30c7a6a93d32080d7e39f3fed0e0f5bd5689bbd56d109263979e22a5114ce",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7357,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "9bcf90afec1b8f3cd67f9d2f62eb969f0f046d95a9f80fa3b130ecf7cdc32841",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7307,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "468b939bc3baab5a067e64d5df11bab55bb4f8036ce01096b544fc0e80184674",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7244,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "2c9a97024e675d141caa5aec1eb0050d5dcace8286cc5454cd4ff868b1e05a16",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.7131,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f3e57449bea07e1df71d167ded7e6a99f9f4085f0825f73dd86076ec2c1e552d",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.7057,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.7039180890341347
+  },
+  {
+   "id": "pos-13",
+   "kind": "positive",
+   "ticker": "LYB",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "64bbd27e8ddf009227c35a0cf1bce3113db613d62f3a9b6efff22f4997924e6b",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7472,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "88c66aa7ef10073a160884def6724ce12ba30c6c01b613069c1462844de4b3be",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6785,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "d9c57af7eb5ce12becbc1e95309ebcf1a8b0efbca0f25500c6fae285fd81b9b5",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6592,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "82a94c96607693c570f8f41565a5e44732afe0863f7285dc05f1a90e15002b08",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.638,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "5ca5f701a04a2fe31f4ad5eba973c92cc2389d8db6650294970ad9c038ec50d8",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6182,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.7039180890341347
+  },
+  {
+   "id": "pos-14",
+   "kind": "positive",
+   "ticker": "SF",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "974a643b6dd84410c6ba975adec74bcf0c584d349696641e9198530a50400720",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7548,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "e14ea033349f677bd6896c1e2761d4097aecb1c3c6fe5d0b55f866998105029c",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7444,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "944a6354fc83b7f07b40cee2fed98d6f167c96a550155e94436af5cdb7e3a103",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7423,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "2404a6146f7d0616e23205ccebcf56344a57397a704a3d792bceae71a5e8288d",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.7133,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "3ad7f7a371c7c5c792b57416fddcc8c1f44c56da4165727cb83b8fb2517c0a1f",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.7089,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 3,
+   "reciprocal_rank": 0.3333333333333333,
+   "ndcg": 0.23463936301137822
+  },
+  {
+   "id": "pos-15",
+   "kind": "positive",
+   "ticker": "WMT",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "de85f75f05667f0735bea84b8237f67121c8929115e62ff3d54496d621553de6",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7643,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "4aaec10a1208c54c74473b03152638acec768aff7eaeca3cb6629cf22ced2ff9",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6918,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "416fd5a2ffcbe41b7cdafc52db67d71f82733ab973b2099452947b0261fd9f56",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6739,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "30479cd607a565f3e89a570169ea28475f078c68a7881160769ab6daa05c8c8e",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6217,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "5fb81bfc0fac12a51efae372ca5dbb5816eeedcca7a00328b68b8c332f288d68",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2026-01-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6201,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 1.0
+  },
+  {
+   "id": "pos-16",
+   "kind": "positive",
+   "ticker": "AES",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "0f439269765a1f9cf3001372808e811b58a5c64353fa877ad39a810094808e38",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7098,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "c29bc158034d322dc71fc6669fa52588512ce3cc93ed82aa40180d53718729de",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6627,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "eb0108cce1b96ea43cda5e0cb3911054b51f1401ecf5be01d564ec468f5d5d61",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6627,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f72f8178d3582919fdcee0d06b365f3442dd80e3d806add79a3f93faae3ea148",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6615,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "6e7ef77636f5181e421fd146458fa06077d7f591872ef1017177920090f7b90f",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6584,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": false,
+   "first_rank": null,
+   "reciprocal_rank": 0.0,
+   "ndcg": 0.0
+  },
+  {
+   "id": "pos-17",
+   "kind": "positive",
+   "ticker": "UNH",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "0479f265fb6e0f0a64810b267e70d87ad2f9ae12de50bdce224d1c71b76f4d0d",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6741,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "951a576be05f3a4bcc77022d13825615f1d0aaba79719ca60d4bed96fe3fd824",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6516,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "c91a4adbc01621bdc8190901fb78cfd01c8867ec423bd75ae0d0e38af87efc34",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6373,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "5fb8408b5426ed992de1277651ce91306dd8930c9a60fb1bf22473074902afba",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6212,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f8addbbbd14c9b79b7dfeb6d205d1addbd7ebf43ca36deaa837be130f63aa3dd",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6124,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 2,
+   "reciprocal_rank": 0.5,
+   "ndcg": 0.2960819109658652
+  },
+  {
+   "id": "pos-18",
+   "kind": "positive",
+   "ticker": "META",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "c9d6f84e9f78da671d676080b47fdecc2c5c94922aa14a311b2a696b8d64d010",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7208,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "86ac6fb3214252aceea82b3e3b68e7b8af7f013978218ef548438eb0a083f450",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7017,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "3ed74f02738709e7e7e1abb84131eab6045bc06303dde8dc6ce2b442b62457e0",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.701,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "e82d16e68511e26b2696808d7b886b697da66d6dbb58c8d20a3fe217ac3a598e",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6974,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "35000f8b8fcb7510ce50e75281d0108a9ab4e91fa39e25e994b0d5a8a97e8d9f",
+     "section": "legal_proceedings",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6914,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.46927872602275644
+  },
+  {
+   "id": "pos-19",
+   "kind": "positive",
+   "ticker": "EMN",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "dde8c54f89aaea173e133a17fa2aebdf816cd02f42e1ba755548f22ed2aa2d39",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6839,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "89432abf244b9cc55a819aa9e137849071e79a253939be70e6d1359a1f70ca8b",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6635,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "450ba8416db5c3469503feadeccf7050ce97d49d9b375168de067fde81294c32",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6355,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "c2d06a5ab69153fac94f409724fe740929708d04c04d5129cbd76b6b8fc32066",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6345,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "573183d931d6b86beb4bcb9398325fa268c13ed379c964807227021c791f73d4",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6338,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.6508205185601091
+  },
+  {
+   "id": "pos-20",
+   "kind": "positive",
+   "ticker": "ABBV",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "13df6bfdf8c82cae0b95fd5f319ced7764c050c2d33b6da01ded8adbecc9c3bc",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.711,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "3fb34176a7d99a704791ffdafce8e096194ac21a3188ec85903796c9b066d330",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6796,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f7127b29505bfa78004a1af2e56955e9b3392f6078f499b45a11d941688e7cc3",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.657,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "dd72edaa0cf0abeb0a0fdbff83be957b659af84482eaf86d7c800dde71d9281f",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6487,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f59daf96461e83736b4b2f625cbc23aed5c7060642b5c4f1569f7e08189926a9",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.646,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.46927872602275644
+  },
+  {
+   "id": "pos-21",
+   "kind": "positive",
+   "ticker": "CHTR",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "dde0f9dffdefc34f558358223974d7d4a86282996a7288fa91891a6b73b09642",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6844,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "94e5b646cba9396b11a7f3b8ec285cb0f6449573020cc6f1ceb9404be8585070",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6739,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "98787de1f8dd458472a249f3a5530e7441051d65156632f9cc7777f1d63d367a",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6614,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "8df4c405349567a3553a7190e486db5eb8ea27b35d6f2a840a110848e97e47a1",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6601,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "ccb0cf2e38310546f8603c9a37f72a9afe60c747d0b7d419714f09cbb44249f5",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6546,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 3,
+   "reciprocal_rank": 0.3333333333333333,
+   "ndcg": 0.4367467095119258
+  },
+  {
+   "id": "pos-22",
+   "kind": "positive",
+   "ticker": "FE",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "d9713507cc42f4f5f7191e5f4e1b5e3ce02f7780acbc7b506347ae8161d857ac",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7337,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "75f26e3e0ff2996d5257b6cc1694ca6bcaebb653d57f920ee8cb3014365748c0",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7276,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "66f12765d86fc7f449f89c226ebdb701151dfc8b9ddfea589f239e4c716cf642",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7041,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "40e60547b55399d68033575ec7c1e5f69e34b4354c9ade4dc12765783262600f",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.7041,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "0be4c04c617bb9bfe0feda9da3675c6fe56bbbb31da8b40127cdb12294302064",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.704,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 2,
+   "reciprocal_rank": 0.5,
+   "ndcg": 0.2960819109658652
+  },
+  {
+   "id": "pos-23",
+   "kind": "positive",
+   "ticker": "HRL",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "573688ca28071f8a3e18ff2e206ed640af123cff9900080ba3c82644aacac3c4",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-10-26",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6589,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "34eb046bc7039e616aa58d3ce8fe3b2fa29d80b37110f827cdc13d477ca9865d",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-10-26",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6409,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f1041dd1ab5add543144da9d5b89812107b033092f429bf7a202d40fd446879d",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-10-26",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6188,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "bf65056341966f09c399059c611eb25814c89f47ad69240f4e44fac35834ca5d",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-10-26",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6081,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f917383be51ac6d363fcf1ef1a55e753e0933b50d8858f5ad767affee18f469f",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-10-26",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6023,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.46927872602275644
+  },
+  {
+   "id": "pos-24",
+   "kind": "positive",
+   "ticker": "WEN",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "f74f72f3205dac0c38f4cbe9543cfce99c504aa274eec9dfb1fa28820fe9e562",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-28",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.759,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "32a4288a1f9e5ed597c6b4a359b121202992ff18920a16c8872eaae639763967",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-28",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7492,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "5e9f269a9733432e68983e2a8a8b202e649764d10053cbe7a51d59f170604af8",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-28",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7358,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "7f864cc951b096e05340b31cd7880c80857c4a4187d98f246ea210f4293f281b",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-28",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.7292,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "5123b2937411ae7a2c2fc82212c5b994c13209d4e1d15de226f49c0580cb8ebe",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-28",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.7257,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": false,
+   "first_rank": null,
+   "reciprocal_rank": 0.0,
+   "ndcg": 0.0
+  },
+  {
+   "id": "pos-25",
+   "kind": "positive",
+   "ticker": "MMM",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "dd8a090c313623646fc111f6842cc982200177c4eff6296d82ab243f2e25e816",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.03125,
+     "vector_similarity": 0.7176,
+     "keyword_score": 0.9811
+    },
+    {
+     "evidence_id": "35a06c9907b352d377d2262644850d6ddc60724950fcb8432e1648dd2b543cd0",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.031099,
+     "vector_similarity": 0.676,
+     "keyword_score": 0.9983
+    },
+    {
+     "evidence_id": "790010e5107cafbc52e01fb4c8189dd5c46f562aae73ee915a813c832aaac4fb",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.02967,
+     "vector_similarity": 0.6687,
+     "keyword_score": 0.8994
+    },
+    {
+     "evidence_id": "ccd5a72a480238a821bddf1a594ed40ccb4afafd7726b13add9d5514e57cb0bd",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.029643,
+     "vector_similarity": 0.6503,
+     "keyword_score": 0.9889
+    },
+    {
+     "evidence_id": "973c37609e5ed8cfc898c9dfaa8662b5305aea47f85e319788f65099d9de9443",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.029206,
+     "vector_similarity": 0.644,
+     "keyword_score": 0.986
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.7653606369886217
+  },
+  {
+   "id": "pos-26",
+   "kind": "positive",
+   "ticker": "PRU",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "3888cc9d334ccd504c3dcd98d5b6b36b8f356b5db571e8a01aff0ff8d8901066",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7657,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "4dde987a2206d18ed1e0960f1c572affc6af952cc3bb3ca414748969950606dc",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7166,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "ecfccf835e55831a8f2643301b557f93c08a09d5a02cce4cc01842c54a4493d4",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7146,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "601cb6b10b953abeb7d8c2ad5d4e254eb402b60f94d3ac553c98cc6f26c92e64",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.702,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "d3826dae404285f36a56b8e5ede09162288065c9a718837f942c953d2d7a7341",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.695,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.6713860725233041
+  },
+  {
+   "id": "pos-27",
+   "kind": "positive",
+   "ticker": "TRV",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "f9a8d69f7bf034380f2460c147e0d209b995f43133479840e4f0a9869846e490",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.7751,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "f9b3dc815a5c9f5c582df25a411f89f0f69a47ad407e88aa50803986f0e501b5",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.7526,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "e5761711f6ff6e9995e98f5c0b0e0d43556a3b475394771b65a1ced24edfb4b1",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7466,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "c8c0ea8d16c58308f11ad23366d7d91089a44df4163211c693e3d025826150c2",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.7448,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "54c7bfa1807bd0dc8bc2b2bbf6d32fecd48c049897ef56ed428a9faad2b16eb4",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.7411,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 2,
+   "reciprocal_rank": 0.5,
+   "ndcg": 0.2960819109658652
+  },
+  {
+   "id": "pos-28",
+   "kind": "positive",
+   "ticker": "OXY",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "776e2a62f5dab4410327389990d1cf9b4e80c807deb90d3b450c8980e2210188",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.030886,
+     "vector_similarity": 0.5967,
+     "keyword_score": 0.9499
+    },
+    {
+     "evidence_id": "962db19c32bd27518fb3a7474bb3812cbd5f4739e37f1248480bce991bb840a1",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.030798,
+     "vector_similarity": 0.6001,
+     "keyword_score": 0.7752
+    },
+    {
+     "evidence_id": "569d28bacd45fe412c27ceaa644a4c60660c172c14cfd27fc9bb70a5d1810d96",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.030769,
+     "vector_similarity": 0.6157,
+     "keyword_score": 0.723
+    },
+    {
+     "evidence_id": "c2d76e3082c4098a6a33aa31f3dda46b56d166403b951ec97f9f06225f72b054",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.028485,
+     "vector_similarity": 0.5764,
+     "keyword_score": 0.3615
+    },
+    {
+     "evidence_id": "eab1047be49720701eb7a2ce906326b25c535b6009c007a68287ee945131fefb",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.028446,
+     "vector_similarity": 0.5695,
+     "keyword_score": 0.7664
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.46927872602275644
+  },
+  {
+   "id": "pos-29",
+   "kind": "positive",
+   "ticker": "MET",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "5456e8f6b2cc1a79cf41bc81fb2e3a4bbf54c61f243e3dbb4b007e965126a1e0",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016393,
+     "vector_similarity": 0.6709,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "696de38ee10e49b52e019959b3787739e1fc16ae8cbee5bb325e1a66c1e1e85f",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.6343,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "026f95f084fa8400e68513b00e52d6285855461891c11d15991056c69224da45",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.6316,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "cc5af32dc87b1c6eb2cca36509d2ec51d4b2569109daeb6f6b472209c31c34dd",
+     "section": "business",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6296,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "b9469922e7736cad9bf1dfb9cab227b26542aa2ca47f811effad54365dfbee0f",
+     "section": "risk_factors",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6202,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 3,
+   "reciprocal_rank": 0.3333333333333333,
+   "ndcg": 0.23463936301137822
+  },
+  {
+   "id": "pos-30",
+   "kind": "positive",
+   "ticker": "MAT",
+   "filters": {},
+   "returned": [
+    {
+     "evidence_id": "f6d274f4e83dc9b9e0bec62326c225dfd72fdeaa3eb2c89a6ec9bf692951fae1",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.032787,
+     "vector_similarity": 0.7806,
+     "keyword_score": 0.9892
+    },
+    {
+     "evidence_id": "cd951e9937cfd9fb89ce6f2ebda78fc9ea07a201e2ca81eb61467aeab8b953ad",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.016129,
+     "vector_similarity": 0.771,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "a5c9e6c88704c2bdc393312f4aad4f482c63de0a3d48ad129c9b2b5218d8abcf",
+     "section": "financial_statements_and_notes",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015873,
+     "vector_similarity": 0.7699,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "771b39958f6450507a688fe0074769207687e3edc5d9553ed6f8f7e544326886",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015625,
+     "vector_similarity": 0.6944,
+     "keyword_score": 0.0
+    },
+    {
+     "evidence_id": "6f4940bcb8f5e77577225b849938108c14aa270accc6d1e71f76848ce030f54d",
+     "section": "mda",
+     "filing_type": "10-K",
+     "period_end": "2025-12-31",
+     "rrf_score": 0.015385,
+     "vector_similarity": 0.6841,
+     "keyword_score": 0.0
+    }
+   ],
+   "hit": true,
+   "first_rank": 1,
+   "reciprocal_rank": 1.0,
+   "ndcg": 0.7039180890341347
+  },
+  {
+   "id": "off-01",
+   "kind": "off_topic",
+   "ticker": "PLNT",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-02",
+   "kind": "off_topic",
+   "ticker": "GS",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-03",
+   "kind": "off_topic",
+   "ticker": "META",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-04",
+   "kind": "off_topic",
+   "ticker": "WMT",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-05",
+   "kind": "off_topic",
+   "ticker": "TRV",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-06",
+   "kind": "off_topic",
+   "ticker": "DIS",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-07",
+   "kind": "off_topic",
+   "ticker": "CF",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-08",
+   "kind": "off_topic",
+   "ticker": "ABBV",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-09",
+   "kind": "off_topic",
+   "ticker": "AES",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-10",
+   "kind": "off_topic",
+   "ticker": "MMM",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-11",
+   "kind": "off_topic",
+   "ticker": "UNH",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "off-12",
+   "kind": "off_topic",
+   "ticker": "TGT",
+   "filters": {},
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-01",
+   "kind": "near_miss",
+   "ticker": "PLNT",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-02",
+   "kind": "near_miss",
+   "ticker": "META",
+   "filters": {
+    "period_end": "2024-12-31"
+   },
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-03",
+   "kind": "near_miss",
+   "ticker": "GS",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-04",
+   "kind": "near_miss",
+   "ticker": "WMT",
+   "filters": {
+    "period_end": "2025-01-31"
+   },
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-05",
+   "kind": "near_miss",
+   "ticker": "TRV",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-06",
+   "kind": "near_miss",
+   "ticker": "DXCM",
+   "filters": {
+    "period_end": "2024-12-31"
+   },
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-07",
+   "kind": "near_miss",
+   "ticker": "HRL",
+   "filters": {
+    "filing_type": "10-Q"
+   },
+   "returned": [],
+   "rejected": true
+  },
+  {
+   "id": "near-08",
+   "kind": "near_miss",
+   "ticker": "CHTR",
+   "filters": {
+    "period_end": "2024-12-31"
+   },
+   "returned": [],
+   "rejected": true
+  }
+ ]
+}
