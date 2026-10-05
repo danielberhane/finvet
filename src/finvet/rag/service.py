@@ -274,7 +274,7 @@ class RAGService:
         return len(chunks)
 
     # ------------------------------------------------------------------
-    # Hybrid Search (Vector + BM25 with Reciprocal Rank Fusion)
+    # Hybrid search (pgvector similarity + Postgres full-text search, fused with RRF)
     # ------------------------------------------------------------------
 
     def search(
