@@ -93,6 +93,11 @@ JUDGE_EXTRA_BODY = {
     "cache": {"no-cache": True, "no-store": True},
 }
 STABILITY_FLAG = 0.10
+# The judge answers in structured JSON that lists every statement and verdict; on
+# long explanations 4,096 tokens cut it off and the library treats a truncated reply
+# as a failure. Qwen3.8's context is 262,144, so this costs nothing.
+JUDGE_MAX_TOKENS = 16384
+JUDGE_RETRIES = 2
 
 # The lines FinVet's response generator appends after the model's reasoning
 # (src/finvet/graph/nodes/response_generator.py, _build_explanation).
@@ -226,7 +231,7 @@ def build_scorers():
     if not key:
         raise SystemExit("LITELLM_API_KEY is unset; the judge needs it")
     judge = llm_factory(JUDGE_MODEL, client=AsyncOpenAI(api_key=key, base_url=JUDGE_BASE_URL),
-                        temperature=0, max_tokens=4096, extra_body=JUDGE_EXTRA_BODY)
+                        temperature=0, max_tokens=JUDGE_MAX_TOKENS, extra_body=JUDGE_EXTRA_BODY)
     embedder = embedding_factory("openai", model=EMBED_MODEL,
                                  client=AsyncOpenAI(api_key="ollama", base_url=EMBED_BASE_URL))
     return {
@@ -248,12 +253,34 @@ async def judge_once(scorers: dict, rec: dict) -> dict:
             "reasons": {"faithfulness": str(getattr(faith, "reason", "") or "")}}
 
 
-async def grade(records: list[dict]) -> None:
+async def judge_with_retry(scorers: dict, rec: dict) -> dict:
+    """One judge pass; a transient failure is retried, a persistent one is raised."""
+    last: Exception | None = None
+    for attempt in range(1, JUDGE_RETRIES + 2):
+        try:
+            return await judge_once(scorers, rec)
+        except Exception as exc:  # noqa: BLE001 -- any judge failure is handled the same way
+            last = exc
+            print(f"    judge attempt {attempt} on {rec['id']} failed: {type(exc).__name__}: {str(exc)[:120]}")
+    assert last is not None
+    raise last
+
+
+async def grade(records: list[dict], save) -> None:
+    """Grade every ungraded record; `save()` is called after each claim so a crash
+    loses one claim, not the run. A claim whose judge fails after retries is
+    recorded as `judge_failed` and the run continues."""
     scorers = build_scorers()
     for rec in records:
-        if "excluded" in rec or "judge_passes" in rec:
+        if "excluded" in rec or "judge_passes" in rec or "judge_failed" in rec:
             continue
-        rec["judge_passes"] = [await judge_once(scorers, rec) for _ in range(2)]
+        try:
+            rec["judge_passes"] = [await judge_with_retry(scorers, rec) for _ in range(2)]
+        except Exception as exc:  # noqa: BLE001
+            rec["judge_failed"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+            print(f"  JUDGE FAILED {rec['id']} ({rec['kind']}): {rec['judge_failed']}")
+            save()
+            continue
         a, b = rec["judge_passes"]
         rec["faithfulness_spread"] = abs(a["faithfulness"] - b["faithfulness"])
         rec["unstable"] = rec["faithfulness_spread"] > STABILITY_FLAG
@@ -261,6 +288,7 @@ async def grade(records: list[dict]) -> None:
               f"relevancy {a['answer_relevancy']:.2f}/{b['answer_relevancy']:.2f} "
               f"precision {a['context_precision']:.2f}/{b['context_precision']:.2f}"
               + ("  UNSTABLE" if rec["unstable"] else ""))
+        save()
 
 
 # --- summary and outputs ------------------------------------------------------------
@@ -278,6 +306,7 @@ def summarise(records: list[dict]) -> dict:
         per = {m: [sum(p[m] for p in r["judge_passes"]) / 2 for r in scored] for m in METRICS}
         return {
             "claims": len(rs), "scored": len(scored), "excluded": sum("excluded" in r for r in rs),
+            "judge_failed": sum("judge_failed" in r for r in rs),
             "verdict_matches_expected": sum(r["verdict"] == r["expected_verdict"] for r in rs),
             **{f"{m}_mean": mean(per[m]) for m in METRICS},
             "faithfulness_min": round(min(per["faithfulness"]), 3) if scored else None,
@@ -287,6 +316,7 @@ def summarise(records: list[dict]) -> dict:
         "all": block(records),
         "by_kind": {k: block([r for r in records if r["kind"] == k]) for k in kinds},
         "excluded": {r["id"]: r["excluded"] for r in records if "excluded" in r},
+        "judge_failed": {r["id"]: r["judge_failed"] for r in records if "judge_failed" in r},
         "unstable_claims": [r["id"] for r in records if r.get("unstable")],
         "bar": {"faithfulness_mean": 0.85, "faithfulness_min": 0.50,
                 "applies_to": "all scored claims; set before any answer was collected"},
@@ -307,6 +337,8 @@ def public_view(rec: dict) -> dict:
     out["reasoning_words"] = len(rec["reasoning"].split())
     if "excluded" in rec:
         out["excluded"] = rec["excluded"]
+    if "judge_failed" in rec:
+        out["judge_failed"] = rec["judge_failed"]
     if "judge_passes" in rec:
         out["judge_passes"] = [{m: round(p[m], 3) for m in METRICS} for p in rec["judge_passes"]]
         out["faithfulness_spread"] = round(rec["faithfulness_spread"], 3)
@@ -345,7 +377,11 @@ def main() -> int:
 
     record = json.loads(record_path.read_text())
     records = record["claims"]
-    asyncio.run(grade(records))
+
+    def save() -> None:
+        record_path.write_text(json.dumps(record, indent=1))
+
+    asyncio.run(grade(records, save))
     run_utc = datetime.now(timezone.utc)
     record.update({
         "graded_utc": run_utc.isoformat(timespec="seconds"),

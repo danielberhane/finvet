@@ -192,3 +192,26 @@ class TestThePublicArtifactCarriesNoText:
         assert summary["by_kind"]["not_in_filing"]["excluded"] == 1
         assert summary["by_kind"]["supported"]["faithfulness_mean"] == 1.0
         assert summary["bar"]["faithfulness_mean"] == 0.85
+
+
+class TestAJudgeFailureIsRecordedNotFatal:
+    """The first grading run died at claim 23 on a truncated judge reply and, because
+    the record was written only at the end, lost the 22 grades already made. A failed
+    claim is now recorded as such and counted; the summary and the public view carry it."""
+
+    def test_the_summary_counts_judge_failures_separately(self, runner):
+        ok = {"id": 2001, "kind": "supported", "expected_verdict": "SUPPORTS", "verdict": "SUPPORTS",
+              "judge_passes": [{"faithfulness": 1.0, "answer_relevancy": 1.0, "context_precision": 1.0}] * 2,
+              "faithfulness_spread": 0.0, "unstable": False}
+        bad = {"id": 2011, "kind": "supported", "expected_verdict": "SUPPORTS", "verdict": "SUPPORTS",
+               "judge_failed": "IncompleteOutputException: truncated"}
+        summary = runner.summarise([ok, bad])
+        assert summary["all"]["scored"] == 1 and summary["all"]["judge_failed"] == 1
+        assert summary["judge_failed"] == {2011: "IncompleteOutputException: truncated"}
+
+    def test_the_public_view_says_a_claim_was_not_graded(self, runner):
+        bad = {"id": 2011, "kind": "supported", "origin": "rag_ragas_claims_v1", "expected_verdict": "SUPPORTS",
+               "http": 200, "verdict": "SUPPORTS", "confidence": 0.9, "reasoning": "r", "passages": ["p"],
+               "judge_failed": "IncompleteOutputException: truncated"}
+        view = runner.public_view(bad)
+        assert view["judge_failed"].startswith("IncompleteOutputException") and "judge_passes" not in view
