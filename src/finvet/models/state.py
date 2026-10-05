@@ -414,7 +414,7 @@ class VerificationState(TypedDict, total=False):
     disposition_detail: Optional[str]
 
     # Filing text chunks retrieved via hybrid RAG search (pgvector cosine +
-    # tsvector BM25 with RRF fusion). Set by run_sec_agent when the SEC agent
+    # tsvector full-text search with RRF fusion). Set by run_sec_agent when the SEC agent
     # calls the search_filing_text tool.
     # Each chunk: {"section": "mda", "filing_type": "10-K",
     #              "period_end": "2024-09-28", "text": "...", "search_query": "..."}
