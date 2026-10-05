@@ -168,6 +168,20 @@ class TestThePublicArtifactCarriesNoText:
                        "restates the held-out claim"):
             assert secret not in published
 
+    def test_no_passage_identity_is_published(self, runner):
+        """A fingerprint, section or period end resolves to the exact passage for
+        anyone holding the same index, and the passage gives away the claim --
+        the leak PR #31 closed for the benchmark runs."""
+        rec = self._record()
+        rec["passage_identities"] = [{"content_sha256": "b" * 64, "section": "risk_factors",
+                                      "filing_type": "10-K", "period_end": "2025-12-31"}]
+        view = runner.public_view(rec)
+        published = json.dumps(view)
+        assert "passage_identities" not in view
+        for secret in ("b" * 64, "risk_factors", "2025-12-31", "10-K"):
+            assert secret not in published
+        assert view["passages_retrieved"] == 1
+
     def test_the_summary_reports_each_kind_and_the_bar(self, runner):
         rec = self._record()
         other = {**rec, "id": 2029, "kind": "not_in_filing", "expected_verdict": "NOT_ENOUGH_INFO",

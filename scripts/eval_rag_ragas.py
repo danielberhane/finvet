@@ -45,9 +45,10 @@ Controls
     difference above 0.10 is flagged.
 
 Outputs
-    public   docs/eval/runs/rag-ragas-<date>.json -- scores, verdicts, passage
-             hashes. No claim text, reasoning text or judge reasons: all three
-             restate held-out claims.
+    public   docs/eval/runs/rag-ragas-<date>.json -- scores, verdicts and the
+             number of passages retrieved. No claim text, reasoning text, judge
+             reasons or passage identities: each would let a reader rebuild a
+             held-out claim.
     private  --record (must be under notes/, which git ignores) -- claim,
              reasoning, passages and judge reasons, for the human check.
 
@@ -293,8 +294,15 @@ def summarise(records: list[dict]) -> dict:
 
 
 def public_view(rec: dict) -> dict:
+    """What is published per claim: scores, verdicts, counts. No passage identities.
+
+    A passage fingerprint, section and period end would let anyone with the same
+    index recover the exact passage, and from it the held-out claim -- the leak
+    PR #31 closed for the benchmark runs. Only the count of passages survives.
+    """
     out = {k: rec[k] for k in ("id", "kind", "origin", "expected_verdict", "http", "verdict",
-                               "confidence", "passage_identities") if k in rec}
+                               "confidence") if k in rec}
+    out["passages_retrieved"] = len(rec.get("passages") or [])
     out["reasoning_sha256"] = sha256(rec["reasoning"])
     out["reasoning_words"] = len(rec["reasoning"].split())
     if "excluded" in rec:
@@ -350,8 +358,8 @@ def main() -> int:
     })
     record_path.write_text(json.dumps(record, indent=1))
     public = {k: v for k, v in record.items() if k != "claims"}
-    public["withheld"] = ("claim text, reasoning text and judge reasons (they restate held-out "
-                          "claims); see the private record")
+    public["withheld"] = ("claim text, reasoning text, judge reasons and passage identities "
+                          "(each would let a reader rebuild a held-out claim); see the private record")
     public["claims"] = [public_view(r) for r in records]
     out = Path(args.out) if args.out else Path("docs/eval/runs") / f"rag-ragas-{run_utc:%Y-%m-%d}.json"
     out.parent.mkdir(parents=True, exist_ok=True)

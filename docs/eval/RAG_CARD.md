@@ -94,8 +94,10 @@ reasoning is scored against the passages it retrieved:
   keeps the judge from affecting them and allows re-grading later.
 
 **Judge-scored, and said so.** These figures depend on a model's reading; Tests A and B do not.
-The public artifact carries scores, verdicts and passage hashes, not claim text, reasoning or
-the judge's reasons, all of which restate held-out claims.
+The public artifact carries scores, verdicts and the number of passages retrieved. It does
+not carry claim text, reasoning, the judge's reasons or passage identities (fingerprint,
+section, period), since each would let a reader rebuild a held-out claim; the same rule the
+benchmark run files follow.
 
 ## Thresholds, committed before the run
 
