@@ -136,10 +136,6 @@ risk factor (pos-04); AES's Chilean operations from Business rather than the leg
 are wrong in substance: CF's debt question returned impairment and fertilizer-market text
 (pos-06); Disney's carriage dispute returned reputation and intellectual-property text (pos-07).
 
-### Test C — faithfulness (RAGAS)
-
-*(filled after the run; the bar above was committed before any answer was collected)*
-
 **Reading of A and B.** Test B passes cleanly: the floor and the filters refuse what they should. Test A
 misses its bar by two cases. Known-item labelling with one passage per query counts a
 same-subject passage from elsewhere in the filing as a miss, so the 0.80 understates what a
@@ -148,6 +144,48 @@ passage". nDCG is low by construction: the ideal ranking assumes all three overl
 neighbours are returned, and the search returns one. The two substantive misses are the
 finding: paraphrased questions about debt terms and a named dispute are not reliably found
 when none of the query's words appear in the passage. Nothing was re-tuned.
+
+### Test C — faithfulness (RAGAS), 2026-10-05
+
+Artifact: `runs/rag-ragas-2026-10-05.json`. Answers collected 2026-10-05 16:36 UTC, graded
+21:26 UTC. Generator: FinVet's API, version 2.0.9, all three roles on DeepSeek. Judge: Qwen3.8,
+two passes per answer. No claim was excluded.
+
+| | all | supported | contradicted | not in the filing |
+|---|---|---|---|---|
+| claims scored | 49 of 50 | 27 of 28 | 12 | 10 |
+| faithfulness, mean | **0.687** | 0.740 | 0.717 | 0.509 |
+| faithfulness, lowest claim | **0.125** | 0.125 | 0.167 | 0.167 |
+| claims below 0.50 | 9 | 3 | 1 | 5 |
+| answer relevancy, mean | 0.908 | 0.894 | 0.915 | 0.938 |
+| context precision, mean | 0.793 | 0.921 | 0.765 | 0.482 |
+| verdict as expected | 38 of 50 | 28 of 28 | 0 of 12 | 10 of 10 |
+
+**Against the bar: fail on both conditions.** The mean is 0.687 against 0.85, and nine
+claims score below 0.50 against none allowed.
+
+**One claim was not graded.** On claim 2011 the judge repeated itself until it reached its
+token limit, at temperature 0; a separate retry produced no score either. It is reported as a
+judge failure, not scored as zero.
+
+**The judge was consistent, which is not the same as right.** Both passes gave the same
+faithfulness on every graded claim. Whether the shortfall belongs to the model's explanations
+or to the judge's reading is not yet established: the planned hand check of three answers
+against their passages has not been completed, so these are judge-scored figures without a
+human confirmation.
+
+**Not-in-filing claims score lowest partly by construction.** An explanation that says a
+filing does not mention something cannot be supported by the passages retrieved, which is
+why that group has the lowest faithfulness and context precision.
+
+**Contradicted claims: 0 of 12 verdicts, by rule.** In all twelve, the model's own reasoning
+names the contradiction, and every one was returned as NOT_ENOUGH_INFO. The evidence model
+turns a REFUTES on a claim that states no number into a decline
+(`non_corroboration_is_not_contradiction` in `src/finvet/models/evidence.py`), because for
+such claims silence and contradiction were not told apart. The rule applies to explicit
+contradiction as well. By construction FinVet never refutes a claim about what a filing says:
+no false refutations, and no true ones. Whether it should is a product decision that needs
+its own specification; the frozen claims were not changed.
 
 ## How to run
 

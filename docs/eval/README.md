@@ -112,10 +112,13 @@ passage id with no judge; the last is RAGAS faithfulness, judged by a second mod
 | mean reciprocal rank | ≥ 0.70 | 0.68 |
 | off-topic queries returning nothing | 12/12 | 12/12 |
 | wrong-period or wrong-form queries returning nothing | 8/8 | 8/8 |
-| faithfulness of the model's reading, 50 claims (RAGAS, judge-scored) | ≥ 0.85 | pending |
+| faithfulness of the model's reading, 50 claims (RAGAS, judge-scored) | ≥ 0.85 mean, none below 0.50 | 0.687 mean, 0.125 lowest, 49 graded |
 
 Four of the six misses returned a same-subject passage from another section of the same
-filing; two returned text off the subject. The earlier 70-case calibration set, on which the
+filing; two returned text off the subject. The faithfulness test fails both parts of its bar,
+with nine claims below 0.50; whether the shortfall is the model's or the judge's has not yet
+been checked by hand. Its verdicts matched on 38 of 50 claims: every contradicted claim was
+declined, because FinVet turns a REFUTES on a claim with no number into a decline. The earlier 70-case calibration set, on which the
 relevance floor was tuned, is a fit and is not reported as a result.
 
 ## Findings
