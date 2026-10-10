@@ -52,6 +52,19 @@ The table shows each model's first run; the pass^4 row uses all four. Accuracy l
 Across all eight runs, FinVet gave one wrong answer: it read a net loss as a gain. Every other
 miss was a "not enough information" answer or a hand-off to a human reviewer.
 
+Claims about what a filing says are answered from retrieved passages, so the search and the
+model's reading of it are measured separately, against bars set before each run:
+
+| Filing-text check | Bar | Result |
+|---|---|---|
+| Labelled passage in the top five, 30 held-out queries | ≥ 0.87 | 0.80 |
+| Mean reciprocal rank, same queries | ≥ 0.70 | 0.68 |
+| Off-topic or wrong-filing queries returning nothing | 20 of 20 | 20 of 20 |
+| Faithfulness of the model's explanation, 50 claims (RAGAS, judge-scored) | ≥ 0.85 | 0.687 |
+
+Three of the four bars are missed. Numeric verdicts never use passage text, so these figures do
+not touch the table above.
+
 The dataset, method and every run's results, with the files each number is computed from, are
 in [`docs/eval/`](docs/eval/).
 
