@@ -31,9 +31,9 @@ returns a number, FinVet says "not enough information" instead of guessing.
 
 ## Evaluation
 
-343 held-out financial claims across 76 US-listed companies, from mega-caps to mid-caps,
-including banks and insurers, non-calendar fiscal years and restated periods. Two models on
-identical code, four runs each.
+**Claim verification.** 343 held-out claims about 76 US-listed companies, including banks and
+insurers, non-calendar fiscal years and restated periods. Two models, identical code,
+four runs each.
 
 | Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
@@ -52,18 +52,18 @@ The table shows each model's first run; the pass^4 row uses all four. Accuracy l
 Across all eight runs, FinVet gave one wrong answer: it read a net loss as a gain. Every other
 miss was a "not enough information" answer or a hand-off to a human reviewer.
 
-Claims about what a filing says are answered from retrieved passages, so the search and the
-model's reading of it are measured separately, against bars set before each run:
+**Filing-text retrieval and explanations.** Claims about what a filing says are answered from
+retrieved passages. The search was tested on 50 held-out queries and the model's explanations
+on 50 held-out claims, against bars set before each run.
 
-| Filing-text check | Bar | Result |
+| Check | Bar | Result |
 |---|---|---|
-| Labelled passage in the top five, 30 held-out queries | ≥ 0.87 | 0.80 |
-| Mean reciprocal rank, same queries | ≥ 0.70 | 0.68 |
-| Off-topic or wrong-filing queries returning nothing | 20 of 20 | 20 of 20 |
-| Faithfulness of the model's explanation, 50 claims (RAGAS, judge-scored) | ≥ 0.85 | 0.687 |
+| Search: labelled passage in the top five (30 queries) | ≥ 0.87 | 0.80 |
+| Search: mean reciprocal rank (30 queries) | ≥ 0.70 | 0.68 |
+| Search: off-topic or wrong-filing queries return nothing (20 queries) | 20 of 20 | 20 of 20 |
+| Explanations: faithfulness to the passages, RAGAS (50 claims) | ≥ 0.85 | 0.687 |
 
-Three of the four bars are missed. Numeric verdicts never use passage text, so these figures do
-not touch the table above.
+Numeric verdicts never use passage text, so these results do not affect the table above.
 
 The dataset, method and every run's results, with the files each number is computed from, are
 in [`docs/eval/`](docs/eval/).
