@@ -44,7 +44,7 @@ identical code, four runs each.
 | 5. Asymmetric risk, confidently-wrong | 1 | **0** |
 | 5. Asymmetric risk, declined | 2.7% | 3.6% |
 | 6. Reliability — pass^4 | **94.8%** | **91.5%** |
-| 7. Reachability — expected path | 94.8% | 97.9% |
+| 7. Routing — expected path | 94.8% | 97.9% |
 
 The table shows each model's first run; the pass^4 row uses all four. Accuracy leaves out the
 28 claims about live stock prices.

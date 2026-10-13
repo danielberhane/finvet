@@ -95,7 +95,7 @@ LAYERS = [
      lambda runs: float(len(risk.measure(runs).dangerous)), float, 0.0),
     ("5. Asymmetric risk, declined",
      lambda runs: 100 * risk.measure(runs).decline_rate, _pct, 0.1),
-    ("7. Reachability", lambda runs: 100 * routing.measure(runs).rate, _pct, 0.1),
+    ("7. Routing", lambda runs: 100 * routing.measure(runs).rate, _pct, 0.1),
 ]
 
 
