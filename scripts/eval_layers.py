@@ -6,10 +6,8 @@ nothing, and can be re-run against the same artifacts indefinitely -- the runs
 were paid for once.
 
 The seven layers: outcome, trajectory, grounding, calibration, asymmetric risk,
-reliability, reachability. Five are
-statistics over runs and are computed here. Layer 1 (outcome) is asserted by
-`tests/integration/test_golden.py`, and Layer 7 (reachability) asks whether a
-behaviour can occur at all, which no statistic answers.
+reliability, routing. Six are computed here. Layer 1 (outcome) is asserted by
+`tests/integration/test_golden.py`.
 
 Usage:
     FINVET_GOLDEN_DIR=~/Projects/Active/finvet-golden \\

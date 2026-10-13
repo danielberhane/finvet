@@ -119,11 +119,12 @@ rather than publishing the model's reading.
   through `scripts/redact_run.py` only (withholds claim text, strips the
   dataset path and any non-public endpoint, refuses to write a leak).
 - Seven layers: outcome, trajectory, grounding, calibration, asymmetric
-  risk, reliability, reachability. Modules in `src/finvet/eval/measures/`
+  risk, reliability, routing. Modules in `src/finvet/eval/measures/`
   (reliability, calibration, grounding, risk, trajectory, routing;
   `artifacts.py` is the shared loader that defines "correct", not a layer).
-  The README row for the routing layer still says "reachability"; the module
-  and the layer summaries say routing. `scripts/run_golden.py`
+  Properties the code enforces by construction (agent tool lanes, zero spend
+  on refused claims, no decisive number without a trusted observation) are
+  controls, not a layer. `scripts/run_golden.py`
   records and asserts nothing; `tests/integration/test_golden.py` judges
   artifacts. `tests/golden/` is an empty scaffold — the real harness is the
   above.
