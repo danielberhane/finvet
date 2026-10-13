@@ -5,10 +5,13 @@ verdict", and only one puts a wrong number in front of a user. Averaging them
 into a single accuracy figure hides the failure that matters, so each is
 counted separately:
 
-    dangerous   a decisive verdict opposite to the expected one, SUPPORTS
-                where REFUTES was right or the reverse
-    declined    NOT_ENOUGH_INFO or an escalation where a decisive answer was
-                expected
+    dangerous   a decisive verdict (SUPPORTS or REFUTES) that does not match the
+                expected one: the opposite answer, or any answer where the
+                expected outcome was NOT_ENOUGH_INFO, REJECTED or BLOCKED.
+                Each asserts something the source does not establish.
+    declined    any other miss: a decline, an escalation, a wrong rejection,
+                or no verdict at all (a timeout or error). None of these
+                asserts anything to the user.
     correct     matched the expectation
 
 dangerous is reported on its own and never folded into an aggregate.
@@ -20,7 +23,6 @@ from typing import List, Tuple
 from .artifacts import Run, expected, is_scored, verdict
 
 DECISIVE = frozenset({"SUPPORTS", "REFUTES"})
-OPPOSITE = {"SUPPORTS": "REFUTES", "REFUTES": "SUPPORTS"}
 
 
 @dataclass(frozen=True)
@@ -54,13 +56,17 @@ def measure(runs: List[Run]) -> Risk:
 
             if got == want:
                 correct += 1
-            elif got == OPPOSITE.get(want):
-                # The only error that puts a false answer in front of a user.
-                dangerous.append((label, row_id))
-            elif got in DECISIVE and want in DECISIVE:
-                # Decisive, wrong, and not the mirror image -- still dangerous.
+            elif got in DECISIVE:
+                # A definite answer the source does not support: the opposite
+                # verdict, or a verdict where the expected outcome was a decline,
+                # a rejection or a block. The second used to fall into
+                # "declined", so the measure could not see the failure the
+                # fail-closed design exists to prevent.
                 dangerous.append((label, row_id))
             else:
+                # Nothing asserted. A missing verdict (timeout, error) used to
+                # match the absent "opposite" of NOT_ENOUGH_INFO and be counted
+                # dangerous.
                 declined += 1
 
     return Risk(scored=scored, correct=correct, declined=declined,
