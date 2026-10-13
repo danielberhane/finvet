@@ -9,11 +9,10 @@ and defines what counts as correct.
     grounding     Layer 3   decisive numbers traceable to a source
     risk          Layer 5   dangerous errors, reported alone
     trajectory    Layer 2   tool selection against the routing design
-    routing       --        sources used against the sources expected
+    routing       Layer 7   sources used against the sources expected
 
-Layer 1 (outcome) lives in tests/integration/test_golden.py. Layer 7
-(reachability) asks whether a capability can occur at all. Neither is a
-statistic over runs.
+Layer 1 (outcome) lives in tests/integration/test_golden.py; it judges one
+run against the strength contract rather than computing a statistic here.
 
 Every measure is a pure function of saved artifacts, so a run paid for once can
 be re-analysed without further API calls.
