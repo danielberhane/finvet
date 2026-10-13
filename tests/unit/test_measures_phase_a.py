@@ -162,3 +162,32 @@ class TestRisk:
 
         assert out.dangerous == []
         assert out.declined == 1
+
+    def test_a_verdict_where_a_decline_was_expected_is_dangerous(self):
+        """The fail-closed case: the source cannot establish the claim, and a
+        definite answer presents a guess as a verified fact. It used to be
+        counted as declined."""
+        for expected in ("NOT_ENOUGH_INFO", "REJECTED", "BLOCKED"):
+            for got in ("SUPPORTS", "REFUTES"):
+                out = risk.measure([_run("a", [_row(1, expected=expected, got=got)])])
+
+                assert out.dangerous == [("a", 1)], (expected, got)
+                assert out.declined == 0
+
+    def test_a_missing_verdict_is_never_dangerous(self):
+        """A timeout or error asserts nothing. With NOT_ENOUGH_INFO expected,
+        the absent verdict used to match the absent opposite and be counted
+        dangerous: Qwen run 2, row 1242."""
+        for expected in ("NOT_ENOUGH_INFO", "SUPPORTS", "REFUTES", "REJECTED"):
+            row = _row(1, expected=expected, got=None)
+            row["error"] = "ReadTimeout: timed out"
+            out = risk.measure([_run("a", [row])])
+
+            assert out.dangerous == [], expected
+            assert out.declined == 1
+
+    def test_a_wrong_rejection_is_declined_not_dangerous(self):
+        out = risk.measure([_run("a", [_row(1, expected="SUPPORTS", got="REJECTED")])])
+
+        assert out.dangerous == []
+        assert out.declined == 1
