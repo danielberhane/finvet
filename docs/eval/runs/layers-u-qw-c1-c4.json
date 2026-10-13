@@ -87,13 +87,8 @@
  "risk": {
   "scored": 1316,
   "correct": 1258,
-  "declined": 57,
-  "dangerous": [
-   [
-    "u-qw-c2",
-    1242
-   ]
-  ]
+  "declined": 58,
+  "dangerous": []
  },
  "trajectory": {
   "scored": 1057,
