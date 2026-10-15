@@ -23,6 +23,11 @@ status vocabulary (success/rejected/blocked) has no word for "sent to a human",
 so a run that escalates is reported as ESCALATED rather than scored as a wrong
 verdict. On a `strict` row it still fails -- the dataset asserts the system can
 answer it -- but the message says which of the two happened.
+
+**Grading against a later dataset version.** FINVET_GOLDEN_DATASET names a
+dataset file; the run is then graded by that file's strength and expectation,
+not the ones it recorded. FINVET_GOLDEN_PATCH names a second artifact whose
+answers replace the rows that dataset made stale (`artifacts.merge`).
 """
 
 import json
@@ -31,21 +36,45 @@ from pathlib import Path
 
 import pytest
 
+from finvet.eval.exclusions import burned_ids
+from finvet.eval.measures import artifacts as A
+
 OPPOSITE = {"SUPPORTS": "REFUTES", "REFUTES": "SUPPORTS"}
 
 
-def _artifact() -> dict | None:
+def _artifact_path() -> Path | None:
     """The run to judge: FINVET_GOLDEN_RUN, else the newest in the dataset dir."""
     named = os.environ.get("FINVET_GOLDEN_RUN")
     if named:
         path = Path(named).expanduser()
-        return json.loads(path.read_text()) if path.exists() else None
+        return path if path.exists() else None
 
     root = os.environ.get("FINVET_GOLDEN_DIR")
     if not root:
         return None
     runs = sorted(Path(root).expanduser().glob("run-*.json"))
-    return json.loads(runs[-1].read_text()) if runs else None
+    return runs[-1] if runs else None
+
+
+def _artifact() -> dict | None:
+    path = _artifact_path()
+    if path is None:
+        return None
+    data = json.loads(path.read_text())
+    dataset = os.environ.get("FINVET_GOLDEN_DATASET")
+    if not dataset:
+        return data
+    dataset_path = Path(dataset).expanduser()
+    rows, _ = A.load_dataset(dataset_path)
+    burned = burned_ids(dataset_path.name)
+    base = A.load_run(path)
+    patch = os.environ.get("FINVET_GOLDEN_PATCH")
+    if patch:
+        run = A.merge(base, A.load_run(Path(patch).expanduser()), rows,
+                      dataset_path.name, burned)
+    else:
+        run, _ = A.rebase(base, rows, burned)
+    return dict(data, label=run.label, results=list(run.rows.values()))
 
 
 ARTIFACT = _artifact()
