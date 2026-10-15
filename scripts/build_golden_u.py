@@ -9,7 +9,7 @@ any such collision exists, and prints the checks it ran so the assessment is
 reproducible.
 
 golden_c is read through $FINVET_GOLDEN_DIR (never named on a command line,
-per .claude/hooks/protect-artifacts.sh); golden_g is passed as a path.
+where the artifact-protection hook blocks it); golden_g is passed as a path.
 
 Usage:
     FINVET_GOLDEN_DIR=/path/to/golden/repo .venv/bin/python scripts/build_golden_u.py \

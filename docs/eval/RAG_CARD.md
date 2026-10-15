@@ -21,7 +21,7 @@ numeric claims, whose verdicts are computed from XBRL and never from passage tex
 management's discussion, 6 financial notes; at least 200 tokens; one company each; none of
 the five companies the 70-case calibration set used (AAPL, AMZN, MSFT, NVDA, TSLA). One
 drawn passage (CVX) was a bare table with no prose and was replaced by the next in seeded
-order. For each passage an AI assistant (Claude) wrote a one-line query about its subject in
+order. For each passage an AI assistant wrote a one-line query about its subject in
 different words, avoiding the passage's distinctive terms so the keyword arm cannot win by
 string match. The queries have not been independently reviewed. This is known-item retrieval: the labels are exact, the phrasing is not user-like.
 
@@ -67,7 +67,7 @@ The 28 passages behind the first two kinds were drawn by `random.Random(20261002
 prose of 28 companies outside both the calibration five and the 30 Test A companies; the 10
 not-in-filing companies follow in the same seeded order (one replaced by rule: a digit in the
 company name could parse as a claimed value). Absence was verified against every stored
-passage of the company. The 38 were written by an AI assistant (Claude) and approved by the
+passage of the company. The 38 were written by an AI assistant and approved by the
 author before freezing.
 
 **Method.** RAGAS 0.4.3. Each claim goes through FinVet's `/verify` unchanged; the model's

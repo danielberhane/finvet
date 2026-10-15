@@ -71,7 +71,7 @@ def _run_fail_closed(monkeypatch):
     """The real `execute`, with no trusted observation available.
 
     Driven through the producer rather than asserting on a hand-built dict:
-    the defect was in what the evidence builder emitted (CLAUDE.md gotcha 6).
+    the defect was in what the evidence builder emitted.
     """
     agent = _Agent.__new__(_Agent)
     agent.agent_type = "sec"
