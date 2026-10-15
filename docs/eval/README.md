@@ -26,7 +26,7 @@ seven layers (`src/finvet/eval/measures/`):
 3. **Grounding** — every decisive number traced to an XBRL fact, a quote or the
    deterministic penalty extraction.
 4. **Calibration** — expected calibration error over decisive verdicts.
-5. **Asymmetric risk** — confidently-wrong verdicts (≥ 0.8), and the decline rate.
+5. **Asymmetric risk** — dangerous verdicts (a SUPPORTS or REFUTES that does not match the expected answer), and the decline rate.
 6. **Reliability** — pass^k over repeated runs.
 7. **Routing** — evidence arrived by the expected path.
 
@@ -58,21 +58,21 @@ Rows 1 to 5 and 7: the first run of each model. Row 6: all four runs.
 | 2. Tool trajectory — required tools called (265 / 266) | 99.2% | 97.7% |
 | 3. Grounding — decisive numbers traced (242 / 239) | **100%** | **100%** |
 | 4. Calibration — decisive-verdict ECE | 0.049 | 0.050 |
-| 5. Asymmetric risk — confidently-wrong verdicts (of 329) | 1 | **0** |
+| 5. Asymmetric risk — dangerous verdicts (of 329) | 1 | **0** |
 | 5. Asymmetric risk — declined | 2.7% | 3.6% |
 | 6. Reliability — pass^4 (329 rows) | **94.8%** | **91.5%** |
 | 7. Routing — evidence by the expected path | 94.8% | 97.9% |
 
 ### Per run
 
-| run | model | outcome (329, pass@1) | confidently wrong | declined | rows lost | p50 / p95 per claim | duration |
+| run | model | outcome (329, pass@1) | dangerous | declined | rows lost | p50 / p95 per claim | duration |
 |---|---|---|---|---|---|---|---|
 | u-ds-c1 | DeepSeek | 97.0% | 1 (row 1073) | 9 | 0 | 11 s / 76 s | 116 min |
 | u-ds-c2 | DeepSeek | 97.9% | 0 | 7 | 0 | 12 s / 71 s | 114 min |
 | u-ds-c3 | DeepSeek | 96.7% | 1 (row 1073) | 10 | 0 | 12 s / 60 s | 111 min |
 | u-ds-c4 | DeepSeek | 97.0% | 0 | 10 | 0 | 11 s / 60 s | 105 min |
 | u-qw-c1 | Qwen | 96.4% | 0 | 12 | 2 | 40 s / 193 s | 322 min |
-| u-qw-c2 | Qwen | 94.5% | 0 | 17 | 3 | 40 s / 160 s | 325 min |
+| u-qw-c2 | Qwen | 94.5% | 0 | 18 | 3 | 40 s / 160 s | 325 min |
 | u-qw-c3 | Qwen | 95.1% | 0 | 16 | 2 | 39 s / 141 s | 316 min |
 | u-qw-c4 | Qwen | 96.4% | 0 | 12 | 1 | 40 s / 161 s | 293 min |
 
@@ -83,7 +83,7 @@ the durations say nothing about either model alone.
 
 | criterion | DeepSeek | Qwen | note |
 |---|---|---|---|
-| A1 zero confidently-wrong verdicts | fail (2, both row 1073) | fail (1) | Qwen's one is a row that timed out with no verdict, counted against the expected decline |
+| A1 zero dangerous verdicts | fail (2, both row 1073) | pass (0) | a row that timed out with no verdict counts as declined, not dangerous (PR #37) |
 | A2 every decisive number traceable | pass 969/969 | pass 948/948 | |
 | A3 per-class accuracy within 10 points of the baseline | pass, lowest class 96.2% | fail, restated 86.5% | Qwen runs out of steps on restated years and escalates |
 | A4 tolerance boundary rows | pass 20/20 every run | pass, 19/20 in two runs | |

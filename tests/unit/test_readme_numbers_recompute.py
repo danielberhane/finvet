@@ -91,7 +91,7 @@ LAYERS = [
     ("3. Grounding", lambda runs: 100 * grounding.measure(runs).rate, _pct, 0.1),
     ("4. Calibration", lambda runs: calibration.measure(runs).decisive_ece,
      float, 0.001),
-    ("5. Asymmetric risk, confidently-wrong",
+    ("5. Asymmetric risk, dangerous",
      lambda runs: float(len(risk.measure(runs).dangerous)), float, 0.0),
     ("5. Asymmetric risk, declined",
      lambda runs: 100 * risk.measure(runs).decline_rate, _pct, 0.1),
