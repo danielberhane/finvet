@@ -1,9 +1,9 @@
 # FinVet evaluation
 
 Two models, identical code, four runs each on the 325-claim held-out set `golden_u`
-(v1.2, SHA-256 `f602b2fe…3a342`). 317 claims were answered on 2026-09-29 with code at
-commit `e0b3d22`. The 8 claims that v1.2 changed were answered on 2026-10-15 with code at
-`7f94785`, whose pipeline is the same. Every figure below recomputes from the artifacts
+(SHA-256 `f602b2fe…3a342`). 317 claims were answered on 2026-09-29 with code at commit
+`e0b3d22`; the other 8, the live-price claims, on 2026-10-15 with code at `7f94785`, whose
+pipeline is the same. Every figure below recomputes from the artifacts
 in [`runs/`](runs/), and `tests/unit/test_readme_numbers_recompute.py` does so on every
 CI run.
 
@@ -16,28 +16,12 @@ Every claim carries an expected verdict. Composition, labelling and limitations:
 [`DATASET_CARD.md`](DATASET_CARD.md). The pass/fail criteria were committed before the
 set was first run: [`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md).
 
-### What changed in v1.2
+### Two answer dates
 
-Version 1.1 had 343 claims. 58 of them were graded leniently, failing only on the
-opposite verdict, and 14 were recorded but not graded. Version 1.2 grades every claim
-strictly:
-
-- **Lenient claims became strict.** 46 of the 58 now must match their label exactly. Of
-  the other 12, four were removed and eight were rewritten, as below.
-- **18 claims were removed:** four fines claims that only the news could answer, and the
-  14 ungraded ones. This was decided after the v1.1 results were seen, and one removed
-  claim had failed seven of eight answers.
-- **Eight fixed-price claims became live-price claims.** Their thresholds were so far from
-  the price that the answer could not change. They were run again, four times per model,
-  on 2026-10-15.
-- **The human-review gate is no longer measured.** Six of the removed claims were its
-  only test, so criterion A7 has no rows.
-
-The 317 unchanged claims keep their 2026-09-29 answers and are graded by v1.2. Two things
-differ for the eight new runs. They ran during US market hours. Qwen's requests for them
-did not carry the gateway's cache opt-out, but all 32 claim texts were different, so no
-answer could be a cached repeat. No check was run that either model still answers as it
-did on 2026-09-29.
+The eight live-price claims were answered on 2026-10-15, four times per model, during US
+market hours. Qwen's requests for them did not carry the gateway's cache opt-out, but all
+32 claim texts were different, so no answer could be a cached repeat. No check was run
+that either model still answered as it did on 2026-09-29.
 
 ## Scoring
 
@@ -115,7 +99,7 @@ Timings are not given: each run's answers come from two dates.
 | A4 tolerance boundary claims | pass 20/20 every run | pass, 19/20 in two runs | |
 | A5 limitation codes | fail 75/76 | fail 74/76 | one claim rejected by the parser instead of declined with a reason |
 | A6 guards | pass 40/40 | pass 40/40 | |
-| A7 fail-closed claims escalate | not measured | not measured | its six claims were removed in v1.2 |
+| A7 fail-closed claims escalate | not measured | not measured | the set has no rows for it |
 | A7b fines: no corroborated REFUTES, no wrong-amount SUPPORTS | pass | pass | |
 | A8 phrasing twins within 5 points of originals | pass | pass | |
 | A9 decisive ECE ≤ 0.05 | fail by 0.0003 | pass 0.048 | |
@@ -188,7 +172,8 @@ run).
 
 ## Reproducing the tables
 
-The merged v1.2 runs are rebuilt from the public artifacts by the recompute test:
+The runs are rebuilt from the public artifacts by the recompute test, which joins each
+2026-09-29 run with its 2026-10-15 live-price answers:
 
 ```
 OPENAI_API_KEY=any .venv/bin/python -m pytest tests/unit/test_readme_numbers_recompute.py -q
@@ -198,14 +183,14 @@ With the private dataset file, the layer and criteria scripts give every table:
 
 ```
 OPENAI_API_KEY=any .venv/bin/python scripts/eval_layers.py --dir docs/eval/runs --label u-ds \
-  --dataset <golden_u v1.2 file> --patch u-ds-c1=u12-ds-c1 --patch u-ds-c2=u12-ds-c2 \
+  --dataset <golden_u dataset file> --patch u-ds-c1=u12-ds-c1 --patch u-ds-c2=u12-ds-c2 \
   --patch u-ds-c3=u12-ds-c3 --patch u-ds-c4=u12-ds-c4
 .venv/bin/python scripts/score_golden_g.py --dir docs/eval/runs --label u-ds \
-  --dataset <golden_u v1.2 file> --patch u-ds-c1=u12-ds-c1 ...   # same pairs; u-qw likewise
+  --dataset <golden_u dataset file> --patch u-ds-c1=u12-ds-c1 ...   # same pairs; u-qw likewise
 ```
 
 ## Changelog
 
-- **2026-10-15** — golden_u v1.2: 325 claims, all graded strictly; the eight changed
-  claims run four times per model; the report above.
-- **2026-09-29** — golden_u v1.1, 343 claims, eight runs (four per model).
+- **2026-10-15** — the eight live-price claims answered, four runs per model; the report
+  above.
+- **2026-09-29** — eight runs, four per model, of the other 317 claims.
