@@ -42,18 +42,8 @@ Thumbs.db
 docs/EVAL_DATA_POLICY.md
 docs/AGENTIC_EVAL_GUIDE.md
 
-# Claude Code worktrees — a nested git repo; never a submodule of this one.
-.claude/worktrees/
-
 # Coverage artifact
 .coverage
-
-# Agent instructions for other tools; CLAUDE.md is committed deliberately --
-# it orients sessions on the hooks and encodes the project's failure history
-AGENTS.md
-# Mirrors of the hooks/skills for other agent tools; same reason
-.agents/
-.codex/
 
 # local study notes, never committed
 notes/

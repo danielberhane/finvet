@@ -5,7 +5,7 @@
 path that actually matters -- a model returning one verdict, `execute`
 publishing another -- and no test crossed it. `test_base_agent` asserted the
 flag was *False*; the True cases were all fixtures the tests wrote themselves.
-That is the failure mode CLAUDE.md's sixth gotcha describes, applied to the one
+That is the failure mode of a test that builds its own input, applied to the one
 mechanism the README leads with.
 
 The scenario is the real one: Apple's FY2024 10-K carries $294.9B for the
