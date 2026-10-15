@@ -62,3 +62,6 @@ docs/STATE_WRITERS.md
 docs/TEST_EDGE_CASES.md
 docs/RELEASE_A_DECISIONS.md
 docs/VALIDATION_STRATEGY.md
+
+# draw.io temp files
+*.dtmp

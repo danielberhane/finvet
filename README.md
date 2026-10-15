@@ -44,7 +44,7 @@ four runs each.
 | 2. Tool trajectory — tools called | 99.2% | 97.7% |
 | 3. Grounding — numbers traced | **100%** | **100%** |
 | 4. Calibration — decisive ECE | 0.049 | 0.050 |
-| 5. Asymmetric risk, confidently-wrong | 1 | **0** |
+| 5. Asymmetric risk, dangerous | 1 | **0** |
 | 5. Asymmetric risk, declined | 2.7% | 3.6% |
 | 6. Reliability — pass^4 | **94.8%** | **91.5%** |
 | 7. Routing — expected path | 94.8% | 97.9% |
