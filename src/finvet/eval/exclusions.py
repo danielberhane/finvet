@@ -42,6 +42,8 @@ BURNED_ROWS: dict[str, dict[int, str]] = {
         1186: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
     },
 }
+# v1.2 is v1.1 regraded (2026-10-12); a version does not unburn a row.
+BURNED_ROWS["golden_u_v1.2.jsonl"] = dict(BURNED_ROWS["golden_u.jsonl"])
 
 
 def burned_ids(split: str) -> frozenset[int]:
