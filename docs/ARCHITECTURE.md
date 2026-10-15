@@ -775,6 +775,6 @@ The Streamlit UI at port 8501 renders:
 ## Diagrams
 
 Architecture diagrams are in `docs/diagrams/`:
-- `finvet-linkedin.png` / `finvet-linkedin.svg` -- LangGraph pipeline overview
+- `finvet-linkedin.png` -- LangGraph pipeline overview, exported from `finvet-pipeline.drawio`
 - `finvet-delegation-run.png` -- a News -> SEC delegated run as the UI shows it (embedded in the README)
 - `finvet-delegation-evidence.png` -- the same run's evidence panel, every tool call with arguments and raw response (embedded above, section 2)
