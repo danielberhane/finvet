@@ -140,7 +140,7 @@ behind them.
 Run with `--dataset golden_u_v1.2.jsonl` from the private evaluation repository, with
 vendor-free labels (`u-ds-c1`, `u-qw-c1`). Before any paid run,
 `scripts/replay_fact_selection.py` replays the XBRL-backed rows through the production
-path with no model and must report no unexplained miss. The full procedure is `.claude/skills/benchmark-run/SKILL.md`.
+path with no model and must report no unexplained miss.
 
 ## Versions
 
