@@ -113,6 +113,9 @@ rather than publishing the model's reading.
   `scripts/build_golden_u.py`, which refuses to write on a duplicate-claim or
   duplicate-fact check failure. The same `run-*.json` protection applies. Old
   golden_c-only runs are superseded, not deleted.
+- **Current version: `golden_u_v1.2.jsonl`** (2026-10-12, 325 run claims, all strict).
+  The published results reuse the 2026-09-29 answers and re-ask rows 57-64
+  (`u12-*` runs); score with `--dataset <v1.2 file> --patch u-ds-cN=u12-ds-cN`.
 - **`run-*.json` files there are PAID artifacts — never overwrite or
   delete.** `scripts/eval_layers.py --json` is an OUTPUT path, not a
   selector; use `--label` to choose runs. Publishing an artifact goes
