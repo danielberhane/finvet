@@ -24,9 +24,9 @@ BURNED_ROWS: dict[str, dict[int, str]] = {
             "retrieval-gold use unaffected — deterministic",
     },
     "golden_c.jsonl": {
-        1: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
-        68: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
-        88: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+        1: "published in full in docs/eval/DATASET_CARD.md (2026-09-04; section since removed, text remains in git history)",
+        68: "published in full in docs/eval/DATASET_CARD.md (2026-09-04; section since removed, text remains in git history)",
+        88: "published in full in docs/eval/DATASET_CARD.md (2026-09-04; section since removed, text remains in git history)",
     },
     "golden_g.jsonl": {
         1079: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
@@ -34,9 +34,9 @@ BURNED_ROWS: dict[str, dict[int, str]] = {
         1186: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
     },
     "golden_u.jsonl": {
-        1: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
-        68: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
-        88: "published in full in docs/eval/DATASET_CARD.md (2026-09-04)",
+        1: "published in full in docs/eval/DATASET_CARD.md (2026-09-04; section since removed, text remains in git history)",
+        68: "published in full in docs/eval/DATASET_CARD.md (2026-09-04; section since removed, text remains in git history)",
+        88: "published in full in docs/eval/DATASET_CARD.md (2026-09-04; section since removed, text remains in git history)",
         1079: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
         1151: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
         1186: "published in full in docs/eval/GOLDEN_G_CARD.md (2026-09-28)",
