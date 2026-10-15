@@ -16,6 +16,37 @@ Use `.venv/bin/python`, never bare `python`. Run tests from a clean shell: an
 env file that overrides `LLM_*__MODEL` leaks into the test environment and
 fails the tests that assert the default provider.
 
+## Running natively
+
+The README's `docker compose` quickstart runs everything in containers. For hot
+reload, run the API and UI from the checkout and keep only the services in
+containers:
+
+```bash
+docker compose --profile sec up -d postgres sec-edgar-mcp      # pgvector, SEC EDGAR MCP (:9870)
+.venv/bin/uvicorn finvet.main:app --port 8000 --app-dir src    # API → :8000
+.venv/bin/streamlit run ui/app.py --server.port 8501           # UI  → :8501
+```
+
+Embeddings come from a local Ollama with `nomic-embed-text` pulled (~270 MB, no
+API key). The keys each feature needs, and what happens without them, are listed
+in `.env.example` and in `docs/ARCHITECTURE.md` under the configuration
+reference.
+
+### Loading filings
+
+The filing-text index starts empty; filings are not distributed with the repo.
+XBRL verification works without it. Claims about a filing's narrative sections
+need an ingest pass:
+
+```bash
+.venv/bin/python scripts/fetch_filings.py --tickers AAPL,MSFT --years 2024   # downloads to data/filings/
+.venv/bin/python -m finvet.rag.ingest                                        # defaults to data/filings
+```
+
+Both scripts document their options in their docstrings. SEC requires a contact
+address on automated requests; set `SEC_EDGAR_USER_AGENT` in `.env` first.
+
 ## What CI enforces
 
 Your PR must pass what `.github/workflows/ci.yml` runs:
