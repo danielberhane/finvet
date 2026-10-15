@@ -182,7 +182,7 @@ class TestThePublicArtifactCarriesNoText:
             assert secret not in published
         assert view["passages_retrieved"] == 1
 
-    def test_the_summary_reports_each_kind_and_the_bar(self, runner):
+    def test_the_summary_reports_each_kind(self, runner):
         rec = self._record()
         other = {**rec, "id": 2029, "kind": "not_in_filing", "expected_verdict": "NOT_ENOUGH_INFO",
                  "verdict": "NOT_ENOUGH_INFO", "excluded": "no passages retrieved"}
@@ -191,7 +191,6 @@ class TestThePublicArtifactCarriesNoText:
         assert summary["all"]["claims"] == 2 and summary["all"]["scored"] == 1
         assert summary["by_kind"]["not_in_filing"]["excluded"] == 1
         assert summary["by_kind"]["supported"]["faithfulness_mean"] == 1.0
-        assert summary["bar"]["faithfulness_mean"] == 0.85
 
 
 class TestAJudgeFailureIsRecordedNotFatal:

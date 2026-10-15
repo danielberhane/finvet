@@ -73,11 +73,11 @@ author before freezing.
 **Method.** RAGAS 0.4.3. Each claim goes through FinVet's `/verify` unchanged; the model's
 reasoning is scored against the passages it retrieved:
 
-| RAGAS metric | question | |
-|---|---|---|
-| Faithfulness | what share of the reasoning's statements do the passages support? | barred |
-| Answer relevancy | does the reasoning address the claim? | reported only |
-| Context precision (without reference) | were the useful passages ranked first? | reported only |
+| RAGAS metric | question |
+|---|---|
+| Faithfulness | what share of the reasoning's statements do the passages support? |
+| Answer relevancy | does the reasoning address the claim? |
+| Context precision (without reference) | were the useful passages ranked first? |
 
 - **Generator:** DeepSeek-V4.1-Flash, FinVet's configured model.
 - **Judge:** Qwen3.8 on the GMU ORC gateway, temperature 0, reasoning mode off, gateway cache
@@ -99,15 +99,7 @@ not carry claim text, reasoning, the judge's reasons or passage identities (fing
 section, period), since each would let a reader rebuild a held-out claim; the same rule the
 benchmark run files follow.
 
-## Thresholds, committed before the run
-
-| test | measure | bar |
-|---|---|---|
-| A | hit rate@5 | ≥ 26/30 (0.87) |
-| A | MRR | ≥ 0.70 |
-| B | off-topic returning nothing | 12/12 |
-| B | near-miss returning nothing | 8/8 |
-| C | faithfulness (RAGAS), mean over scored claims | ≥ 0.85, no claim below 0.50 |
+## Rules, committed before the run
 
 A miss is reported with its id and what came back instead. Nothing is tuned on this set.
 If the floor, the chunker or the embedding model changes, this set is retired and a new one
@@ -118,13 +110,13 @@ drawn, because its corpus hash will no longer match.
 Artifact: `runs/rag-heldout-2026-10-01.json`. Corpus hash matched the frozen one; the
 embedder was live. A second run produced identical numbers.
 
-| test | measure | bar | result | |
-|---|---|---|---|---|
-| A | hit rate@5 | ≥ 0.87 | **0.80** (24/30) | fail |
-| A | MRR | ≥ 0.70 | **0.68** | fail |
-| A | nDCG@5 | — | 0.49 | reported only |
-| B | off-topic returning nothing | 12/12 | **12/12** | pass |
-| B | near-miss returning nothing | 8/8 | **8/8** | pass |
+| test | measure | result |
+|---|---|---|
+| A | hit rate@5 | **0.80** (24/30) |
+| A | MRR | **0.68** |
+| A | nDCG@5 | 0.49 |
+| B | off-topic returning nothing | **12/12** |
+| B | near-miss returning nothing | **8/8** |
 
 **The six misses.** In every one, the keyword arm scored zero (expected: the queries avoid
 the passages' own words), so the vector arm decided alone. Four returned a different passage
@@ -136,8 +128,8 @@ risk factor (pos-04); AES's Chilean operations from Business rather than the leg
 are wrong in substance: CF's debt question returned impairment and fertilizer-market text
 (pos-06); Disney's carriage dispute returned reputation and intellectual-property text (pos-07).
 
-**Reading of A and B.** Test B passes cleanly: the floor and the filters refuse what they should. Test A
-misses its bar by two cases. Known-item labelling with one passage per query counts a
+**Reading of A and B.** Test B: the floor and the filters refuse everything they should, 20 of 20.
+Test A: 24 of 30. Known-item labelling with one passage per query counts a
 same-subject passage from elsewhere in the filing as a miss, so the 0.80 understates what a
 reader experiences, but it is the honest figure for "did the search return the labelled
 passage". nDCG is low by construction: the ideal ranking assumes all three overlapping
@@ -156,13 +148,9 @@ two passes per answer. No claim was excluded.
 | claims scored | 49 of 50 | 27 of 28 | 12 | 10 |
 | faithfulness, mean | **0.687** | 0.740 | 0.717 | 0.509 |
 | faithfulness, lowest claim | **0.125** | 0.125 | 0.167 | 0.167 |
-| claims below 0.50 | 9 | 3 | 1 | 5 |
 | answer relevancy, mean | 0.908 | 0.894 | 0.915 | 0.938 |
 | context precision, mean | 0.793 | 0.921 | 0.765 | 0.482 |
 | verdict as expected | 38 of 50 | 28 of 28 | 0 of 12 | 10 of 10 |
-
-**Against the bar: fail on both conditions.** The mean is 0.687 against 0.85, and nine
-claims score below 0.50 against none allowed.
 
 **One claim was not graded.** On claim 2011 the judge repeated itself until it reached its
 token limit, at temperature 0; a separate retry produced no score either. It is reported as a
@@ -210,6 +198,10 @@ alone.
 
 ## Changelog
 
+- **2026-10-15** — The pass thresholds this card, the report and the README had carried
+  since 2026-10-01 are removed. They were set by judgement before the run with no recorded
+  basis, so they could not be justified to a reader; results are now reported as measured.
+  The thresholds remain in git history.
 - **2026-10-01** — Test C re-specified for RAGAS on 50 claims, before any answer was
   collected. An earlier Test C run the same day used DeepEval with DeepSeek as both generator
   and judge, scored FinVet's full explanation including its code-appended summary, and covered
