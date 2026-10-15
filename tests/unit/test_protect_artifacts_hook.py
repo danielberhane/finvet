@@ -35,3 +35,18 @@ def test_readonly_jq_on_golden_g_is_allowed():
 def test_compound_readonly_is_still_blocked():
     proc = _run("Bash", {"command": "echo hi; jq -c .id " + REPO + "g/golden_g" + ".jsonl"})
     assert proc.returncode == 2
+
+
+def test_write_to_a_versioned_golden_file_is_blocked():
+    proc = _run("Write", {"file_path": REPO + "u/golden_u_v1.2" + ".jsonl", "content": "{}"})
+    assert proc.returncode == 2, proc.stderr
+
+
+def test_write_to_a_drift_subset_is_blocked():
+    proc = _run("Write", {"file_path": REPO + "u/drift_v12" + ".jsonl", "content": "{}"})
+    assert proc.returncode == 2, proc.stderr
+
+
+def test_readonly_jq_on_a_versioned_golden_file_is_allowed():
+    proc = _run("Bash", {"command": "jq -c .id " + REPO + "u/golden_u_v1.2" + ".jsonl"})
+    assert proc.returncode == 0

@@ -23,7 +23,8 @@ esac
 
 # Protected: run artifacts and the frozen dataset, in the golden repo.
 # golden_100.jsonl.pre-* backups included. _archive/_backup copies included.
-PATTERN='finvet-golden/[^"]*(run-[^"]*\.json|golden_[a-z]\.jsonl|golden_100[^"]*)'
+# Versioned files (golden_u_v1.2) and drift subsets included (2026-10-15).
+PATTERN='finvet-golden/[^"]*(run-[^"]*\.json|golden_[a-z][^"/]*\.jsonl|drift[^"/]*\.jsonl|golden_100[^"]*)'
 
 if ! echo "$input" | grep -qE "$PATTERN"; then
   exit 0
