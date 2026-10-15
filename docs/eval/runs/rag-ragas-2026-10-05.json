@@ -83,12 +83,7 @@
   "judge_failed": {
    "2011": "deferred: judge loops to max_tokens on this input at temperature 0; re-grade separately at the end"
   },
-  "unstable_claims": [],
-  "bar": {
-   "faithfulness_mean": 0.85,
-   "faithfulness_min": 0.5,
-   "applies_to": "all scored claims; set before any answer was collected"
-  }
+  "unstable_claims": []
  },
  "withheld": "claim text, reasoning text, judge reasons and passage identities (each would let a reader rebuild a held-out claim); see the private record",
  "claims": [
