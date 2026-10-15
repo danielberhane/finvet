@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from finvet.eval.exclusions import burned_ids  # noqa: E402
 from finvet.eval.measures import (  # noqa: E402
     artifacts, calibration, grounding, reliability, risk, routing, trajectory,
 )
@@ -37,6 +38,12 @@ def main() -> int:
     parser.add_argument("--label", action="append", default=[],
                         help="measure only runs whose label contains this; "
                              "repeatable. Default: every complete run.")
+    parser.add_argument("--dataset",
+                        help="grade the runs against this dataset file instead of "
+                             "the strength and expectation they recorded")
+    parser.add_argument("--patch", action="append", default=[], metavar="OLD=NEW",
+                        help="with --dataset: run NEW answers the rows the dataset "
+                             "made stale in run OLD (exact labels); repeatable")
     args = parser.parse_args()
 
     if not args.dir:
@@ -57,7 +64,12 @@ def main() -> int:
                   file=sys.stderr)
             return 2
 
-    runs = [r for r in artifacts.load_runs(paths) if r.complete]
+    if args.patch and not args.dataset:
+        print("--patch needs --dataset.", file=sys.stderr)
+        return 2
+
+    pool = [r for r in artifacts.load_runs(paths) if r.complete]
+    runs = pool
     if args.label:
         runs = [r for r in runs
                 if any(sub in (r.label or "") for sub in args.label)]
@@ -70,6 +82,20 @@ def main() -> int:
     if not runs:
         print(f"No complete runs in {args.dir}", file=sys.stderr)
         return 2
+
+    regraded = None
+    if args.dataset:
+        try:
+            runs, regraded = artifacts.regrade(runs, pool, Path(args.dataset), args.patch,
+                                               burned_ids(Path(args.dataset).name))
+        except ValueError as e:
+            print(f"refusing: {e}", file=sys.stderr)
+            return 2
+        print(f"\n  dataset: {regraded['dataset']}  sha256 {regraded['dataset_sha256'][:12]}")
+        for old, new in regraded["patches"].items():
+            print(f"    {old} + {new}")
+        for label, ids in regraded["stale_dropped"].items():
+            print(f"    {label}: {len(ids)} stale rows dropped, need a new run: {ids}")
 
     # Per run, not one summary line. These layers pool rows across runs, and
     # pooling two models reads as one -- a segment run under a different model
@@ -89,6 +115,13 @@ def main() -> int:
     rsk = risk.measure(runs)
     trj = trajectory.measure(runs)
     rte = routing.measure(runs)
+
+    if regraded is not None:
+        outcome = {r.label: artifacts.outcome_excluding_live_market(r) for r in runs}
+        print("\n  LAYER 1  outcome       excluding live market quotes")
+        for label, (ok, n) in outcome.items():
+            print(f"           {label:<24} {ok}/{n} ({ok / n:.1%})")
+        regraded["outcome"] = {k: f"{ok}/{n}" for k, (ok, n) in outcome.items()}
 
     print(f"\n  LAYER 6  reliability   pass@1 {rel.pass_at_1:.3f}   "
           f"pass^{rel.k} {rel.pass_hat_k:.3f}   n={rel.n}")
@@ -137,12 +170,15 @@ def main() -> int:
         print(f"           DANGEROUS: {rsk.dangerous}")
 
     if args.json_path:
-        Path(args.json_path).write_text(json.dumps({
+        summary = {
             "runs": [r.label or r.started_utc for r in runs],
             "reliability": asdict(rel), "calibration": asdict(cal),
             "grounding": asdict(gnd), "risk": asdict(rsk),
             "trajectory": asdict(trj), "routing": asdict(rte),
-        }, indent=1, default=str))
+        }
+        if regraded is not None:
+            summary["regraded"] = regraded
+        Path(args.json_path).write_text(json.dumps(summary, indent=1, default=str))
         print(f"\n  written to {args.json_path}")
     return 0
 
