@@ -64,14 +64,18 @@ reviewer. This is version 1.2 of the set; what changed from 1.1, and why, is in
 **2) RAG retrieval and explanations.** RAG is triggered when the answer lies in a filing's
 text, such as a risk factor, a legal proceeding or a disclosed fine, rather than in its
 financial statements. Retrieval was tested on 50 held-out queries and the model's explanations
-on 50 held-out claims, against bars set before each run.
+on 50 held-out claims, both sets frozen before the run.
 
-| Check | Bar | Result |
-|---|---|---|
-| Retrieval: labelled passage in the top five (30 queries) | ≥ 0.87 | 0.80 |
-| Retrieval: mean reciprocal rank (30 queries) | ≥ 0.70 | 0.68 |
-| Retrieval: off-topic or wrong-filing queries return nothing (20 queries) | 20 of 20 | 20 of 20 |
-| Explanations: faithfulness to the retrieved passages, RAGAS (50 claims) | ≥ 0.85 | 0.687 |
+| Check | Result |
+|---|---|
+| Retrieval: labelled passage in the top five (30 queries) | 24 of 30 (80%) |
+| Retrieval: mean reciprocal rank (30 queries) | 0.68 |
+| Retrieval: off-topic or wrong-filing queries return nothing (20 queries) | 20 of 20 |
+| Explanations: faithfulness to the retrieved passages, RAGAS (50 claims) | 0.69 mean, 0.13 lowest |
+
+Four of the six queries whose passage was not in the top five returned a same-subject passage
+from another section of the same filing. No explanation reaches a verdict: a claim with no
+number is declined.
 
 The dataset, method and every run's results, with the files each number is computed from, are
 in [`docs/eval/`](docs/eval/).
