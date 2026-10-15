@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 """Score a golden_g run against the pre-registered criteria A1–A13.
 
-Joins the artifact to the dataset on id (the artifact does not carry `tags`).
+Joins the artifact to the dataset on id (the artifact does not carry `tags`), and
+grades each run by the dataset's strength and expectation, so answers recorded
+under an earlier version are graded by this one. `--patch OLD=NEW` adds new
+answers for rows the dataset made stale (see `artifacts.regrade`).
 Pure function of saved files; spends nothing.
 
 Usage:
@@ -17,6 +20,7 @@ from typing import Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from finvet.eval.exclusions import burned_ids  # noqa: E402
 from finvet.eval.measures import artifacts as A  # noqa: E402
 from finvet.eval.measures import calibration, grounding, reliability, risk  # noqa: E402
 
@@ -197,11 +201,24 @@ def main() -> int:
                          "(id < 1000) of this same run set, correct iff artifacts.is_correct; "
                          "falls back to 1.00 with a printed note when this run set carries no "
                          "such rows. Or a numeric override, e.g. 1.00")
+    ap.add_argument("--patch", action="append", default=[], metavar="OLD=NEW",
+                    help="run NEW answers the rows the dataset made stale in run OLD "
+                         "(exact labels); repeatable")
     args = ap.parse_args()
     ds = [json.loads(line) for line in Path(args.dataset).read_text().splitlines() if line.strip()]
-    runs = [r for r in A.load_runs(A.find_runs(Path(args.dir))) if r.complete and args.label in r.label]
+    pool = [r for r in A.load_runs(A.find_runs(Path(args.dir))) if r.complete]
+    runs = [r for r in pool if args.label in r.label]
     if not runs:
         sys.exit(f"no complete runs labelled *{args.label}* in {args.dir}")
+    try:
+        runs, info = A.regrade(runs, pool, Path(args.dataset), args.patch,
+                               burned_ids(Path(args.dataset).name))
+    except ValueError as e:
+        sys.exit(f"refusing: {e}")
+    for old, new in info["patches"].items():
+        print(f"patched: {old} + {new}")
+    for label, ids in info["stale_dropped"].items():
+        print(f"{label}: {len(ids)} stale rows dropped, need a new run: {ids}")
     if args.baseline == "auto":
         baseline, n = auto_baseline(ds, runs)
         if n:
