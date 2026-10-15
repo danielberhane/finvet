@@ -27,6 +27,7 @@ instead.
 
 import re
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -43,11 +44,38 @@ WRITEUP = Path("docs/eval/README.md")
 EVAL_DIR = Path("docs/eval/runs")
 
 
+# golden_u v1.2 (325 claims) is v1.1 with these rows removed and rows 57-64
+# re-asked as live-price claims. Each published v1.2 run is a 2026-09-29 run
+# with those eight rows answered again on 2026-10-15 (`u12-*` artifacts). The
+# merge here needs no private file: no measure reads a row's strength, and
+# v1.2 changed no other expected verdict.
+V12_REMOVED = frozenset({49, 51, 53, 55, 98, 99, 100, 1157, 1160, 1163, 1164, 1165,
+                         1202, 1203, 1204, 1205, 1206, 1207})
+V12_CLAIMS = 325
+
+
+def _v12(base, patch):
+    assert base.model == patch.model, (base.label, patch.label)
+    rows = {i: r for i, r in base.rows.items()
+            if i not in V12_REMOVED and i not in patch.rows}
+    rows.update(patch.rows)
+    assert len(rows) == V12_CLAIMS, f"{base.label}+{patch.label}: {len(rows)} rows"
+    return replace(base, label=f"{base.label}+{patch.label}", rows=rows)
+
+
 def _runs(label):
+    """The published v1.2 runs whose label contains `label` (e.g. u-ds-c1, u-qw)."""
     paths = [p for p in A.find_runs(EVAL_DIR) if label in p.name]
     if not paths:
         pytest.skip(f"no published artifact labelled {label!r}")
-    return A.load_runs(paths)
+    patches = {r.label: r for r in A.load_runs(A.find_runs(EVAL_DIR))
+               if r.label.startswith("u12-")}
+    out = []
+    for base in A.load_runs(paths):
+        patch = patches.get("u12-" + base.label[len("u-"):])
+        assert patch is not None, f"no v1.2 answers published for {base.label}"
+        out.append(_v12(base, patch))
+    return out
 
 
 def _table_row(prefix):

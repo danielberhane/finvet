@@ -233,3 +233,10 @@ def test_the_strength_contract_judges_the_merged_run(run_dir, base_json):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert f"rows      : {len(base_json['results']) - len(REMOVED)}" in proc.stdout
     assert "label=u-ds-c1+u12-ds-c1" in proc.stdout
+
+
+def test_a_new_dataset_version_keeps_its_burned_rows():
+    """The runner looks burned rows up by file name. v1.2 shipped without an
+    entry, so a full v1.2 run would have re-run six published claims."""
+    from finvet.eval.exclusions import burned_ids
+    assert burned_ids(DATASET_NAME) == burned_ids("golden_u.jsonl") != frozenset()

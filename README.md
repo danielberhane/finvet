@@ -34,26 +34,28 @@ returns a number, FinVet says "not enough information" instead of guessing.
 FinVet has two evaluations: 1) the full system, from claim to verdict, and 2) its RAG
 component on its own.
 
-**1) Claim verification.** 343 held-out claims about 76 US-listed companies, including banks
-and insurers, non-calendar fiscal years and restated periods. Two models, identical code,
-four runs each.
+**1) Claim verification.** 325 held-out claims about 72 US-listed companies, including banks
+and insurers, non-calendar fiscal years and restated periods. Every claim is graded strictly.
+Two models, identical code, four runs each.
 
 | Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
-| 1. Outcome — verdict accuracy | **97.0%** | **96.7%** |
-| 2. Tool trajectory — tools called | 99.2% | 97.7% |
+| 1. Outcome — verdict accuracy | **97.3%** | **97.0%** |
+| 2. Tool trajectory — tools called | 100% | 98.8% |
 | 3. Grounding — numbers traced | **100%** | **100%** |
 | 4. Calibration — decisive ECE | 0.049 | 0.050 |
 | 5. Asymmetric risk, dangerous | 1 | **0** |
-| 5. Asymmetric risk, declined | 2.7% | 3.6% |
-| 6. Reliability — pass^4 | **94.8%** | **91.5%** |
-| 7. Routing — expected path | 94.8% | 97.9% |
+| 5. Asymmetric risk, declined | 2.2% | 3.1% |
+| 6. Reliability — pass^4 | **95.4%** | **92.0%** |
+| 7. Routing — expected path | 95.4% | 98.5% |
 
 The table shows each model's first run; the pass^4 row uses all four. Accuracy leaves out the
 28 claims about live stock prices.
 
-Across all eight runs, FinVet gave one wrong answer: it read a net loss as a gain. Every other
-miss was a "not enough information" answer or a hand-off to a human reviewer.
+Across all eight runs, FinVet got one claim wrong, in two DeepSeek runs: it read a net loss as
+a gain. Every other miss was a "not enough information" answer or a hand-off to a human
+reviewer. This is version 1.2 of the set; what changed from 1.1, and why, is in
+[`docs/eval/`](docs/eval/README.md#what-changed-in-v12).
 
 **2) RAG retrieval and explanations.** RAG is triggered when the answer lies in a filing's
 text, such as a risk factor, a legal proceeding or a disclosed fine, rather than in its
