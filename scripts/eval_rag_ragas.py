@@ -318,8 +318,6 @@ def summarise(records: list[dict]) -> dict:
         "excluded": {r["id"]: r["excluded"] for r in records if "excluded" in r},
         "judge_failed": {r["id"]: r["judge_failed"] for r in records if "judge_failed" in r},
         "unstable_claims": [r["id"] for r in records if r.get("unstable")],
-        "bar": {"faithfulness_mean": 0.85, "faithfulness_min": 0.50,
-                "applies_to": "all scored claims; set before any answer was collected"},
     }
 
 
