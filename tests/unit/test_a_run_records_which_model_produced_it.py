@@ -114,7 +114,7 @@ class TestOlderRowsStillVerify:
 class TestTheParserNamesTheConfiguredModel:
     """Driven through the graph node, not a hand-built dict: the defect was in
     what the producer emitted, and a fixture would assert the shape I
-    remembered rather than the shape the node writes (CLAUDE.md gotcha 6)."""
+    remembered rather than the shape the node writes."""
 
     def _run_parser(self, monkeypatch, model_name):
         # `nodes/__init__.py` re-exports the function under the module's own
