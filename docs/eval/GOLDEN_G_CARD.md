@@ -1,10 +1,10 @@
 # FinVet Golden Evaluation Set G — dataset card
 
-**v1.2 · 252 claims · frozen 2026-09-29 · held out privately**
+**252 claims · frozen 2026-09-29 · held out privately**
 SHA-256 `bd88c1cddc94ec793af30a4cdded7332a90761c93b5d5bc9741e847efcb2486c`
 
-Frozen as a component of `golden_u.jsonl` (97 + 252 = 349 rows) — see
-`docs/eval/GOLDEN_U_CARD.md` for the combined run set.
+Frozen as a component of the combined run set `golden_u.jsonl`; see
+[`DATASET_CARD.md`](DATASET_CARD.md) for that set.
 
 ## Summary
 
@@ -489,7 +489,7 @@ reviews do not survive an API restart.
 
 Going forward, this set is run as a component of the combined `golden_u.jsonl`
 run set (`u/`, labels `u-ds-c1`/`u-qw-c1`) rather than standalone — see
-`docs/eval/GOLDEN_U_CARD.md` for that run procedure. `scripts/score_golden_g.py`
+[`DATASET_CARD.md`](DATASET_CARD.md) for that run procedure. `scripts/score_golden_g.py`
 still scores it, on either dataset, and its A3 baseline is now computed from
 the golden_c rows of the *same* run (`--baseline auto`) rather than a fixed
 pre-registered constant.
@@ -577,5 +577,5 @@ seconds, with zero tool calls — before any agent runs.
 - **v1.2** (2026-09-29): frozen at the hash above. The version every reported
   run uses.
 - 2026-09-28 — ids 1079, 1151, 1186 burned by publication here.
-- 2026-09-28 — frozen as a component of `golden_u.jsonl` (97 + 252 = 349 rows);
-  see `docs/eval/GOLDEN_U_CARD.md`.
+- 2026-09-28 — frozen as a component of the combined run set `golden_u.jsonl`; see
+  [`DATASET_CARD.md`](DATASET_CARD.md).
