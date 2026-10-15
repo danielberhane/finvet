@@ -30,11 +30,8 @@ tests/
 ├── integration/         # 11 files, all marked `integration`; each self-skips when
 │   └── conftest.py      # its service is absent. Loads the repo .env (override=True)
 │                        # so real keys beat the root conftest's dummies
-├── golden/              # empty scaffold — the real harness is described below
 ├── accuracy/            # RAG relevance cases + the Release A manifest (data only)
-├── fixtures/            # XBRL concept table, filing chunks, two sample filings
-├── performance/         # empty
-└── security/            # empty
+└── fixtures/            # XBRL concept table, filing chunks, two sample filings
 ```
 
 Registered markers: `integration` only. `addopts = -m 'not integration'` in
