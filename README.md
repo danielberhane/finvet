@@ -6,8 +6,6 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)
 
-Status: running. The open [issues](https://github.com/danielberhane/finvet/issues) list what is next.
-
 FinVet verifies one financial claim at a time. Given *"Microsoft's fiscal 2025 revenue was
 $282 billion,"* it returns a verdict of supported, refuted, or not enough information, a
 confidence score, and the number it compared the claim against. Each response also names the
@@ -19,28 +17,33 @@ run.
 </p>
 
 > **Not financial advice.** A research and demonstration system; outputs may be wrong and must
-> be independently verified. Not affiliated with any data provider named here.
+> be independently verified. It applies model-risk principles but certifies nothing and is not
+> a compliance product. Not affiliated with any data provider named here.
 
 ---
 
 ## Deterministic verdict override
 
-The AI finds the number. Python compares it to the claim, because AI models make mistakes with
-numbers. If they disagree, Python's answer wins, and the response shows both. If no source
-returns a number, FinVet says "not enough information" instead of guessing.
+The language model is responsible for retrieval only. It selects the tools, extracts the
+figure from the filing or the quote, and proposes a verdict, but the returned verdict is
+computed by comparing that figure to the claim under a fixed tolerance. Where the two
+disagree, the computed verdict is retained and both are reported. Where no source yields a
+figure, the claim is declined as not enough information.
 
 ---
 
 ## Evaluation
 
-FinVet has two evaluations: 1) the full system, from claim to verdict, and 2) its RAG
-component on its own.
+FinVet is evaluated at two levels: the full pipeline, from claim to verdict, and its RAG
+component in isolation. The RAG component is a hybrid search over filing text that the SEC
+agent invokes as a tool for claims about a filing's narrative sections, such as risk factors
+or legal proceedings, where no reported figure applies.
 
-**1) Claim verification.** 325 held-out claims about 72 US-listed companies, including banks
-and insurers, non-calendar fiscal years and restated periods. Every claim is graded strictly.
-Two models, identical code, four runs each. The set was built by the author to test the
-author's own system, so it is not independent validation, and 67 parse labels are
-unadjudicated ([dataset card](docs/eval/DATASET_CARD.md)).
+**1) Claim verification.** The pipeline was evaluated on 325 held-out claims about 72
+US-listed companies, each labelled with an expected verdict. Two models were run on identical
+code, four runs each, so that the reliability of a verdict could be measured alongside its
+accuracy. The claim set was constructed by the author; its composition and labelling are
+described in the [dataset card](docs/eval/DATASET_CARD.md).
 
 | Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
@@ -53,29 +56,25 @@ unadjudicated ([dataset card](docs/eval/DATASET_CARD.md)).
 | 6. Reliability — pass^4 | **95.4%** | **92.0%** |
 | 7. Routing — expected path | 95.4% | 98.5% |
 
-The table shows each model's first run; the pass^4 row uses all four. Accuracy leaves out the
-28 claims about live stock prices.
+Rows 1 to 5 and 7 report each model's first run; the pass^4 row uses all four runs. Accuracy
+is computed over 297 claims, excluding the 28 claims about live stock prices, whose answers
+depend on the day of the run. Across all eight runs, one claim was answered wrongly, in two of
+the four DeepSeek runs: a net loss was read as a gain. Every other miss was a decline or a
+hand-off to a human reviewer.
 
-Across all eight runs, FinVet got one claim wrong, in two DeepSeek runs: it read a net loss as
-a gain. Every other miss was a "not enough information" answer or a hand-off to a human
-reviewer. This is version 1.2 of the set; what changed from 1.1, and why, is in
-[`docs/eval/`](docs/eval/README.md#what-changed-in-v12).
+**2) RAG component.** The search was evaluated on 50 held-out queries and the model's
+explanations on 50 held-out claims.
 
-**2) RAG retrieval and explanations.** RAG is triggered when the answer lies in a filing's
-text, such as a risk factor, a legal proceeding or a disclosed fine, rather than in its
-financial statements. Retrieval was tested on 50 held-out queries and the model's explanations
-on 50 held-out claims, both sets frozen before the run.
+| Test | n | Result |
+|---|---|---|
+| Finds the right passage in its top five | 30 queries | 24 of 30 (80%) |
+| Ranks it near the top (mean reciprocal rank) | 30 queries | 0.68 |
+| Returns nothing for off-topic or wrong-filing queries | 20 queries | 20 of 20 |
+| Explanation stays inside the passages (RAGAS faithfulness) | 50 claims | 0.69 mean, 0.13 lowest |
 
-| Check | Result |
-|---|---|
-| Retrieval: labelled passage in the top five (30 queries) | 24 of 30 (80%) |
-| Retrieval: mean reciprocal rank (30 queries) | 0.68 |
-| Retrieval: off-topic or wrong-filing queries return nothing (20 queries) | 20 of 20 |
-| Explanations: faithfulness to the retrieved passages, RAGAS (50 claims) | 0.69 mean, 0.13 lowest |
-
-Four of the six queries whose passage was not in the top five returned a same-subject passage
-from another section of the same filing. No explanation reaches a verdict: a claim with no
-number is declined.
+Four of the six queries whose passage was absent from the top five returned a passage on the
+same subject from another section of the same filing. No explanation determines a verdict: a
+claim without a figure is declined.
 
 The dataset, method and every run's results, with the files each number is computed from, are
 in [`docs/eval/`](docs/eval/).
@@ -97,11 +96,10 @@ One agent runs per claim, chosen by claim type.
   <br><sub>A news claim settled by delegation: the SEC agent found the same &euro;500 million in Apple's filing.</sub>
 </p>
 
-**Review and audit.** Regex and PII guards always run, with optional Llama Guard. Low
-confidence, unsafe output or a press-versus-filing conflict pauses the graph at a checkpoint
-until a reviewer decides. Every tool call and verdict is persisted with a checksum the API
-re-verifies on read ([SECURITY.md](SECURITY.md)). The checksum detects accidental or partial
-modification, not a privileged writer who updates data and checksum together.
+**Controls.** Regex and PII guards screen every claim, with Llama Guard optional. Low
+confidence, unsafe output, or a conflict between press and filing pauses the graph at a
+checkpoint until a reviewer decides. Every tool call and verdict is persisted
+([SECURITY.md](SECURITY.md)).
 
 Mechanics — retrieval fusion, delegation states, review recovery:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -113,93 +111,44 @@ Mechanics — retrieval fusion, delegation states, review recovery:
 ```bash
 git clone https://github.com/danielberhane/finvet.git && cd finvet
 cp .env.example .env            # add DEEPSEEK_API_KEY, TAVILY_API_KEY, POSTGRES_PASSWORD
-docker compose --profile sec up --build
+docker compose --profile sec up --build                  # --profile sec adds the SEC EDGAR MCP container
 docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 # UI → http://localhost:8501   API → http://localhost:8000
 ```
 
-Prebuilt images are published on tagged releases: `docker pull ghcr.io/danielberhane/finvet-api:latest`
-(and `finvet-ui`). Every port binds to `127.0.0.1`; read [SECURITY.md](SECURITY.md) before
-exposing the stack. Real API keys are required, since the system verifies against live data.
-Missing optional keys disable their feature rather than crashing. `--profile sec` adds the
-SEC EDGAR MCP container, needed for SEC claims.
-
-<details>
-<summary><b>Native dev · RAG ingest · keys</b></summary>
-
-### Native (hot reload)
-
-```bash
-uv sync
-cp .env.example .env
-docker compose up -d postgres                        # pgvector
-uvicorn finvet.main:app --port 8000 --app-dir src    # API → :8000
-streamlit run ui/app.py --server.port 8501           # UI  → :8501
-```
-
-### Populating the RAG index
-
-The vector store starts empty — filings are not distributed with the repo. XBRL verification
-works without it; RAG over filing text needs an ingest pass:
-
-```bash
-# Place filings as data/filings/<TICKER>/<TICKER>_<FORM>_<PERIOD-END>.html
-python -m finvet.rag.ingest                    # defaults to data/filings
-```
-
-Requires Postgres and Ollama with `nomic-embed-text` pulled (~270 MB, no API key — embedding
-is local).
-
-### Keys
-
-| Key | Powers | Without it |
-|---|---|---|
-| `DEEPSEEK_API_KEY` | claim parsing, agents, verdicts | startup fails unless the roles point at another endpoint |
-| `TAVILY_API_KEY` | news search | **required** — nothing runs |
-| `FINNHUB_API_KEY` | market quotes, tickers | market claims → NOT_ENOUGH_INFO |
-| *(none)* | embeddings, SEC XBRL | local Ollama / free public endpoints |
-| `ENABLE_LLAMA_GUARD=true` | Llama Guard on input and output (`llama-guard3:8b`, ~5 GB) | regex and PII guards only |
-
-The LLM is pluggable ([`llm/factory.py`](src/finvet/llm/factory.py)): point any
-OpenAI-compatible chat-completions endpoint — Ollama, vLLM, LiteLLM, or a hosted vendor — at
-any of the three roles via env vars, no code change.
-
-LangSmith tracing is off by default; enabling it sends claim text, tool outputs and prompts to
-LangSmith. Setup in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#7-configuration-reference).
-
-</details>
+Every port binds to `127.0.0.1`; read [SECURITY.md](SECURITY.md) before exposing the stack.
+The filing-text index starts empty; [CONTRIBUTING.md](CONTRIBUTING.md) covers loading filings
+and running natively.
 
 ---
 
 ## Limitations
 
-**Scope.** One English sentence stating one fact about a US-listed company. Compound claims
-are not decomposed; value ranges, relative changes ("doubled since 2020") and fourth-quarter
-derivations decline rather than guess.
+**Claims.** One English sentence stating one fact about one US-listed company. Compound
+claims are not decomposed; ranges, relative changes, and figures derived from other figures,
+such as a fourth quarter computed from annual and nine-month totals, are declined rather than
+estimated.
 
-**Sources.** A numeric verdict needs a structured source: an XBRL fact, a market quote, or the
-deterministic fine and settlement extraction. The other 45 metrics the parser accepts, analyst
-price targets among them, decline up front with a stated reason. Market data is the current
-delayed quote only; historical prices and figures with no observation time fail closed.
+**Evidence.** A numeric verdict requires a structured source: an XBRL fact, a market quote, or
+the deterministic fine and settlement extraction. The other 45 metrics the parser accepts
+decline with a stated reason. Market data is the current delayed quote only; historical
+prices fail closed.
 
-**Audit trail.** The number, concept, period and filing behind a verdict are stored; the
-model's reasoning text is returned, not stored.
+**Evaluation.** Both evaluated models are mid-sized; no frontier model and no baseline system
+were run on the same claims. The RAGAS faithfulness score rests on a second model's judgement
+that has not been checked by hand.
 
-**Deployment.** A single-process research system: no authentication, rate limiting or tenant
-isolation ([SECURITY.md](SECURITY.md)), and pending reviews live in memory, so they do not survive
-a restart. Not load- or failover-tested. With SEC MCP or Ollama down it declines or escalates
-rather than failing. Latency on DeepSeek, one claim at a time: p50 11 s, p95 76 s, the tail
-being claims that read filing prose.
-
-**Not a compliance product.** It applies model-risk principles and certifies nothing.
+**Deployment.** A single-process research system with no authentication, rate limiting or
+tenant isolation ([SECURITY.md](SECURITY.md)); pending reviews are held in memory and do not
+survive a restart. With the SEC MCP server or Ollama unavailable, claims decline or escalate
+rather than fail.
 
 ---
 
 ## Contributing
 
-Bug reports and focused fixes are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup,
-what CI enforces, and the changes that will be declined. For vulnerability reports, and for
-what this system does and does not defend against, see [SECURITY.md](SECURITY.md).
+Bug reports and focused fixes are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). For
+vulnerability reports, see [SECURITY.md](SECURITY.md).
 
 ## Citation
 
