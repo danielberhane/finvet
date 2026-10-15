@@ -1,0 +1,405 @@
+{
+ "started_utc": "20261015T151117Z",
+ "label": "u12-ds-c4",
+ "complete": true,
+ "api": "http://127.0.0.1:8000",
+ "dataset": "golden_u_v1.2.jsonl",
+ "dataset_rows": 331,
+ "selected": 8,
+ "frozen_only": false,
+ "llm_config": {
+  "parser": {
+   "model": "deepseek-flash",
+   "base_url": "https://api.deepseek.com",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "agent": {
+   "model": "deepseek-flash",
+   "base_url": "https://api.deepseek.com",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "verdict": {
+   "model": "deepseek-flash",
+   "base_url": "https://api.deepseek.com",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  }
+ },
+ "llm_config_source": "api:/health",
+ "llm_config_client": {
+  "parser": {
+   "model": "deepseek-flash",
+   "base_url": "https://api.deepseek.com",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "agent": {
+   "model": "deepseek-flash",
+   "base_url": "https://api.deepseek.com",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  },
+  "verdict": {
+   "model": "deepseek-flash",
+   "base_url": "https://api.deepseek.com",
+   "temperature": 0.0,
+   "structured_output_method": "json_mode"
+  }
+ },
+ "elapsed_s": 79.7,
+ "results": [
+  {
+   "id": 57,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 344.82,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 362.06,
+    "taken_utc": "2026-10-15T15:11:17.630278+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 10.5,
+   "http": 200,
+   "request_id": "req_9419d479b399",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": "[withheld \u2014 see DATASET_CARD.md]",
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": "closing_price"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": "SUPPORTS"
+   },
+   "error": null
+  },
+  {
+   "id": 58,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 538.4,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 511.48,
+    "taken_utc": "2026-10-15T15:11:28.123155+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 9.4,
+   "http": 200,
+   "request_id": "req_15f28ff21183",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": "[withheld \u2014 see DATASET_CARD.md]",
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": "closing_price"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": "REFUTES"
+   },
+   "error": null
+  },
+  {
+   "id": 59,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 216.75,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 210.25,
+    "taken_utc": "2026-10-15T15:11:37.571907+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 9.3,
+   "http": 200,
+   "request_id": "req_fc0dc001f785",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.93,
+    "limitation": null,
+    "retrieved_value": "[withheld \u2014 see DATASET_CARD.md]",
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": "closing_price"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": "SUPPORTS"
+   },
+   "error": null
+  },
+  {
+   "id": 60,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 253.93,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 261.55,
+    "taken_utc": "2026-10-15T15:11:46.860823+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 10.3,
+   "http": 200,
+   "request_id": "req_2f7ddc7f8e07",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": "[withheld \u2014 see DATASET_CARD.md]",
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": "closing_price"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": "REFUTES"
+   },
+   "error": null
+  },
+  {
+   "id": 61,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 362.63,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 380.76,
+    "taken_utc": "2026-10-15T15:11:57.205534+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 9.1,
+   "http": 200,
+   "request_id": "req_142abde2c012",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": "[withheld \u2014 see DATASET_CARD.md]",
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": "closing_price"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": "SUPPORTS"
+   },
+   "error": null
+  },
+  {
+   "id": 62,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 344.82,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 355.16,
+    "taken_utc": "2026-10-15T15:12:06.271736+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 9.8,
+   "http": 200,
+   "request_id": "req_0375d787f1ad",
+   "actual": {
+    "verdict": "REFUTES",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": "[withheld \u2014 see DATASET_CARD.md]",
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": "closing_price"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": "REFUTES"
+   },
+   "error": null
+  },
+  {
+   "id": 63,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "SUPPORTS",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 538.4,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 522.25,
+    "taken_utc": "2026-10-15T15:12:16.042300+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 10.7,
+   "http": 200,
+   "request_id": "req_3ca0e35d81f5",
+   "actual": {
+    "verdict": "SUPPORTS",
+    "status": "success",
+    "confidence": 0.95,
+    "limitation": null,
+    "retrieved_value": "[withheld \u2014 see DATASET_CARD.md]",
+    "observation_tool": "get_stock_quote",
+    "observation_period_end": null,
+    "tools_called": [
+     "get_stock_quote"
+    ],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": "closing_price"
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": "SUPPORTS"
+   },
+   "error": null
+  },
+  {
+   "id": 64,
+   "claim": "[withheld \u2014 see DATASET_CARD.md]",
+   "category": "market/quote",
+   "strength": "strict",
+   "frozen": false,
+   "expected": {
+    "verdict": "REFUTES",
+    "limitation": null,
+    "sources": []
+   },
+   "snapshot": {
+    "price": 216.75,
+    "latest_trading_day": "2026-10-15",
+    "threshold": 205.91,
+    "taken_utc": "2026-10-15T15:12:26.695732+00:00"
+   },
+   "gold_parse": "[withheld \u2014 see DATASET_CARD.md]",
+   "elapsed_s": 10.4,
+   "http": 200,
+   "request_id": "req_ecb34a78f76d",
+   "actual": {
+    "verdict": "NOT_ENOUGH_INFO",
+    "status": "success",
+    "confidence": 0.2,
+    "limitation": "unsupported_metric",
+    "retrieved_value": null,
+    "observation_tool": null,
+    "observation_period_end": null,
+    "tools_called": [],
+    "parsed_claim": {
+     "claim_type": "market",
+     "metric": null
+    },
+    "data_sources": [],
+    "a2a_status": null,
+    "escalated": false,
+    "override_applied": false,
+    "llm_original_verdict": null
+   },
+   "error": null
+  }
+ ],
+ "redaction": "claim text, gold_parse, and the parse fields and retrieved figure that would rebuild the claim withheld for all rows except the ones burned in DATASET_CARD.md; expected labels, verdicts, confidences, tool calls and timings retained, so every published metric recomputes from this file. Dataset path reduced to its basename; non-public base_url values replaced. Produced by scripts/redact_run.py."
+}
