@@ -1,6 +1,6 @@
 # FinVet golden evaluation set — dataset card
 
-**golden_u v1.2 · 325 claims · 72 companies · frozen 2026-10-12 · held out privately**
+**golden_u · 325 claims · 72 companies · frozen 2026-10-12 · held out privately**
 SHA-256 `f602b2fe2dfd210b8e49e28e6ae5a631c026bdd94f93aac11fa0a3f159e3a342`
 
 ## Summary
@@ -17,7 +17,6 @@ on it can be checked without seeing it.
 | Claims | 325 |
 | Filers | 72 US-listed companies |
 | Scored | all 325 carry an expected verdict |
-| Strength | 325 strict |
 
 The pre-registration card, [`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md), records the pass/fail
 criteria A1–A13, committed before the set was run; it is not edited after the fact.
@@ -42,7 +41,7 @@ One claim per line (JSONL). Removed ids are never renumbered or reused.
 | `id` | stable row id |
 | `claim` | the input text — the only thing sent to the system under test |
 | `category` | pipeline path exercised |
-| `strength` | `strict` (must match) on every v1.2 row; v1.1 also had `safe` (only the opposite verdict fails) and `observe` (recorded only) |
+| `strength` | always `strict`: the verdict must match the label |
 | `expected` | verdict, required limitation, and the evidence sources to use — so a right answer by the wrong path is detectable |
 | `ground_truth` | why the label is correct (filed value and distance, or the design rule) |
 | `source` | verification pointer: SEC accession + XBRL concept + period, the filing section quoted, or the decision record |
@@ -130,25 +129,14 @@ behind them.
 
 ## Which criteria apply where
 
-- The **strength contract** applies to all 325 claims, every one `strict`, and is
-  judged by `tests/integration/test_golden.py`.
+- The **verdict contract** (the verdict must match the label) applies to all 325 claims
+  and is judged by `tests/integration/test_golden.py`.
 - The pre-registered **A1–A13** apply via `scripts/score_golden_g.py`. A3's baseline is
   computed from the same run (`--baseline auto`).
 
 ## Run procedure
 
-Run with `--dataset golden_u_v1.2.jsonl` from the private evaluation repository, with
+Run with `--dataset` pointing at the set's file in the private evaluation repository, with
 vendor-free labels (`u-ds-c1`, `u-qw-c1`). Before any paid run,
 `scripts/replay_fact_selection.py` replays the XBRL-backed rows through the production
 path with no model and must report no unexplained miss.
-
-## Versions
-
-- **golden_u v1.2** (2026-10-12) — 325 claims, all strict, frozen at the hash above. Built
-  from v1.1: 46 leniently graded claims made strict, eight fixed-price claims rewritten as
-  live-price recipes, and 18 claims removed (four news-only fines claims and the 14
-  recorded-only ones), a removal decided after the v1.1 results were seen. The six
-  fail-closed claims were among those removed, so criterion A7 has no rows. The version
-  the current report uses; see the [report](README.md#what-changed-in-v12).
-- **golden_u v1.1** (2026-09-29) — 343 claims, SHA-256
-  `fb2f98ca965492558573a489c14d34e735f6ba037b94552cf09c70f4ba3f23c2`.

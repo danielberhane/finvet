@@ -116,9 +116,8 @@ docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 # UI → http://localhost:8501   API → http://localhost:8000
 ```
 
-Every port binds to `127.0.0.1`; read [SECURITY.md](SECURITY.md) before exposing the stack.
-The filing-text index starts empty; [CONTRIBUTING.md](CONTRIBUTING.md) covers loading filings
-and running natively.
+> Localhost only by default; see [SECURITY.md](SECURITY.md) before exposing it. To verify claims
+> about filing text, load filings first ([CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ---
 
