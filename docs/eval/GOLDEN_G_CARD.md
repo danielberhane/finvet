@@ -47,7 +47,7 @@ One claim per line (JSONL), same schema as set C so every existing tool —
 runner, judge, layer report, redactor — works unchanged. Ids run 1001–1257
 with gaps at **1171** (a stratum was resized after review) and
 **1158/1159/1161/1162** (four redundant Chevron threshold-boilerplate
-`observe` rows dropped before freeze — see *Versions*); removed ids are
+`observe` rows dropped before freeze — see *History*); removed ids are
 never renumbered or reused, as ids 35/36/97 are left standing in set C.
 
 | Field | Contents |
@@ -219,7 +219,7 @@ Three FinVet coverage findings came out of it:
    same filer (Chevron) quoting the same "$1.0 million or more" boilerplate
    sentence (ids 1158, 1159, 1161, 1162) — leaving **5** threshold-boilerplate
    rows: 1157 (a state-regulator proceeding) and 1160 (a federal one) among
-   them. See *Versions*, v1.1.
+   them. See *History*.
 3. **A second parser defect: some filings yield zero sections of any kind.**
    At least 34 filers produce no indexable section when run through the real
    filing parser. Two were diagnosed to the line. One writes every item heading
@@ -365,14 +365,14 @@ below roughly 3 ÷ *n* with 95% confidence.
 |---|---|
 | 94 (set C, scored) | 3.2% |
 | 252 (this set) | **1.19%** |
-| 349 (both sets pooled — `golden_u.jsonl`) | **0.86%** |
+| both sets pooled (`golden_u.jsonl`) | **0.86%** |
 
 252 rows takes the bound under 1% when pooled with the existing evidence. 500
 rows would reach 0.6% — a small gain for roughly twice the running cost, and
 every extra row is one more label to get right. All three regimes ask for
 effort *proportionate* to risk; this is the calculation that sets the size.
 After the three burned rows below are retired, a scored run of this set is 249
-rows (bound 1.20%), and 343 pooled with set C's 94 scored rows (0.87%).
+rows (bound 1.20%), and 0.87% pooled with set C's 94 scored rows.
 
 ## Considerations — biases and limitations
 
@@ -412,7 +412,7 @@ rows (bound 1.20%), and 343 pooled with set C's 94 scored rows (0.87%).
   which only **6 are decisive** (4 corroborated, 2 wrong-amount) — the other
   10 are declines or `observe` rows. META accounts for 4 rows and CVX for 3
   (down from 7 before the four redundant Chevron threshold-boilerplate rows
-  were dropped — see *Versions*, v1.1). Per-category rates on this stratum
+  were dropped — see *History*). Per-category rates on this stratum
   carry no statistical weight; it demonstrates that the path works, not how
   often.
 - **The retrieval collision is live and unfixed.** On filers with several
@@ -563,19 +563,17 @@ The probe confirmed this row declines with exactly this limitation in under two
 seconds, with zero tool calls — before any agent runs.
 </details>
 
-## Versions
+## History
 
-- **v1** (2026-09-28) — 256 rows, ids 1001–1257 with one gap at **1171**: the
+- 2026-09-28 — 256 rows drafted, ids 1001–1257 with one gap at **1171**: the
   fines stratum was resized from 21 rows to 20 after review dropped one
   candidate whose only reachable figure was the size of a penalty *reduction*
   rather than a penalty. The id was retired rather than reused, as ids 35/36/97
-  are in set C. Frozen at the hash above; criteria A1–A13 pre-registered in the
-  same commit as this card, before any run of this set existed.
-- **v1.1** (2026-09-28): four redundant Chevron threshold-boilerplate observe
-  rows (1158, 1159, 1161, 1162) removed before freeze; 1157 and 1160 kept; SHA
-  updated.
-- **v1.2** (2026-09-29): frozen at the hash above. The version every reported
-  run uses.
+  are in set C. Criteria A1–A13 pre-registered in the same commit as this
+  card, before any run of this set existed.
+- 2026-09-28 — four redundant Chevron threshold-boilerplate observe rows
+  (1158, 1159, 1161, 1162) removed before freeze; 1157 and 1160 kept.
 - 2026-09-28 — ids 1079, 1151, 1186 burned by publication here.
-- 2026-09-28 — frozen as a component of the combined run set `golden_u.jsonl`; see
-  [`DATASET_CARD.md`](DATASET_CARD.md).
+- 2026-09-29 — frozen at the hash above, as a component of the combined run set
+  `golden_u.jsonl` ([`DATASET_CARD.md`](DATASET_CARD.md)). The set every
+  reported run uses.
