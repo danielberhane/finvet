@@ -6,6 +6,8 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)
 
+Status: running. The open [issues](https://github.com/danielberhane/finvet/issues) list what is next.
+
 FinVet verifies one financial claim at a time. Given *"Microsoft's fiscal 2025 revenue was
 $282 billion,"* it returns a verdict of supported, refuted, or not enough information, a
 confidence score, and the number it compared the claim against. Each response also names the
@@ -36,7 +38,9 @@ component on its own.
 
 **1) Claim verification.** 325 held-out claims about 72 US-listed companies, including banks
 and insurers, non-calendar fiscal years and restated periods. Every claim is graded strictly.
-Two models, identical code, four runs each.
+Two models, identical code, four runs each. The set was built by the author to test the
+author's own system, so it is not independent validation, and 67 parse labels are
+unadjudicated ([dataset card](docs/eval/DATASET_CARD.md)).
 
 | Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
@@ -92,7 +96,8 @@ One agent runs per claim, chosen by claim type.
 **Review and audit.** Regex and PII guards always run, with optional Llama Guard. Low
 confidence, unsafe output or a press-versus-filing conflict pauses the graph at a checkpoint
 until a reviewer decides. Every tool call and verdict is persisted with a checksum the API
-re-verifies on read ([SECURITY.md](SECURITY.md)).
+re-verifies on read ([SECURITY.md](SECURITY.md)). The checksum detects accidental or partial
+modification, not a privileged writer who updates data and checksum together.
 
 Mechanics — retrieval fusion, delegation states, review recovery:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
