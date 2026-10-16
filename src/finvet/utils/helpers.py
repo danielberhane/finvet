@@ -26,8 +26,8 @@ def build_preliminary_analysis(
 ) -> Dict[str, Any]:
     """Build preliminary analysis dict for HITL pending responses.
 
-    Used by both main.py (interrupt path) and response_generator.py (graph path)
-    to produce a consistent preliminary_analysis structure.
+    Used by both api/routes/verify.py (interrupt path) and response_generator.py
+    (graph path) to produce a consistent preliminary_analysis structure.
     """
     parsed_claim = state.get("parsed_claim")
     preliminary_confidence = state.get(
