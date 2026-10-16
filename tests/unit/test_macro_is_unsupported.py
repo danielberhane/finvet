@@ -140,10 +140,3 @@ class TestTheMacroToolIsOffTheDefaultToolbox:
         if names is None:
             pytest.skip("NewsAgent exposes no tool-list accessor")
         assert "get_macro_indicator" not in names
-
-    def test_the_module_is_kept_for_future_work(self):
-        """Removed from the default toolbox, not deleted."""
-        import importlib
-
-        module = importlib.import_module("finvet.tools.macro_tools")
-        assert hasattr(module, "get_macro_indicator")

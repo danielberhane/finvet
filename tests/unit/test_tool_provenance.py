@@ -76,7 +76,7 @@ class TestEveryToolReturnsADict:
     This pins the rule against the source rather than against a fixture.
     """
 
-    TOOL_MODULES = ["sec_tools", "market_tools", "macro_tools", "news_tools",
+    TOOL_MODULES = ["sec_tools", "market_tools", "news_tools",
                     "filing_search", "corroborate_sec"]
 
     def test_no_tool_returns_a_bare_result_model(self):
