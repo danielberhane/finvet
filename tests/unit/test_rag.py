@@ -482,67 +482,8 @@ class TestTableOfContentsDoesNotWin:
 # Retrieval scope, relevance rejection, and evidence identity (Task 9)
 # ---------------------------------------------------------------------------
 
-# The measured evidence, regenerated from the live corpus by
-# scripts/build_rag_manifest.py. The labelled inputs (query/ticker/label)
-# live in rag_relevance_cases.json; scores belong to a corpus, so they are
-# recorded once, here, rather than copied beside the labels.
-CALIBRATION = Path(__file__).resolve().parents[1] / "accuracy" / "rag_release_a_manifest.json"
-
-
-class TestRelevanceThresholdIsCalibrated:
-    """The floor is a measurement, not a preference.
-
-    pgvector always returns a nearest neighbour, so without a floor a query
-    about a disclosure that does not exist still comes back with the closest
-    passages and the tool reports success. The threshold was measured against
-    30 positive and 30 negative query/ticker pairs over the real corpus; these
-    tests keep the recorded evidence and the shipped constant in agreement.
-    """
-
-    def _cases(self):
-        import json
-        return json.loads(CALIBRATION.read_text())
-
-    def test_calibration_evidence_is_committed(self):
-        data = self._cases()
-        pos = [c for c in data["cases"] if c["label"] == "positive"]
-        neg = [c for c in data["cases"] if c["label"] == "negative"]
-        assert len(pos) >= 30 and len(neg) >= 30
-
-    def test_threshold_accepts_no_off_topic_negative(self):
-        """Scoped to off-topic negatives on purpose.
-
-        The manifest holds a second kind: near misses, which are *on topic* but
-        aimed at a period or form the corpus does not hold. Their similarity is
-        legitimately high, and no relevance floor could exclude them -- the
-        period and form filters do, which is a different mechanism and is
-        asserted separately.
-        """
-        from finvet.config.constants import RAG_MIN_VECTOR_SIMILARITY
-
-        accepted = [c for c in self._cases()["cases"]
-                    if c["case_kind"] == "off_topic"
-                    and c["vector_similarity"] >= RAG_MIN_VECTOR_SIMILARITY]
-        assert not accepted, f"threshold admits irrelevant evidence: {accepted[:2]}"
-
-    def test_threshold_keeps_every_positive(self):
-        from finvet.config.constants import RAG_MIN_VECTOR_SIMILARITY
-
-        missed = [c for c in self._cases()["cases"]
-                  if c["label"] == "positive"
-                  and c["vector_similarity"] < RAG_MIN_VECTOR_SIMILARITY]
-        assert not missed, f"threshold rejects real evidence: {missed[:2]}"
-
-    def test_threshold_sits_inside_the_separating_band(self):
-        """Not on either edge: an unseen case slightly off should not cross it."""
-        from finvet.config.constants import RAG_MIN_VECTOR_SIMILARITY
-
-        cases = self._cases()["cases"]
-        worst_negative = max(c["vector_similarity"] for c in cases
-                             if c["case_kind"] == "off_topic")
-        weakest_positive = min(c["vector_similarity"] for c in cases
-                               if c["label"] == "positive")
-        assert worst_negative < RAG_MIN_VECTOR_SIMILARITY < weakest_positive
+# The relevance floor's calibration evidence (tests/accuracy/rag_release_a_manifest.json)
+# is checked in test_rag_provenance_contract.py.
 
 
 class TestRrfTreatsAbsenceAsZero:

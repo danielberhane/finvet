@@ -42,7 +42,7 @@ Registered markers: `integration` only. `addopts = -m 'not integration'` in
 | File | Needs |
 |---|---|
 | `test_database_connection.py`, `test_review_race.py` | Postgres |
-| `test_rag_retrieval.py`, `test_rag_release_a.py` | Postgres with ingested chunks + Ollama embedder |
+| `test_rag_release_a.py` | Postgres with ingested chunks + Ollama embedder |
 | `test_api.py`, `test_qualitative_filing_claims.py` | a running API (`FINVET_API_URL`, default `http://localhost:8000`) |
 | `test_claim_matrix.py` | a running API with the full live stack — it re-spends on every run |
 | `test_output_guard_false_positive.py` | Ollama + Llama Guard |

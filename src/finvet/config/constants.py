@@ -112,7 +112,7 @@ RRF_K = 60  # Reciprocal Rank Fusion constant
 # without a floor a query about a disclosure that does not exist still comes
 # back with the closest passages and the tool reports success. Calibrated
 # against a labelled set rather than chosen: see
-# tests/accuracy/rag_relevance_cases.json and the header of test_rag.py.
+# tests/accuracy/rag_relevance_cases.json and tests/unit/test_rag_provenance_contract.py.
 # Re-measured 2026-08-26 against 1,398 chunks from 15 filings (5 tickers)
 # after the Release-A re-ingestion, using the same 30 positive and 30 negative
 # query/ticker pairs. The full evidence, per case, is in
