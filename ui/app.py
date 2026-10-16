@@ -183,6 +183,6 @@ render_verify()
 st.markdown(f"""
 <div class="footer">
     <strong>FinVet v{__version__}</strong><br>
-    Data: SEC EDGAR &middot; Finnhub &middot; Tavily &middot; FRED
+    Data: SEC EDGAR &middot; Finnhub &middot; Tavily
 </div>
 """, unsafe_allow_html=True)

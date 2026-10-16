@@ -9,9 +9,8 @@ TrustedObservation holds one value with its source: the tool, the metric, the
 units, the period it covers, the XBRL concept, and the filing it came from.
 
 resolve_trusted_observation() takes a parsed claim and the run's tool calls and
-returns one TrustedObservation, or None. It looks in four places: SEC filing
-line items, market quote fields, FRED macro series, and penalty amounts in
-filing text.
+returns one TrustedObservation, or None. It looks in three places: SEC filing
+line items, market quote fields, and penalty amounts in filing text.
 
 qualitative_evidence_gap() and qualitative_decline_reason() cover claims that
 state no number, where there is nothing to resolve.
@@ -292,24 +291,6 @@ def _iso_date_or_none(raw: Any) -> Optional[str]:
         return None
 
 
-def _observation_from_macro(record: ToolExecutionRecord, metric: str,
-                            ) -> Optional[TrustedObservation]:
-    """Resolve a macro indicator, which names its own metric on the result."""
-    if record.payload.get("metric") != metric:
-        return None
-    value = _coerce_number(record.payload.get("value"))
-    if value is None:
-        return None
-    return TrustedObservation(
-        tool=record.tool,
-        metric=metric,
-        value=value,
-        units=record.payload.get("units"),
-        period_end=record.payload.get("observation_date"),
-        source_id=record.payload.get("series_id"),
-    )
-
-
 def _observation_from_field(record: ToolExecutionRecord, metric: str,
                             ) -> Optional[TrustedObservation]:
     """Resolve a market metric from a named field.
@@ -573,8 +554,7 @@ def resolve_trusted_observation(
             _observation_from_items(record, metric,
                                     expected_period_start, expected_period_end,
                                     expected_fiscal)
-            or _observation_from_field(record, metric)
-            or _observation_from_macro(record, metric))
+            or _observation_from_field(record, metric))
         if observation is None:
             continue
 
