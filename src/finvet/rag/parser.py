@@ -424,24 +424,3 @@ def _trailing_tokens(text: str, count: int) -> str:
         return ""
     ids = _tokenizer.encode(text)
     return _tokenizer.decode(ids[-count:]) if ids else ""
-
-
-def _get_overlap(parts: list[str], overlap_tokens: int) -> tuple[list[str], int]:
-    """Get the trailing portion of parts that fits within overlap_tokens.
-
-    Returns the overlap parts and their total token count.
-    """
-    if not parts or overlap_tokens <= 0:
-        return [], 0
-
-    overlap_parts = []
-    overlap_count = 0
-
-    for part in reversed(parts):
-        t = _count_tokens(part)
-        if overlap_count + t > overlap_tokens:
-            break
-        overlap_parts.insert(0, part)
-        overlap_count += t
-
-    return overlap_parts, overlap_count
