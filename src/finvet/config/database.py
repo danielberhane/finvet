@@ -50,22 +50,6 @@ def get_db_session():
         session.close()
 
 
-def get_db():
-    """
-    Dependency for FastAPI endpoints.
-
-    Usage:
-        @app.get("/endpoint")
-        def endpoint(db: Session = Depends(get_db)):
-            ...
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 def init_db():
     """Initialize database tables."""
 
@@ -85,14 +69,3 @@ def init_db():
             ))
             conn.commit()
             logger.info("Migrated audit_executions: added data_sources column")
-
-
-def check_connection():
-    """Check if database connection is healthy."""
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        return True
-    except Exception as e:
-        logger.error(f"Database connection failed: {e}")
-        return False

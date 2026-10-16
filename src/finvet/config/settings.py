@@ -30,11 +30,6 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
     )
 
-    # LangSmith Configuration (Optional - for debugging)
-    langchain_api_key: Optional[str] = None
-    langchain_tracing_v2: bool = False
-    langchain_project: str = "finvet"
-
     # MCP Server URLs (HTTP transport)
     sec_edgar_mcp_url: str = "http://localhost:9870"
 
