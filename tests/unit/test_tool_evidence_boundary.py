@@ -158,8 +158,7 @@ class TestFailClosedScopeIsRecorded:
 
     Task 2 makes a trusted observation the only numeric input, and a trusted
     observation can only come from a structured field: an XBRL line item, a
-    market quote field, or a FRED series. All 35 metrics in SERVABLE_METRICS
-    have one.
+    or a market quote field. All 35 metrics in SERVABLE_METRICS have one.
 
     The parser's whitelist is wider than SERVABLE_METRICS, and 39 of the 74
     metrics it may emit have no structured source at all. Numeric claims on
@@ -178,11 +177,9 @@ class TestFailClosedScopeIsRecorded:
 
     def test_every_servable_metric_still_has_a_structured_source(self):
         from finvet.config.metrics import METRIC_TO_CONCEPTS, SERVABLE_METRICS
-        from finvet.mcp.fred import FRED_SERIES
         from finvet.models.evidence import _MARKET_FIELD_FOR_METRIC
 
-        resolvable = (set(METRIC_TO_CONCEPTS) | set(_MARKET_FIELD_FOR_METRIC)
-                      | set(FRED_SERIES))
+        resolvable = set(METRIC_TO_CONCEPTS) | set(_MARKET_FIELD_FOR_METRIC)
         for kind in ("sec", "market", "news"):
             missing = SERVABLE_METRICS[kind] - resolvable
             assert not missing, f"{kind} metrics with no structured source: {missing}"
@@ -212,7 +209,6 @@ class TestFailClosedScopeIsRecorded:
         """
         from finvet.config.constants import CORROBORATION_METRICS
         from finvet.config.metrics import METRIC_TO_CONCEPTS
-        from finvet.mcp.fred import FRED_SERIES
         from finvet.models.a2a import (
             A2A_CONTRADICTS,
             A2A_NO_MATCHING_DISCLOSURE,
@@ -223,8 +219,7 @@ class TestFailClosedScopeIsRecorded:
         )
         from finvet.models.evidence import _MARKET_FIELD_FOR_METRIC
 
-        resolvable = (set(METRIC_TO_CONCEPTS) | set(_MARKET_FIELD_FOR_METRIC)
-                      | set(FRED_SERIES))
+        resolvable = set(METRIC_TO_CONCEPTS) | set(_MARKET_FIELD_FOR_METRIC)
         assert not (CORROBORATION_METRICS & resolvable)
 
         for target in ("SUPPORTS", "REFUTES", "NOT_ENOUGH_INFO"):

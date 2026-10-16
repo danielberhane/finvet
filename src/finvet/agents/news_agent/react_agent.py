@@ -33,10 +33,8 @@ class NewsAgent(BaseVerificationAgent):
         """Initialize the News Agent with news + A2A tools."""
         super().__init__(
             agent_type="news",
-            # get_macro_indicator is deliberately absent: macro metrics are
-            # unsupported in Release A (D10), and leaving the tool in reach
-            # would let the model answer a claim the vocabulary declines. The
-            # module is kept for future work.
+            # No macro tool: macro metrics are unsupported (D10), and a tool in
+            # reach would let the model answer a claim the vocabulary declines.
             tools=NEWS_TOOLS + [
                 search_past_verifications,
                 corroborate_with_filing,
