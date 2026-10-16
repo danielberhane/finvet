@@ -23,7 +23,8 @@ LangGraph Pipeline (12-node DAG + HITL gate)
                                                     |
                    PostgreSQL 16 + pgvector (:5432) |
                    [audit_events, audit_executions, |
-                    claim_memory, filing_chunks] <--+
+                    filing_chunks; LangGraph store   |
+                    tables when memory is on]   <--+
 ```
 
 ---
@@ -36,14 +37,16 @@ LangGraph Pipeline (12-node DAG + HITL gate)
 
 | Method | Path | Purpose | Audit Events |
 |--------|------|---------|-------------|
-| `GET` | `/health` | Health check | -- |
+| `GET` | `/health`, `/` | Health check; reports the models this process will use | -- |
 | `GET` | `/stats` | Service info, agents, truth regimes | -- |
 | `POST` | `/verify` | Main claim verification | `input_received`, `commit_execution` |
+| `POST` | `/verify-stream` | Same, with progress events over SSE; what the UI calls | as `/verify` |
 | `GET` | `/reviews` | List pending HITL reviews | -- |
 | `POST` | `/review/{id}` | Submit HITL decision | `hitl_{decision}` |
 | `POST` | `/review/{id}/reconcile` | Retry the audit write for a stuck review | -- |
 | `POST` | `/memory-check` | Search similar past verifications | -- |
 | `POST` | `/memory-accept` | Log cache acceptance | `memory_cache_accepted` |
+| `GET` | `/audit` | List executions, filterable by verdict, agent and date | -- |
 | `GET` | `/audit/{id}` | Full audit trail for a request | -- |
 | `POST` | `/search-history` | Find past verifications (7-day window) | -- |
 
@@ -152,10 +155,10 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 |-------|------|---------|
 | `claim_type` | `"sec"/"market"/"news"/"reject"` | `"sec"` |
 | `ticker` | `str or null` | `"AAPL"` |
+| `metric` | `str or null`, from the metric vocabulary | `"revenue"` |
+| `operator` | `"eq"/"gt"/"gte"/"lt"/"lte"/"approx"/"range" or null` (`range` declines) | `"gt"` |
 | `value` | `float or null` | `94000000000` |
-| `comparison` | `"eq"/"gt"/"gte"/"lt"/"lte" or null` | `"gt"` |
 | `period` | `str or null` | `"Q4 2024"` |
-| `currency` | `str or null` | `"USD"` |
 | `reject_reason` | `"non_financial"/"question"/"incomplete" or null` | `null` |
 
 #### AgentEvidence
@@ -184,7 +187,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
 ```
 1. Build context (claim + parsed info + period + company + memory context)
 2. Initialize messages: [SystemMessage, HumanMessage(context)]
-3. LOOP (max 5 iterations):
+3. LOOP (max 8 iterations, AGENT_MAX_ITERATIONS):
    |-- LLM.invoke(messages)
    |-- IF tool_calls:
    |     Execute each tool, truncate result to 50K chars
@@ -199,7 +202,7 @@ Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
    |-- magnitude_diff = |claimed - retrieved| / max(|claimed|, |retrieved|) * 100
    |-- For equality: diff <= tolerance -> SUPPORTS, else REFUTES
    |-- For directional (gt/gte/lt/lte): boolean comparison
-   |-- Tolerances: SEC >$1B: 1%, SEC <$1B: 2%, Market: 5%, News: 5%
+   |-- Tolerances: SEC >$1B: 1.5%, SEC <=$1B: 2%, Market: 5%, News: 5%
 6. Return AgentEvidence dict
 ```
 
@@ -341,7 +344,7 @@ conflict would route much of the traffic to a reviewer and teach them to ignore 
 
 ---
 
-### 2.6 PostgreSQL Schema (4 Tables)
+### 2.6 PostgreSQL Schema (3 Tables, plus the LangGraph store when memory is on)
 
 **Image**: `pgvector/pgvector:pg16` via Docker Compose.
 
@@ -376,20 +379,13 @@ conflict would route much of the traffic to a reviewer and teach them to ignore 
 | `full_trace` | `JSONB` | The canonical execution envelope — exactly the object the checksum covers |
 | `data_sources` | `JSONB` | `{xbrl, rag, a2a}` GIN indexed |
 
-#### `claim_memory` (Vector Store)
+#### Claim memory (LangGraph `PostgresStore`, only when `ENABLE_CLAIM_MEMORY=true`)
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `INTEGER` PK | |
-| `request_id` | `VARCHAR(50)` UNIQUE | |
-| `claim_text` | `TEXT` | |
-| `ticker` | `VARCHAR(10)` | Indexed |
-| `agent_type` | `VARCHAR(20)` | Indexed |
-| `verdict` | `VARCHAR(30)` | Indexed |
-| `confidence` | `FLOAT` | |
-| `retrieved_value` | `FLOAT` | |
-| `summary` | `TEXT` | |
-| `embedding` | `JSONB` | 768 floats (`nomic-embed-text`, served by Ollama) |
+Not a FinVet table. `main.py` opens a LangGraph `PostgresStore` with a vector index
+over the claim text (768-dim `nomic-embed-text`, embedded through the same local Ollama
+path the RAG layer uses), and the store creates and owns its own tables. Each episode is
+a document keyed by `request_id` holding the claim, ticker, agent, verdict, confidence,
+retrieved value and summary (`memory/store_service.py`).
 
 #### `filing_chunks` (RAG Store)
 
@@ -430,9 +426,9 @@ computed in Postgres by pgvector.
 | **Context** | >= 0.75 | Inject prior result as agent context |
 | **Similar** | >= 0.60 | "People Also Verified" UI display |
 
-**Write**: After successful verification, embed claim, store in `claim_memory`. Skips PENDING/REJECTED/ERROR.
+**Write**: After successful verification, store the episode in the LangGraph store, which embeds the claim text. Skips PENDING/REJECTED/ERROR.
 
-**Read** (`/memory-check`): Embed query, fetch 1000 candidates, NumPy cosine similarity, return sorted matches.
+**Read** (`/memory-check`): `store.search` with the claim as the query, pgvector similarity in Postgres, twice the requested limit fetched and the thresholds above applied before the top matches are returned.
 
 ---
 
@@ -478,14 +474,14 @@ Configurable via `LLM_PARSER__MODEL`, `LLM_AGENT__TEMPERATURE`, etc.
 | Category | Constant | Value |
 |----------|----------|-------|
 | **Tolerances** | `TOLERANCE_SEC_LARGE_VALUES` | 1.5% (>$1B) |
-| | `TOLERANCE_SEC_SMALL_VALUES` | 2% (<=$$1B) |
+| | `TOLERANCE_SEC_SMALL_VALUES` | 2% (<=$1B) |
 | | `TOLERANCE_MARKET` | 5% |
 | | `TOLERANCE_NEWS` | 5% |
 | **Confidence** | `CONFIDENCE_LARGE_DIFF_PENALTY` | -0.10 |
 | | `CONFIDENCE_CLOSE_MATCH_BONUS` | +0.05 |
 | | `CONFIDENCE_THOROUGH_BONUS` | +0.05 |
 | | `CONFIDENCE_AUTOMATED_CAP` | 0.95 |
-| **Agent** | `AGENT_MAX_ITERATIONS` | 5 |
+| **Agent** | `AGENT_MAX_ITERATIONS` | 8 |
 | | `AGENT_MAX_RESULT_CHARS` | 50,000 |
 | **Confidence** | `CONFIDENCE_HIGH_THRESHOLD` | 0.85 |
 | | `CONFIDENCE_MODERATE_THRESHOLD` | 0.70 |
@@ -622,19 +618,25 @@ All memory operations wrapped in try/except. Failures log warnings but never blo
 
 | Service | Image | Port | Purpose |
 |---------|-------|------|---------|
-| `postgres` | `pgvector/pgvector:pg16` | 5432 | Audit, Memory, RAG |
-| `sec-edgar-mcp` | Custom | 9870 | SEC EDGAR MCP server |
+| `postgres` | `pgvector/pgvector:pg16` | 5432 | Audit, memory, RAG |
+| `api` | `docker/Dockerfile` | 8000 | FastAPI |
+| `ui` | `docker/Dockerfile` | 8501 | Streamlit |
+| `sec-edgar-mcp` | `docker/Dockerfile.sec` (profile `sec`) | 9870 | SEC EDGAR MCP server |
+| `ollama` | `ollama/ollama` | 11434 | Embeddings; Llama Guard when enabled |
 
-### Startup Order
+Every port binds to `${FINVET_BIND_ADDR:-127.0.0.1}`.
 
-1. PostgreSQL (`docker compose up -d postgres`)
-2. SEC EDGAR MCP server (port 9870)
+### Startup Order (native)
+
+1. PostgreSQL and the SEC MCP server (`docker compose --profile sec up -d postgres sec-edgar-mcp`)
+2. Ollama with `nomic-embed-text` pulled
 3. FastAPI (`uvicorn finvet.main:app --port 8000 --app-dir src`)
 4. Streamlit UI (`streamlit run ui/app.py --server.port 8501`)
 
 ### Dependencies
 
-Core: `langchain>=0.3`, `langgraph>=0.2`, `fastapi>=0.115`, `pydantic>=2.9`, `sqlalchemy>=2.0`, `pgvector`, `numpy`, `tiktoken`, `httpx`, `tavily-python>=0.5`
+Declared in `pyproject.toml` and pinned in `uv.lock`; the licence table in
+`THIRD_PARTY_NOTICES.md` lists them with versions.
 
 ---
 
@@ -676,7 +678,7 @@ rag/
   parser.py        <-- (standalone)
 
 memory/
-  service.py       <-- config/constants, config/database
+  store_service.py <-- config/constants (LangGraph PostgresStore, wired in main.py)
 
 audit/
   logger.py        <-- audit/database
@@ -726,8 +728,10 @@ main.py            <-- api/routes, graph/workflow, config
 | `DEEPSEEK_API_KEY` | Yes | -- | DeepSeek API key for LLM |
 | `TAVILY_API_KEY` | Yes | -- | Tavily API key for news search |
 | `POSTGRES_PASSWORD` | Yes | -- | PostgreSQL password |
-| `FINNHUB_API_KEY` | No | -- | Finnhub API key (mock mode if absent) |
-| `FINNHUB_MOCK_MODE` | No | false | Use mock market data |
+| `FINNHUB_API_KEY` | No | -- | Finnhub API key; without it market claims decline as NOT_ENOUGH_INFO |
+| `FINNHUB_MOCK_MODE` | No | false | Use mock market data (tests only) |
+| `SEC_EDGAR_USER_AGENT` | No | `FinVet (your@email.com)` | Contact string SEC requires on automated requests; set it to your own |
+| `FINVET_BIND_ADDR` | No | 127.0.0.1 | Address the compose ports bind to; see SECURITY.md before changing |
 | `ENABLE_LLAMA_GUARD` | No | false | Enable Llama Guard semantic safety |
 | `ENABLE_CLAIM_MEMORY` | No | **false** | Enable claim memory (experimental; its output is prior model output, not a source) |
 | `CONFIDENCE_THRESHOLD_HITL` | No | 0.70 | Below this triggers HITL |
@@ -766,7 +770,7 @@ would not send to a third party.
 
 The Streamlit UI at port 8501 renders:
 - **Verify page**: Claim input, example claims, pipeline progress, verdict cards (white bg + colored left border), evidence panel, data comparison strip, tool call details, source badges (XBRL / RAG / delegation), raw API expander
-- **Memory match card**: Similar verification found (>=0.95), Use/Fresh/Context buttons
+- **Memory match card** (only with `ENABLE_CLAIM_MEMORY=true`): Similar verification found (>=0.95), Use/Fresh/Context buttons
 - **Pending Reviews page**: HITL-queued claims list
 - **Review Detail page**: Preliminary analysis + approve/override/reject submission
 
