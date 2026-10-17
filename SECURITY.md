@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The current release line (`v2.0.x`) and `main`.
+The latest release and `main`.
 
 ## Reporting a vulnerability
 
