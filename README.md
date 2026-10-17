@@ -98,8 +98,7 @@ One agent runs per claim, chosen by claim type.
 
 **Controls.** Regex and PII guards screen every claim, with Llama Guard optional. Low
 confidence, unsafe output, or a conflict between press and filing pauses the graph at a
-checkpoint until a reviewer decides. Every tool call and verdict is persisted
-([SECURITY.md](SECURITY.md)).
+checkpoint until a reviewer decides. Every tool call and verdict is persisted.
 
 Mechanics — retrieval fusion, delegation states, review recovery:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -115,9 +114,6 @@ docker compose --profile sec up --build                  # --profile sec adds th
 docker exec finvet-ollama ollama pull nomic-embed-text   # embeddings, one-time
 # UI → http://localhost:8501   API → http://localhost:8000
 ```
-
-> Localhost only by default; see [SECURITY.md](SECURITY.md) before exposing it. To verify claims
-> about filing text, load filings first ([CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ---
 
