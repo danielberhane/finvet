@@ -228,3 +228,41 @@ class TestAnEmptyCorpusIsDistinctFromSilence:
     def test_the_corpus_check_knows_an_indexed_issuer(self, rag):
         assert rag.has_filings_for("AAPL") is True
         assert rag.has_filings_for("ZZZZ") is False
+
+
+class TestTheRelevanceFloorOnRealEmbeddings:
+    """What the unit tests cannot show: whether the calibrated floor behaves on
+    real embeddings rather than on mocks, which is where a retrieval change
+    goes wrong."""
+
+    def test_an_unrelated_query_returns_nothing(self, rag):
+        """The floor's whole purpose: a subject no filing discusses must not
+        come back with the closest available passages."""
+        assert rag.search(query="beginner watercolour brush techniques",
+                          ticker="AAPL", top_k=5) == []
+
+    def test_every_hit_clears_the_calibrated_floor(self, rag):
+        from finvet.config.constants import RAG_MIN_VECTOR_SIMILARITY
+
+        for query in ("data center revenue", "cybersecurity risk",
+                      "segment operating income"):
+            for hit in rag.search(query=query, ticker="MSFT", top_k=5):
+                if hit.vector_rank is None:
+                    # A keyword-only hit. The floor guards the dense arm, which
+                    # always returns its nearest neighbour however far away;
+                    # `tsv @@ plainto_tsquery` is already a predicate, so a row
+                    # only appears in the lexical arm if it genuinely matched.
+                    assert hit.vector_similarity == 0.0
+                    continue
+                assert hit.vector_similarity >= RAG_MIN_VECTOR_SIMILARITY
+
+    def test_search_survives_an_embedder_outage(self, rag, monkeypatch):
+        """Losing the embedder costs the dense arm, not the whole query."""
+        from finvet.rag import service as svc
+
+        monkeypatch.setattr(
+            svc, "_embed_single",
+            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("ollama down")))
+
+        hits = rag.search(query="revenue", ticker="AAPL", top_k=5)
+        assert all(h.vector_similarity == 0.0 for h in hits)

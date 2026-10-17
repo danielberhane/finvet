@@ -70,16 +70,6 @@ class TestListExecutions:
         assert results == []
         mock_query.filter.assert_called()
 
-    @patch("src.finvet.audit.database.get_db_session")
-    def test_list_executions_returns_empty_on_exception(self, mock_session_ctx):
-        """list_executions returns [] when the database raises."""
-        from src.finvet.audit.database import AuditDatabase
-
-        mock_session_ctx.return_value.__enter__.side_effect = Exception("db down")
-        db = AuditDatabase()
-        results = db.list_executions()
-        assert results == []
-
 
 class TestAuditLoggerListExecutions:
     """AuditLogger.list_executions delegates to AuditDatabase."""

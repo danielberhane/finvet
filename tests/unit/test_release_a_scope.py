@@ -93,11 +93,6 @@ class TestTheDefaultUiOffersNoMemoryChoice:
     is a Task 10 manual check.
     """
 
-    def test_an_empty_match_list_is_falsy(self):
-        """What the client returns when the API says {"matches": []}, and what
-        the UI branch tests."""
-        assert not []
-
     def test_the_view_routes_an_empty_result_to_verification(self):
         from pathlib import Path
 
