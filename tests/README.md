@@ -3,7 +3,7 @@
 ## Run
 
 ```bash
-.venv/bin/python -m pytest tests/unit -q          # ~1,560 tests, well under a minute, no services
+.venv/bin/python -m pytest tests/unit -q          # well under a minute, no services
 .venv/bin/python -m pytest tests -q               # same: integration is excluded by default
 .venv/bin/python -m pytest tests/integration -q -m integration   # opt in; needs live services
 ```

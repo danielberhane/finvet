@@ -1,26 +1,25 @@
 # Contributing
 
-FinVet is a reference implementation maintained by one person, so the most
-useful contributions are bug reports, reproductions, and small focused fixes.
-Large feature PRs are unlikely to be merged without discussion first.
+FinVet is a reference implementation maintained by one person. Bug reports, reproductions
+and small focused fixes are the most useful contributions. Open an issue before starting
+anything larger.
 
 ## Setup
 
 ```bash
 uv sync                                        # dev tools come from the dev group
 cp .env.example .env                           # fill in the required keys
-.venv/bin/python -m pytest tests/unit -q       # ~1,565 tests, no services needed
+.venv/bin/python -m pytest tests/unit -q       # no services needed
 ```
 
-Use `.venv/bin/python`, never bare `python`. Run tests from a clean shell: an
-env file that overrides `LLM_*__MODEL` leaks into the test environment and
-fails the tests that assert the default provider.
+Use `.venv/bin/python`, never bare `python`. Run tests from a clean shell: an env file
+that overrides `LLM_*__MODEL` leaks into the test environment and fails the tests that
+assert the default provider.
 
 ## Running natively
 
-The README's `docker compose` quickstart runs everything in containers. For hot
-reload, run the API and UI from the checkout and keep only the services in
-containers:
+The README's `docker compose` quickstart runs everything in containers. For hot reload,
+run the API and UI from the checkout and keep only the services in containers:
 
 ```bash
 docker compose --profile sec up -d postgres sec-edgar-mcp      # pgvector, SEC EDGAR MCP (:9870)
@@ -28,70 +27,58 @@ docker compose --profile sec up -d postgres sec-edgar-mcp      # pgvector, SEC E
 .venv/bin/streamlit run ui/app.py --server.port 8501           # UI  → :8501
 ```
 
-Embeddings come from a local Ollama with `nomic-embed-text` pulled (~270 MB, no
-API key). The keys each feature needs, and what happens without them, are listed
-in `.env.example` and in `docs/ARCHITECTURE.md` under the configuration
+Embeddings come from a local Ollama with `nomic-embed-text` pulled. The keys each feature
+needs are listed in `.env.example` and in `docs/ARCHITECTURE.md` under the configuration
 reference.
 
 ### Loading filings
 
-The filing-text index starts empty; filings are not distributed with the repo.
-XBRL verification works without it. Claims about a filing's narrative sections
-need an ingest pass:
+The filing-text index starts empty; filings are not distributed with the repo. XBRL
+verification works without it. Claims about a filing's narrative sections need an ingest
+pass:
 
 ```bash
 .venv/bin/python scripts/fetch_filings.py --tickers AAPL,MSFT --years 2024   # downloads to data/filings/
 .venv/bin/python -m finvet.rag.ingest                                        # defaults to data/filings
 ```
 
-Both scripts document their options in their docstrings. SEC requires a contact
-address on automated requests; set `SEC_EDGAR_USER_AGENT` in `.env` first.
+SEC requires a contact address on automated requests; set `SEC_EDGAR_USER_AGENT` in `.env`
+first.
 
 ## What CI enforces
 
-Your PR must pass what `.github/workflows/ci.yml` runs:
-
 - `ruff check .`
-- `mypy` on six trust-boundary modules (deliberately not the whole codebase)
-- `python -m compileall` over `src ui tests scripts`
+- `mypy` on six trust-boundary modules
 - a check that every `src/finvet/**.py` path named in the docs exists
-- `pytest tests/unit` on Python 3.11, 3.12 and 3.13, with overall coverage at
-  or above 75% and per-file floors on six modules
+- `pytest tests/unit` on Python 3.11, 3.12 and 3.13, with coverage at or above 75% overall
+  and per-file floors on six modules
 - a build of all three Docker images
 
-Integration tests are excluded by default and each one skips itself when its
-service is absent, so you do not need Postgres or the MCP server to contribute.
+Integration tests are excluded by default and skip themselves when their service is
+absent, so you do not need Postgres or the MCP server to contribute.
 
-## The one rule about tests
+## Tests must drive the producer
 
-**Tests must drive the producer.** A test covering a verdict, an escalation, or
-a persistence path has to enter through a route callable, a graph node, or a
-decorated tool, never a hand-built dictionary. Three defects once survived a
-suite of hundreds of tests because their tests constructed their own inputs: a
-fixture asserts the shape you remembered, not the shape the system emits.
+A test covering a verdict, an escalation or a persistence path enters through a route
+callable, a graph node or a decorated tool, never a hand-built dictionary. A fixture
+asserts the shape you remembered, not the shape the system emits.
 
-## Things that will be declined
+## Changes that will be declined
 
-- **Midpoint comparison for range claims.** Comparing the midpoint of a stated
-  band refutes true claims whose band exceeds the tolerance. Range claims
-  decline on purpose.
-- **A free-form context field on the verify request.** It was removed as a
-  prompt-injection channel and is not coming back; the API takes an identifier
-  the server resolves itself.
-- **Letting the model decide a numeric verdict.** The comparison is computed in
-  Python from a structured observation, and a claim without one declines.
+- **Midpoint comparison for range claims.** It refutes true claims whose band exceeds the
+  tolerance. Range claims decline on purpose.
+- **A free-form context field on the verify request.** It was removed as a prompt-injection
+  channel; the API takes an identifier the server resolves itself.
+- **Letting the model decide a numeric verdict.** The comparison is computed from a
+  structured observation, and a claim without one declines.
 
 ## Evaluation
 
-The golden dataset is held out privately, so benchmark runs are not
-reproducible from a fork. What is public is the method: redacted per-claim run
-artifacts and layer summaries in `docs/eval/runs/` and the dataset card in `docs/eval/`, from which
-every published number recomputes. If you change anything the evaluation
-measures, say so in the PR; the numbers in the README are tied to specific
-recorded runs.
+The claim set is held out privately, so benchmark runs are not reproducible from a fork.
+The published artifacts in `docs/eval/runs/` are what every reported number recomputes
+from. If a change touches anything the evaluation measures, say so in the PR.
 
-## Commits and PRs
+## Commits
 
-Explain why in the commit message, not just what. Reference the incident or the
-behaviour that motivated the change if there is one; most of the odd-looking
-code here exists because something broke.
+Say why, not just what. Most of the odd-looking code here exists because something broke;
+name the incident or the behaviour that motivated the change.
