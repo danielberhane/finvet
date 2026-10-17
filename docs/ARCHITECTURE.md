@@ -606,6 +606,24 @@ its identity -- chunk id, filing, period, section, the query that found it, both
 scores, and a SHA-256 of the text -- because counts and section names cannot reconstruct
 what the model actually read.
 
+### Security Properties
+
+Properties of the code, not of configuration. A regression in any of them is a security
+bug (see [SECURITY.md](../SECURITY.md) for how to report one):
+
+- **Claim text cannot steer the model unchecked.** Input passes a regex guard and, when
+  enabled, Llama Guard. The request model rejects unknown fields; the only context it
+  accepts is an identifier the server resolves itself. A free-form context field was
+  removed because it was an injection channel.
+- **No model-authored number reaches a verdict.** Numeric verdicts are computed from a
+  structured observation carrying its own provenance. Without one, the claim returns
+  `NOT_ENOUGH_INFO` rather than the model's reading of prose.
+- **Agents stay in their lanes.** Each agent binds only its own tools, and the SEC agent
+  holds no delegation tool, so agent-to-agent recursion cannot occur.
+- **Credentials do not cross providers.** Each LLM role names the environment variable
+  holding its own key. Pointing a role at a new provider without that key raises rather
+  than falling back to another provider's credential.
+
 ### Non-Critical Memory and Similar Claims
 
 All memory operations wrapped in try/except. Failures log warnings but never block verification.
