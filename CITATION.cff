@@ -9,16 +9,3 @@ repository-code: "https://github.com/danielberhane/finvet"
 version: "2.0.9"
 date-released: "2026-09-13"
 license: Apache-2.0
-references:
-  - type: conference-paper
-    title: "FinVet: A Collaborative Framework of RAG and External Fact-Checking Agents for Financial Misinformation Detection"
-    authors:
-      - family-names: "Berhane Araya"
-        given-names: "Daniel"
-      - family-names: "Liao"
-        given-names: "Duoduo"
-    conference:
-      name: "IEEE International Conference on Big Data (BigData)"
-    year: 2025
-    url: "https://ieeexplore.ieee.org/document/11400848"
-    notes: "The predecessor system (FinVet v1), code at https://github.com/danielberhane/finvet-v1; preprint arXiv:2510.11654."
