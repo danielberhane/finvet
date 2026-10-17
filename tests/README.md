@@ -27,7 +27,7 @@ tests/
 ├── conftest.py          # sets DEEPSEEK_API_KEY / TAVILY_API_KEY / POSTGRES_PASSWORD
 │                        # defaults so Settings constructs without a .env; no fixtures
 ├── unit/                # 84 files; no network, no database
-├── integration/         # 11 files, all marked `integration`; each self-skips when
+├── integration/         # 9 files, all marked `integration`; each self-skips when
 │   └── conftest.py      # its service is absent. Loads the repo .env (override=True)
 │                        # so real keys beat the root conftest's dummies
 ├── accuracy/            # RAG relevance cases + the Release A manifest (data only)
@@ -41,7 +41,7 @@ Registered markers: `integration` only. `addopts = -m 'not integration'` in
 
 | File | Needs |
 |---|---|
-| `test_database_connection.py`, `test_review_race.py` | Postgres |
+| `test_review_race.py` | Postgres |
 | `test_rag_release_a.py` | Postgres with ingested chunks + Ollama embedder |
 | `test_api.py`, `test_qualitative_filing_claims.py` | a running API (`FINVET_API_URL`, default `http://localhost:8000`) |
 | `test_claim_matrix.py` | a running API with the full live stack — it re-spends on every run |

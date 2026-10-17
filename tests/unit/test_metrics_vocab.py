@@ -90,9 +90,9 @@ class TestServable:
             assert servable <= METRIC_WHITELIST[claim_type]
 
     def test_news_serves_nothing_in_release_a(self):
-        """The eight FRED-validated macro metrics are retrievable and still
-        unservable: no contract says which vintage of a revised series a claim
-        refers to. Company-event and analyst metrics were never servable.
+        """The eight macro metrics are whitelisted and unservable: no tool
+        serves them, and no contract says which vintage of a revised series a
+        claim refers to. Company-event and analyst metrics were never servable.
 
         Whitelisted-but-unservable is the disclosed-limitation design: the
         parser still recognises these metrics, so the claim is declined with a
