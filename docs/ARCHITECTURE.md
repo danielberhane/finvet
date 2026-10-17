@@ -635,8 +635,8 @@ Every port binds to `${FINVET_BIND_ADDR:-127.0.0.1}`.
 
 ### Dependencies
 
-Declared in `pyproject.toml` and pinned in `uv.lock`; the licence table in
-`THIRD_PARTY_NOTICES.md` lists them with versions.
+Declared in `pyproject.toml` and pinned in `uv.lock`; licences and the external
+components are recorded in `THIRD_PARTY_NOTICES.md`.
 
 ---
 
