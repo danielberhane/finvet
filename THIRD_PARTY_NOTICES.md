@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 FinVet's own code is licensed under [Apache-2.0](LICENSE). It depends on the components
-below but does not vendor, copy, modify or redistribute any of them: each is installed or
+below but does not include, copy, modify or redistribute any of them: each is installed or
 run by the user under its own licence. This file is an engineering record, not legal
 advice. Before redistributing FinVet, bundling it into a product, or offering it as a
 hosted service, have the terms reviewed by someone qualified.
