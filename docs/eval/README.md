@@ -51,11 +51,10 @@ decisive numeric verdict is unreachable without a trusted observation.
 | DeepSeek | DeepSeek-V4.1-Flash | DeepSeek API | 1,048,576 tokens | `deepseek-flash` |
 | Qwen | Qwen3.8 | vLLM 0.22.1 on a university research cluster, behind a LiteLLM gateway | 262,144 tokens | `Qwen3.8` |
 
-The gateway in front of Qwen caches responses. In the 2026-09-29 runs every request
-carried the per-request opt-out (`cache: {"no-cache": true, "no-store": true}`) through a
-local pass-through that counted its traffic: 7,404 requests, 0 served from the cache. The
-32 Qwen answers of 2026-10-15 went to the gateway directly; see above. Neither provider
-publishes the parameter count.
+The gateway in front of Qwen caches responses. Every 2026-09-29 request carried the
+per-request cache opt-out, and a local pass-through confirmed none was served from the
+cache; the 32 Qwen answers of 2026-10-15 went to the gateway directly, see above. Neither
+provider publishes the parameter count.
 
 ### Results
 
@@ -188,9 +187,3 @@ OPENAI_API_KEY=any .venv/bin/python scripts/eval_layers.py --dir docs/eval/runs 
 .venv/bin/python scripts/score_golden_g.py --dir docs/eval/runs --label u-ds \
   --dataset <golden_u dataset file> --patch u-ds-c1=u12-ds-c1 ...   # same pairs; u-qw likewise
 ```
-
-## Changelog
-
-- **2026-10-15** — the eight live-price claims answered, four runs per model; the report
-  above.
-- **2026-09-29** — eight runs, four per model, of the other 317 claims.

@@ -56,8 +56,17 @@ One claim per line (JSONL). Removed ids are never renumbered or reused.
 **Strata.** Generalization pairs (one SUPPORTS and one REFUTES per filer, in five
 hardness classes: non-calendar fiscal years, banks and insurers, mid-caps, non-primary
 revenue concepts, restated periods), tolerance boundary, fines and settlements,
-limitation controls, guard, live-price recipes and phrasing twins. Class
-membership rules are in the pre-registration card.
+limitation controls, guard, live-price recipes and phrasing twins.
+
+**Hardness classes** (13 filers each, membership checked by script from SEC data):
+
+- `non_calendar_fye`: fiscal period-end month is not December.
+- `financials`: banks and insurers, whose income statements carry no gross profit or cost
+  of revenue.
+- `mid_cap`: market-cap tier, where XBRL tagging is sparser.
+- `nonprimary_revenue`: revenue filed under `Revenues` rather than the primary concept.
+- `restated`: one reporting period carries two filed values differing by more than 0.5%;
+  all thirteen are spin-off or divestiture recasts.
 
 ## Creation
 
@@ -108,9 +117,6 @@ rows asking the same fact unless one is a phrasing twin of the other.
 - **No canary string.** Contamination would not be detectable from model output; the
   freeze and the published hash mitigate but do not replace one.
 
-The pre-registration card carries the longer form of each point, and the diagnoses
-behind them.
-
 ## How results are checked without the data
 
 1. **Redacted run artifacts** in [`runs/`](runs/): every per-row record of each published
@@ -119,7 +125,8 @@ behind them.
    which together would rebuild it. `scripts/redact_run.py` produces them, strips the dataset path
    and any non-public endpoint, and refuses to write a file that still carries either.
    Every published figure recomputes from these files, and CI does so on every run.
-2. **Layer summaries** (`runs/layers-*.json`) and the [evaluation report](README.md).
+2. **The [evaluation report](README.md)**, whose layer tables `scripts/eval_layers.py`
+   regenerates from the run artifacts.
 3. **The recipe**: labels come from public primary sources under the rules above, so an
    equivalent set can be built independently and the pipeline re-scored on it.
 4. **Hash commitment**: the SHA-256 above pins every published result to one file.

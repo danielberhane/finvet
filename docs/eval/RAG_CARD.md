@@ -80,7 +80,7 @@ reasoning is scored against the passages it retrieved:
 | Context precision (without reference) | were the useful passages ranked first? |
 
 - **Generator:** DeepSeek-V4.1-Flash, FinVet's configured model.
-- **Judge:** Qwen3.8 on the GMU ORC gateway, temperature 0, reasoning mode off, gateway cache
+- **Judge:** Qwen3.8 on a university research cluster behind a LiteLLM gateway, temperature 0, reasoning mode off, gateway cache
   off. A different model family from the generator, so the grader has no reason to favour its
   writing. Each answer is judged twice; a faithfulness difference above 0.10 is flagged.
 - **Embedder** (answer relevancy only): `nomic-embed-text`, FinVet's own retrieval embedder.
@@ -188,8 +188,8 @@ them, the project environment is untouched):
 
 ```
 FINVET_GOLDEN_DIR=... uv run scripts/eval_rag_ragas.py answer \
-    --extra-claims notes/rag_ragas_claims_v1.jsonl --record notes/rag-ragas-record.json
-LITELLM_API_KEY=... uv run scripts/eval_rag_ragas.py grade --record notes/rag-ragas-record.json
+    --extra-claims <claims file> --record <record file>
+LITELLM_API_KEY=... uv run scripts/eval_rag_ragas.py grade --record <record file>
 ```
 
 The runner refuses to score a corpus whose hash differs from the frozen one, and refuses
