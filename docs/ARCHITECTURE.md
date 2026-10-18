@@ -8,11 +8,11 @@ This document follows a claim through the system. The README has the picture
 
 ## 1. System overview
 
-A claim steps down a staircase, crossing the trust boundary at each step. The model
-parses the claim and runs the agent loop over its tools; code receives and guards the
-claim, resolves the period, computes the verdict from the retrieved figure, guards the
-output, pauses for a human when a trigger fires, and records every step. The model's own
-verdict crosses as advice; only a figure with provenance decides.
+A claim steps down between the two sides of the trust boundary. The model parses the
+claim and runs the agent loop over its sources; code resolves the period, computes the
+verdict from the retrieved figure, consults a human only when a trigger fires, and records
+every step. The guards sit on the line: code that may consult a classifier model. The
+model's own verdict crosses as advice; only a figure with provenance decides.
 
 <p align="center"><img src="diagrams/overview-b-trust.svg" alt="FinVet's trust boundary: the model proposes on the left, code decides on the right, and each crossing is labelled with what crosses" width="1000"></p>
 
