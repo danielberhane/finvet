@@ -1,88 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 920" role="img" aria-label="FinVet system overview. The model panel holds the claim parser and the agent loop with its four sources; the code panel holds the comparator, the response and the human review; the input and output guards sit in the gap between them; the interface is the band at the top and the audit trail the base." font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 880" role="img" aria-label="FinVet: the model proposes, code decides. On the model side, the claim parser and the agent loop with its three agents. On the code side, the comparator, the response and the human review. The input and output guards sit on the trust boundary between them. Three crossings are labelled: the claim going in, the retrieved figure with provenance going to the comparator, and the verdict going out. The audit trail is the base." font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
   <defs>
     <marker id="t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f4a4d"/></marker>
     <marker id="w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6f8f8f"/></marker>
   </defs>
 
-  <rect width="1200" height="920" fill="#ffffff"/>
-  <rect x="20" y="20" width="1160" height="880" fill="#a3c4c3"/>
-  <text x="600" y="68" text-anchor="middle" font-size="28" fill="#2f4a4d">FinVet · agentic financial claim verification</text>
+  <rect width="1200" height="880" fill="#ffffff"/>
+  <rect x="20" y="20" width="1160" height="840" fill="#a3c4c3"/>
+  <text x="600" y="68" text-anchor="middle" font-size="28" fill="#2f4a4d">FinVet · the model proposes, code decides</text>
 
-  <!-- interface band -->
-  <rect x="40" y="92" width="1120" height="100" fill="#d6e8db"/>
-  <text x="600" y="180" text-anchor="middle" font-size="16" fill="#3d5f61">Interface</text>
-  <rect x="300" y="104" width="280" height="62" fill="#5f8a88"/>
-  <text x="440" y="131" text-anchor="middle" font-size="21" fill="#ffffff">Streamlit UI</text>
-  <text x="440" y="153" text-anchor="middle" font-size="14" fill="#ffffff">one claim at a time</text>
-  <rect x="620" y="104" width="280" height="62" fill="#5f8a88"/>
-  <text x="760" y="131" text-anchor="middle" font-size="21" fill="#ffffff">FastAPI</text>
-  <text x="760" y="153" text-anchor="middle" font-size="14" fill="#ffffff">/verify · /review · /audit</text>
+  <!-- two sides and the boundary column -->
+  <rect x="40" y="100" width="450" height="660" fill="#d6e8db"/>
+  <text x="265" y="134" text-anchor="middle" font-size="17" fill="#3d5f61">Model · proposes</text>
+  <rect x="710" y="100" width="450" height="660" fill="#d6e8db"/>
+  <text x="935" y="134" text-anchor="middle" font-size="17" fill="#3d5f61">Code · decides</text>
+  <text x="600" y="134" text-anchor="middle" font-size="17" fill="#2f4a4d">Trust boundary</text>
 
-  <!-- panels -->
-  <rect x="40" y="212" width="480" height="580" fill="#d6e8db"/>
-  <text x="280" y="246" text-anchor="middle" font-size="17" fill="#3d5f61">Model · proposes</text>
-  <rect x="680" y="212" width="480" height="580" fill="#d6e8db"/>
-  <text x="920" y="246" text-anchor="middle" font-size="17" fill="#3d5f61">Code · decides</text>
-  <text x="600" y="246" text-anchor="middle" font-size="13" fill="#2f4a4d">trust boundary</text>
+  <!-- claim in, through the input guard, to the parser -->
+  <rect x="500" y="160" width="200" height="60" fill="#e0edeb"/>
+  <text x="600" y="197" text-anchor="middle" font-size="19" fill="#2f4a4d">Input guardrails</text>
+  <path d="M790,190 H704" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
+  <text x="800" y="195" text-anchor="start" font-size="14" fill="#2f4a4d">claim</text>
+  <rect x="70" y="160" width="400" height="60" fill="#5f8a88"/>
+  <text x="270" y="197" text-anchor="middle" font-size="21" fill="#ffffff">Claim parser</text>
+  <path d="M500,190 H474" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
 
-  <!-- input guard and parser -->
-  <rect x="530" y="270" width="140" height="66" fill="#c5d879"/>
-  <text x="600" y="297" text-anchor="middle" font-size="18" fill="#2f4a4d">Input guard</text>
-  <text x="600" y="320" text-anchor="middle" font-size="12" fill="#2f4a4d">regex · PII · Llama Guard</text>
-  <path d="M760,166 V303 H674" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
-  <text x="722" y="295" text-anchor="middle" font-size="13" fill="#2f4a4d">claim</text>
-  <rect x="80" y="270" width="400" height="66" fill="#5f8a88"/>
-  <text x="280" y="297" text-anchor="middle" font-size="21" fill="#ffffff">Claim parser</text>
-  <text x="280" y="320" text-anchor="middle" font-size="14" fill="#ffffff">seven fields, or reject</text>
-  <path d="M530,303 H484" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
-
-  <!-- agent loop -->
-  <rect x="80" y="400" width="400" height="200" fill="#5f8a88"/>
-  <text x="280" y="432" text-anchor="middle" font-size="21" fill="#ffffff">Agent loop</text>
-  <text x="280" y="456" text-anchor="middle" font-size="14" fill="#ffffff">SEC, market or news · at most 8 tool steps</text>
+  <!-- agent loop with its three agents -->
+  <rect x="70" y="270" width="400" height="138" fill="#5f8a88"/>
+  <text x="270" y="302" text-anchor="middle" font-size="21" fill="#ffffff">Agent loop</text>
+  <text x="270" y="324" text-anchor="middle" font-size="14" fill="#ffffff">one agent per claim</text>
   <g fill="#c9dcd7">
-    <rect x="96" y="476" width="88" height="104"/><rect x="192" y="476" width="88" height="104"/>
-    <rect x="288" y="476" width="88" height="104"/><rect x="384" y="476" width="80" height="104"/>
+    <rect x="86" y="344" width="118" height="46"/><rect x="211" y="344" width="118" height="46"/><rect x="336" y="344" width="118" height="46"/>
   </g>
-  <g font-size="14" fill="#2f4a4d" text-anchor="middle">
-    <text x="140" y="520">SEC</text><text x="140" y="540">EDGAR</text>
-    <text x="236" y="520">Filing</text><text x="236" y="540">text</text>
-    <text x="332" y="520">Finnhub</text><text x="332" y="540">quotes</text>
-    <text x="424" y="520">Tavily</text><text x="424" y="540">news</text>
+  <g font-size="15" fill="#2f4a4d" text-anchor="middle">
+    <text x="145" y="372">SEC agent</text><text x="270" y="372">Market agent</text><text x="395" y="372">News agent</text>
   </g>
-  <path d="M280,336 V396" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
-  <text x="296" y="372" text-anchor="start" font-size="13" fill="#2f4a4d">parsed claim</text>
+  <path d="M270,220 V266" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
 
-  <!-- comparator -->
-  <rect x="720" y="440" width="400" height="84" fill="#3f6f6d"/>
-  <text x="920" y="475" text-anchor="middle" font-size="23" font-weight="bold" fill="#ffffff">Comparator</text>
-  <text x="920" y="502" text-anchor="middle" font-size="14" fill="#ffffff">figure vs claim, fixed tolerance</text>
-  <path d="M480,468 H716" stroke="#2f4a4d" stroke-width="4" fill="none" marker-end="url(#t)"/>
-  <text x="600" y="458" text-anchor="middle" font-size="14" font-weight="bold" fill="#2f4a4d">figure + provenance</text>
-  <path d="M480,508 H716" stroke="#6f8f8f" stroke-width="1.5" stroke-dasharray="4 5" fill="none" marker-end="url(#w)"/>
-  <text x="600" y="528" text-anchor="middle" font-size="13" fill="#3d5f61">model's verdict · advice only</text>
+  <!-- the one crossing that decides -->
+  <rect x="750" y="318" width="380" height="84" fill="#3f6f6d"/>
+  <text x="940" y="353" text-anchor="middle" font-size="23" font-weight="bold" fill="#ffffff">Comparator</text>
+  <text x="940" y="380" text-anchor="middle" font-size="14" fill="#ffffff">figure vs claim, fixed tolerance</text>
+  <path d="M470,360 H746" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
+  <text x="600" y="350" text-anchor="middle" font-size="14" fill="#2f4a4d">figure + provenance</text>
 
-  <!-- output guard -->
-  <rect x="530" y="620" width="140" height="66" fill="#c5d879"/>
-  <text x="600" y="647" text-anchor="middle" font-size="18" fill="#2f4a4d">Output guard</text>
-  <text x="600" y="670" text-anchor="middle" font-size="12" fill="#2f4a4d">safety · review triggers</text>
-  <path d="M920,524 V653 H674" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
-  <text x="800" y="645" text-anchor="middle" font-size="13" fill="#2f4a4d">verdict</text>
+  <!-- verdict out, through the output guard -->
+  <rect x="500" y="480" width="200" height="60" fill="#e0edeb"/>
+  <text x="600" y="517" text-anchor="middle" font-size="19" fill="#2f4a4d">Output guardrails</text>
+  <path d="M940,402 V510 H704" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
+  <text x="822" y="502" text-anchor="middle" font-size="14" fill="#2f4a4d">verdict</text>
 
   <!-- response and human review -->
-  <rect x="700" y="710" width="200" height="66" fill="#5f8a88"/>
-  <text x="800" y="737" text-anchor="middle" font-size="21" fill="#ffffff">Response</text>
-  <text x="800" y="760" text-anchor="middle" font-size="14" fill="#ffffff">verdict · figure · evidence</text>
-  <rect x="940" y="710" width="200" height="66" fill="#c9dcd7"/>
-  <text x="1040" y="737" text-anchor="middle" font-size="21" fill="#2f4a4d">Human review</text>
-  <text x="1040" y="760" text-anchor="middle" font-size="14" fill="#2f4a4d">only when triggered</text>
-  <path d="M600,686 V743 H696" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
-  <path d="M640,686 V698 H1040 V706" stroke="#6f8f8f" stroke-width="1.5" stroke-dasharray="4 5" fill="none" marker-end="url(#w)"/>
-  <text x="960" y="692" text-anchor="middle" font-size="13" fill="#3d5f61">triggered</text>
-  <path d="M940,743 H904" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
+  <rect x="730" y="610" width="200" height="66" fill="#5f8a88"/>
+  <text x="830" y="637" text-anchor="middle" font-size="21" fill="#ffffff">Response</text>
+  <text x="830" y="660" text-anchor="middle" font-size="14" fill="#ffffff">verdict · figure · evidence</text>
+  <rect x="950" y="610" width="200" height="66" fill="#c9dcd7"/>
+  <text x="1050" y="650" text-anchor="middle" font-size="21" fill="#2f4a4d">Human review</text>
+  <path d="M600,540 V643 H726" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
+  <path d="M650,540 V575 H1050 V606" stroke="#6f8f8f" stroke-width="1.5" stroke-dasharray="4 5" fill="none" marker-end="url(#w)"/>
+  <path d="M950,643 H934" stroke="#2f4a4d" stroke-width="2" fill="none" marker-end="url(#t)"/>
 
-  <!-- audit base -->
-  <rect x="40" y="812" width="1120" height="68" fill="#3f6f6d"/>
-  <text x="600" y="842" text-anchor="middle" font-size="21" fill="#ffffff">Audit trail</text>
-  <text x="600" y="866" text-anchor="middle" font-size="14" fill="#ffffff">every tool call and verdict, checksummed</text>
+  <!-- the record -->
+  <rect x="40" y="780" width="1120" height="68" fill="#3f6f6d"/>
+  <text x="600" y="810" text-anchor="middle" font-size="21" fill="#ffffff">Audit trail</text>
+  <text x="600" y="834" text-anchor="middle" font-size="14" fill="#ffffff">every tool call and verdict</text>
 </svg>
