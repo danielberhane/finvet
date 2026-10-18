@@ -100,8 +100,7 @@ One agent runs per claim, chosen by claim type.
 confidence, unsafe output, or a conflict between press and filing pauses the graph at a
 checkpoint until a reviewer decides. Every tool call and verdict is persisted.
 
-Mechanics — retrieval fusion, delegation states, review recovery:
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Full design, node by node: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
