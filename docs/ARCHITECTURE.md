@@ -8,28 +8,24 @@ This document follows a claim through the system. The README has the picture
 
 ## 1. System overview
 
-```
-Streamlit UI (:8501)
-       |  HTTP
-FastAPI API (:8000)
-       |
-LangGraph pipeline (12 nodes, pauses for human review)
-       |
-  SEC Agent ------> SEC EDGAR MCP (:9870) ---> XBRL facts and filings
-  ^    |                                            |
-  |    +---------> filing-text search (pgvector + full text) <+
-  |                                                 |
-  | delegation: corroborate_with_filing             |
-  |                                                 |
-  News Agent -----> Tavily news search              |
-                                                    |
-  Market Agent ---> Finnhub REST                    |
-                                                    |
-                   PostgreSQL 16 + pgvector (:5432) |
-                   audit_events, audit_executions,  |
-                   filing_chunks; memory store when |
-                   enabled                       <--+
-```
+Three candidate drawings of the same system; one will be kept.
+
+**Option A — four layers.** Interface, pipeline, evidence, storage; the agent loop reads
+the sources, and every step writes to the audit trail.
+
+<p align="center"><img src="diagrams/overview-a-layers.svg" alt="FinVet in four layers" width="1000"></p>
+
+**Option B — the trust boundary.** What the model does on the left, what code decides on
+the right, and what crosses between them: claim text, a parse, a resolved period, a figure
+with provenance; the model's own verdict crosses as advice only.
+
+<p align="center"><img src="diagrams/overview-b-trust.svg" alt="FinVet's trust boundary between model and code" width="1000"></p>
+
+**Option C — one claim, start to finish.** Seven steps left to right, the two exits where a
+claim is declined, the review loop, the sources under the agent loop, and the audit trail
+collecting every step.
+
+<p align="center"><img src="diagrams/overview-c-journey.svg" alt="One claim's journey through FinVet" width="1000"></p>
 
 ## 2. Interfaces
 
