@@ -1,802 +1,332 @@
-# FinVet -- System Architecture
+# FinVet — System Architecture
 
-## 1. High-Level Architecture
+FinVet verifies one financial claim at a time. The language model retrieves evidence and
+proposes a verdict; the verdict that is returned is computed in code from a trusted
+observation under a fixed tolerance, and a claim with no such observation is declined.
+This document follows a claim through the system. The README has the picture
+(`docs/diagrams/finvet-linkedin.png`).
 
-> **See**: `docs/diagrams/finvet-linkedin.png` for the visual pipeline diagram.
+## 1. System overview
 
 ```
 Streamlit UI (:8501)
        |  HTTP
 FastAPI API (:8000)
        |
-LangGraph Pipeline (12-node DAG + HITL gate)
+LangGraph pipeline (12 nodes, pauses for human review)
        |
-  SEC Agent ------> SEC EDGAR MCP (:9870) ---> XBRL/Filing Data
+  SEC Agent ------> SEC EDGAR MCP (:9870) ---> XBRL facts and filings
   ^    |                                            |
-  |    +---------> RAG (pgvector + tsvector + RRF) <+
+  |    +---------> filing-text search (pgvector + full text) <+
   |                                                 |
   | delegation: corroborate_with_filing             |
   |                                                 |
-  News Agent -----> Tavily News Search              |
+  News Agent -----> Tavily news search              |
                                                     |
   Market Agent ---> Finnhub REST                    |
                                                     |
                    PostgreSQL 16 + pgvector (:5432) |
-                   [audit_events, audit_executions, |
-                    filing_chunks; LangGraph store   |
-                    tables when memory is on]   <--+
+                   audit_events, audit_executions,  |
+                   filing_chunks; memory store when |
+                   enabled                       <--+
 ```
 
----
+## 2. Interfaces
 
-## 2. Component Breakdown
+`src/finvet/main.py` creates the app, compiles the graph and registers the routers.
 
-### 2.1 API Layer (FastAPI, port 8000)
+| Method | Path | Purpose | Audit events |
+|---|---|---|---|
+| `GET` | `/health`, `/` | Health; reports the models this process will use | — |
+| `GET` | `/stats` | Service info and agents | — |
+| `POST` | `/verify` | Verify a claim | `input_received`, `commit_execution` |
+| `POST` | `/verify-stream` | Same, with progress events streamed to the UI | as `/verify` |
+| `GET` | `/reviews` | Pending human reviews | — |
+| `POST` | `/review/{id}` | Submit a review decision | `hitl_{decision}` |
+| `POST` | `/review/{id}/reconcile` | Retry the audit write for a stuck review | — |
+| `POST` | `/memory-check` | Similar past verifications | — |
+| `POST` | `/memory-accept` | Record that a cached result was used | `memory_cache_accepted` |
+| `GET` | `/audit` | List executions by verdict, agent, date | — |
+| `GET` | `/audit/{id}` | Full audit trail for one request | — |
+| `POST` | `/search-history` | Past verifications, seven-day window | — |
 
-**Entry**: `src/finvet/main.py` -- creates app, compiles LangGraph, registers routers.
+Request models reject unknown fields (`src/finvet/api/models.py`). The only prior
+context a request may carry is the identifier of an earlier verification, which the
+server resolves from its own store.
 
-| Method | Path | Purpose | Audit Events |
-|--------|------|---------|-------------|
-| `GET` | `/health`, `/` | Health check; reports the models this process will use | -- |
-| `GET` | `/stats` | Service info, agents, truth regimes | -- |
-| `POST` | `/verify` | Main claim verification | `input_received`, `commit_execution` |
-| `POST` | `/verify-stream` | Same, with progress events over SSE; what the UI calls | as `/verify` |
-| `GET` | `/reviews` | List pending HITL reviews | -- |
-| `POST` | `/review/{id}` | Submit HITL decision | `hitl_{decision}` |
-| `POST` | `/review/{id}/reconcile` | Retry the audit write for a stuck review | -- |
-| `POST` | `/memory-check` | Search similar past verifications | -- |
-| `POST` | `/memory-accept` | Log cache acceptance | `memory_cache_accepted` |
-| `GET` | `/audit` | List executions, filterable by verdict, agent and date | -- |
-| `GET` | `/audit/{id}` | Full audit trail for a request | -- |
-| `POST` | `/search-history` | Find past verifications (7-day window) | -- |
+## 3. A claim's path
 
-**Request/Response Models** (Pydantic v2, `src/finvet/api/models.py`):
-- `VerifyClaimRequest`: claim (10-2000 chars), optional user_id, optional
-  `memory_context_request_id`. Extra fields are rejected: the request carries an
-  identifier, never prior-context content, and the episode it names is read from the
-  server's own store.
-- `MemoryCheckRequest`: claim (10-2000 chars)
-- `MemoryAcceptRequest`: original_request_id, claim, similarity
-- `HITLReviewRequest`: decision (approve/override/reject), optional override_verdict, optional reviewer_notes
+`src/finvet/graph/workflow.py` registers twelve nodes. At most nine run for one claim:
+one of the three agents, and the two review nodes only when a review is required.
 
-**`/verify` Flow**:
-1. Generate `request_id = "req_<12-hex>"`
-2. Audit: log `input_received`
-3. If `memory_context_request_id` provided: resolve the episode server-side (404 if it
-   names nothing), then audit-log `prior_verification_attached`
-4. Build initial `VerificationState` dict
-5. `graph.invoke(state, config={thread_id: request_id})`
-6. If HITL interrupted: return `status="pending_review"` + `preliminary_analysis`
-7. If success: Audit `commit_execution()`, Memory `store()`, return `final_response`
-8. `GuardrailViolation`: return 400 with `error_code`
+| # | Node | After | Decides | Purpose |
+|---|---|---|---|---|
+| 1 | `input_guardrails` | entry | — | Regex guard; Llama Guard when enabled |
+| 2 | `claim_parser` | 1 | claim type | Model extracts the seven-field ParsedClaim |
+| 3 | `period_resolver` | 2 (sec) | — | Period text to canonical dates |
+| 4 | `sec_agent` | 3 | — | SEC verification |
+| 5 | `market_agent` | 2 (market) | — | Market verification |
+| 6 | `news_agent` | 2 (news) | — | News verification |
+| 7 | `reject_handler` | 2 (reject) | — | Verdict REJECTED with a reason |
+| 8 | `confidence_adjuster` | 4, 5, 6 | — | Fixed confidence adjustments |
+| 9 | `output_guardrails` | 8 | review needed | Output safety and the review triggers |
+| 10 | `hitl_gate` | 9 | — | The graph pauses here |
+| 11 | `apply_hitl_decision` | 10 | — | Applies the reviewer's decision |
+| 12 | `response_generator` | 7, 9, 11 | — | Final response |
 
-**HITL Resume** (`POST /review/{id}`):
-1. Atomically claim the row `PENDING -> REVIEWING` (404 missing / 409 conflict / 503 outage)
-2. Validate decision (approve/override/reject); audit: log `hitl_{decision}`
-3. `update_state(...)` with the decision -- reversible; a failure here releases the claim
-4. `graph.invoke(None, config)` -- **irreversible from the call**; the claim is never released
-5. No fallback verdict. A missing or invalid result, or a failed audit write, moves the row to
-   `REVIEW_FINALIZATION_FAILED`; `POST /review/{id}/reconcile` retries the write from the
-   existing checkpoint without re-running the graph
+Routing after the parser is by `claim_type`: `reject` to the reject handler, `sec` to the
+period resolver and then the SEC agent, `market` and `news` to their agents. After the
+output guardrails, a claim goes to the review gate if any trigger fired, otherwise to
+the response.
 
----
+The confidence node applies fixed adjustments from `src/finvet/config/constants.py`
+(a penalty for a large difference, bonuses for a close match and for a thorough search,
+equality claims only) and caps automated confidence at 0.95.
 
-### 2.2 LangGraph Pipeline (12-Node DAG)
+**ParsedClaim**, the parser's contract (`src/finvet/models/claim.py`):
 
-**File**: `src/finvet/graph/workflow.py`
-
-Twelve nodes are registered; at most nine execute for a given claim, since the router
-selects one domain agent and the two HITL nodes run only below the confidence threshold.
-
-Compiled with `MemorySaver` checkpointer for HITL. `interrupt_before=["hitl_gate"]`.
-
-#### Node Map
-
-| # | Node | Source | Destination | Conditional | Purpose |
-|---|------|--------|------------|-------------|---------|
-| 1 | `input_guardrails` | ENTRY | claim_parser | No | Regex + Llama Guard safety validation |
-| 2 | `claim_parser` | 1 | 3/5/6/7 | Yes (claim_type) | LLM extracts 7-field ParsedClaim |
-| 3 | `period_resolver` | 2 (sec only) | 4 | No | Convert period text to canonical dates |
-| 4 | `sec_agent` | 3 | 8 | No | ReAct SEC verification |
-| 5 | `market_agent` | 2 (market) | 8 | No | ReAct market verification |
-| 6 | `news_agent` | 2 (news) | 8 | No | ReAct news verification |
-| 7 | `reject_handler` | 2 (reject) | 12 | No | Set verdict=REJECTED |
-| 8 | `confidence_adjuster` | 4/5/6 | 9 | No | Adjust confidence |
-| 9 | `output_guardrails` | 8 | 10/12 | Yes (hitl_required) | Check confidence + output safety |
-| 10 | `hitl_gate` | 9 (needs_hitl) | 11 | No | Graph pauses (interrupt_before) |
-| 11 | `apply_hitl_decision` | 10 | 12 | No | Apply reviewer decision |
-| 12 | `response_generator` | 7/9/11 | END | No | Format final response |
-
-#### Routing Logic
-
-**After claim_parser** (`_route_after_parsing`):
-- `claim_type == "sec"` --> `period_resolver`
-- `claim_type == "market"` --> `market_agent`
-- `claim_type == "news"` --> `news_agent`
-- `claim_type == "reject"` --> `reject_handler`
-
-**After output_guardrails** (`_route_after_guardrails`):
-- `hitl_required == True` --> `hitl_gate`
-- `hitl_required == False` --> `response_generator`
-
-#### Confidence Adjustments
-
-| Condition | Adjustment | Constant |
-|-----------|-----------|----------|
-| `magnitude_diff >= 20%` | -0.10 | `CONFIDENCE_LARGE_DIFF_PENALTY` |
-| `magnitude_diff <= 2%` | +0.05 | `CONFIDENCE_CLOSE_MATCH_BONUS` |
-| `len(tools_called) >= 3` | +0.05 | `CONFIDENCE_THOROUGH_BONUS` |
-| Always | cap at 0.95 | `CONFIDENCE_AUTOMATED_CAP` |
-
-Only applies magnitude adjustments for equality claims (`comparison == "eq"`).
-
----
-
-### 2.3 State Object: VerificationState
-
-**File**: `src/finvet/models/state.py` -- `TypedDict` with `total=False` (all fields optional).
-
-| Pipeline Stage | Fields Written |
+| Field | Values |
 |---|---|
-| **API init** | `claim_raw`, `user_id`, `request_id`, `timestamp_received`, `execution_start_time`, `prior_verification` |
-| **input_guardrails** | `claim_normalized`, `guard_result_input`, `guardrails_passed`, `guardrails_failed` |
-| **claim_parser** | `parsed_claim` (ParsedClaim), `parser_used`, `total_tokens_used` |
-| **period_resolver** | `canonical_period` (CanonicalPeriod), `period_assumptions` |
-| **domain_agents** | `agent_evidence` (AgentEvidence), `agent_type`, `rag_chunks_retrieved`, `corroboration_result`, `total_tokens_used` |
-| **confidence_adjuster** | `verdict`, `confidence`, `confidence_label`, `confidence_adjustments` |
-| **output_guardrails** | `hitl_required`, `hitl_triggers`, `guard_result_output` |
-| **hitl_gate** | `hitl_gate_passed` |
-| **apply_hitl_decision** | `hitl_applied`, `hitl_decision`, `hitl_override_verdict` |
-| **response_generator** | `final_response`, `execution_end_time` |
+| `claim_type` | `sec`, `market`, `news`, `reject` |
+| `ticker` | symbol or null |
+| `metric` | a name from the metric vocabulary (`src/finvet/config/metrics.py`) or null |
+| `operator` | `eq`, `gt`, `gte`, `lt`, `lte`, `approx`, `range`; a `range` claim declines |
+| `value` | number or null |
+| `period` | period text or null |
+| `reject_reason` | `non_financial`, `question`, `incomplete`, or null |
 
-#### ParsedClaim (7 fields)
+## 4. Where the verdict is decided
 
-| Field | Type | Example |
-|-------|------|---------|
-| `claim_type` | `"sec"/"market"/"news"/"reject"` | `"sec"` |
-| `ticker` | `str or null` | `"AAPL"` |
-| `metric` | `str or null`, from the metric vocabulary | `"revenue"` |
-| `operator` | `"eq"/"gt"/"gte"/"lt"/"lte"/"approx"/"range" or null` (`range` declines) | `"gt"` |
-| `value` | `float or null` | `94000000000` |
-| `period` | `str or null` | `"Q4 2024"` |
-| `reject_reason` | `"non_financial"/"question"/"incomplete" or null` | `null` |
-
-#### AgentEvidence
-
-| Field | Type |
-|-------|------|
-| `agent` | `"sec"/"market"/"news"` |
-| `verdict` | `"SUPPORTS"/"REFUTES"/"NOT_ENOUGH_INFO"` |
-| `confidence` | `float (0-1)` |
-| `retrieved_value` | `float or null` |
-| `magnitude_difference_percent` | `float or null` |
-| `tools_called` | `list[str]` |
-| `tool_calls_detail` | `list[dict]` |
-| `provenance` | `list[dict]` (full results for RAG and delegation) |
-| `reasoning` | `str` |
-| `execution_time_ms` | `int` |
-
----
-
-### 2.4 Agent Architecture (ReAct Loop)
-
-**Base class**: `src/finvet/agents/base.py` -- `BaseVerificationAgent`
-
-#### Execution Flow
+Every agent extends `BaseVerificationAgent` (`src/finvet/agents/base.py`) and runs the
+same sequence:
 
 ```
-1. Build context (claim + parsed info + period + company + memory context)
-2. Initialize messages: [SystemMessage, HumanMessage(context)]
-3. LOOP (max 8 iterations, AGENT_MAX_ITERATIONS):
-   |-- LLM.invoke(messages)
-   |-- IF tool_calls:
-   |     Execute each tool, truncate result to 50K chars
-   |     If provenance tool: capture full result
-   |     Append ToolMessage to messages
-   |-- ELSE (no tool_calls): capture reasoning, break
-4. VERDICT EXTRACTION (separate LLM call):
-   |-- create_llm("verdict").with_structured_output(VerdictOutput, method="json_mode")
-   |-- Skip agent's final reasoning (prevent anchoring bias)
-   |-- Returns: VerdictOutput(verdict, confidence, reasoning, retrieved_value)
-5. PYTHON VERDICT OVERRIDE (deterministic):
-   |-- magnitude_diff = |claimed - retrieved| / max(|claimed|, |retrieved|) * 100
-   |-- For equality: diff <= tolerance -> SUPPORTS, else REFUTES
-   |-- For directional (gt/gte/lt/lte): boolean comparison
-   |-- Tolerances: SEC >$1B: 1.5%, SEC <=$1B: 2%, Market: 5%, News: 5%
-6. Return AgentEvidence dict
+1. Build the context: claim, parsed fields, resolved period, company.
+2. Agent loop, up to 8 iterations (AGENT_MAX_ITERATIONS): the model picks a tool,
+   the result is appended (cut at 50,000 characters), and the model picks again,
+   until it answers without a tool call. Results of provenance tools are kept whole.
+3. Verdict call: a separate structured model call that sees the evidence but not
+   the loop's final reasoning, so it cannot anchor on it.
+4. Override: code compares the retrieved figure with the claim.
+     equality:  |claimed − retrieved| / max(|claimed|, |retrieved|) within tolerance
+     direction: a plain comparison for gt, gte, lt, lte
+     tolerance: 1.5% for SEC values above $1B, 2% at or below, 5% market, 5% news
+   Where the model's verdict differs, the computed one is kept and both are reported.
+5. Return the evidence record.
 ```
 
-#### Three Domain Agents
+The figure in step 4 must be a trusted observation (`src/finvet/models/evidence.py`):
+an XBRL line item for the resolved period, a quote from the timed market tool
+(`get_stock_quote`), or a penalty amount extracted from filing text by code. Nothing
+the model wrote qualifies. Without one, the claim is NOT_ENOUGH_INFO.
 
-| Agent | File | Tools | Data Sources | Provenance |
-|-------|------|-------|-------------|------------|
-| **SECAgent** | `agents/sec_agent/react_agent.py` | `get_company_info`, `get_recent_filings`, `get_income_statement`, `get_balance_sheet`, `get_cash_flow`, `search_filing_text` | SEC EDGAR (XBRL), RAG | `{"search_filing_text"}` |
-| **MarketAgent** | `agents/market_agent/react_agent.py` | `get_stock_quote`, `get_daily_prices`, `get_company_overview`, `get_earnings` | Finnhub | (none) |
-| **NewsAgent** | `agents/news_agent/react_agent.py` | `search_financial_news`, `verify_news_source`, `corroborate_with_filing` | Tavily, SEC delegation | `{"corroborate_with_filing"}` |
+| Agent | Tools | Sources | Kept whole |
+|---|---|---|---|
+| SEC | company info, recent filings, income statement, balance sheet, cash flow, `search_filing_text`, `search_past_verifications` | SEC EDGAR XBRL, filing text | `search_filing_text` |
+| Market | quote, daily prices, company overview, earnings, `search_past_verifications` | Finnhub | — |
+| News | news search, source check, `search_past_verifications`, `corroborate_with_filing` | Tavily; SEC by delegation | `corroborate_with_filing` |
 
-System prompts: git-tracked text files in `src/finvet/agents/prompts/`.
+Each agent binds only the tools in its row. `search_past_verifications` answers
+"Memory search unavailable." unless claim memory is enabled. System prompts are text
+files in `src/finvet/agents/prompts/`.
 
----
+## 5. Evidence sources
 
-### 2.5 Tools & External Services
+**SEC XBRL.** The SEC EDGAR MCP server (port 9870) is called over streamable HTTP by
+`src/finvet/mcp/sec_edgar.py`. For a claim that names a fiscal period, the fact is
+selected from the issuer's own company facts by period end and duration, statement
+forms only, most recently filed value first (`src/finvet/mcp/fact_selection.py`).
 
-#### SEC Tools --> MCP Server (port 9870)
+**Market.** Finnhub REST via `src/finvet/mcp/finnhub.py`. Historical candles need a paid
+tier; the free tier's 403 is raised, not hidden. Mock mode exists for tests.
 
-**Transport**: Streamable-HTTP (JSON-RPC 2.0). Generic `MCPClient` handles session init, tool calls, SSE parsing.
-
-**Adapter**: `src/finvet/mcp/sec_edgar.py` -- typed wrapper. Uses `get_xbrl_concepts` MCP tool (accepts accession_number for period-specific data).
-
-**XBRL Concept Mappings**:
-
-| Statement | Key Concepts |
-|-----------|-------------|
-| Income | Revenues, CostOfRevenue, GrossProfit, OperatingIncomeLoss, NetIncomeLoss, EPS |
-| Balance | Assets, Liabilities, StockholdersEquity, Cash, LongTermDebt, PPE |
-| Cash Flow | NetCashFromOperations, CapEx, Dividends, NetCashFromInvesting/Financing |
-
-#### Market Tools --> Finnhub
-
-Direct REST API via `src/finvet/mcp/finnhub.py`. Rate limit: 60 req/min. Historical candles (`get_daily_prices`) require a paid Finnhub tier; the free tier returns 403, which surfaces as an error rather than falling back to another provider. Mock mode available (`FINNHUB_MOCK_MODE=true`).
-
-#### News Tools --> Tavily
-
-SDK wrapper in `src/finvet/tools/tavily_search.py`. Source credibility tiers:
-- **Tier 1** (0.95): Reuters, Bloomberg, WSJ, FT, AP, SEC.gov
-- **Tier 2** (0.80): CNBC, MarketWatch, Yahoo Finance
-- **Tier 3** (0.50): Unknown sources
-
-#### RAG (Hybrid Search)
-
-**File**: `src/finvet/tools/filing_search.py` + `src/finvet/rag/service.py`
-
-For narrative filing text NOT in structured XBRL (segment revenue, risk factors, MD&A, footnotes).
+**Filing text.** For claims about narrative sections (risk factors, legal proceedings,
+discussion), the SEC agent searches an index of filing passages
+(`src/finvet/rag/service.py`, tool `src/finvet/tools/filing_search.py`):
 
 ```
-Query --> Ollama Embed: nomic-embed-text (768-dim)
+query --> embedding (local Ollama, nomic-embed-text, 768 dims)
             |
      +------+------+
-     |             |
-  pgvector      tsvector
-  cosine        ts_rank
-  (HNSW)        (GIN)
-  top 20        top 20
-     |             |
+  pgvector       full text
+  cosine, top 20 ts_rank, top 20
      +------+------+
             |
-  Reciprocal Rank Fusion (k=60)
-  score = 1/(60+rank_vec) + 1/(60+rank_kw)
+  reciprocal rank fusion, k = 60
             |
-       top_k results
+        top results
 ```
 
-**Indexable sections**: business, risk_factors, mda, market_risk, financial_statements_and_notes, cybersecurity, controls_and_procedures, executive_compensation, legal_proceedings.
+Retrieval is filtered to the resolved period. A relevance floor of 0.55 on vector
+similarity stops the nearest neighbour from standing in for an absent disclosure; it was
+measured on 30 positive and 30 negative query/ticker pairs, and
+`scripts/build_rag_manifest.py` regenerates the evidence. Below the floor the tool
+returns no passages with reason `no_relevant_evidence`; with no indexed filing for the
+issuer, `no_corpus`. Passages reach the model inside `<filing_excerpt>` delimiters, and
+the prompt states that text inside them is evidence, never an instruction.
 
-**Chunking**: tiktoken cl100k_base, max 500 tokens, 100 token overlap.
+**News.** Tavily search via `src/finvet/tools/tavily_search.py`. Press coverage is
+secondary to a filing and never decides a numeric verdict on its own.
 
-#### Bounded agent delegation (News -> SEC)
+## 6. Delegation, News to SEC
 
-One-hop, in-process delegation. Not a network agent-to-agent protocol, and no
-interoperability with external agents is implied — the SEC agent holds no
-delegation tool, which is what makes the call terminate by construction rather
-than by a guard someone could forget. `A2AResult` keeps its name in code; the
-published description is "bounded agent delegation".
+A news claim about a fine or settlement is checked against the issuer's own filing. The
+two metrics that take this path, `fine_amount` and `settlement_amount`, are the only
+numeric metrics with no XBRL concept. Code, not the model, extracts the amount from the
+Legal Proceedings section, and only when exactly one candidate appears
+(`src/finvet/tools/filing_amounts.py`). The delegation is one hop, in process, and one
+way: the SEC agent holds no delegation tool, so it cannot recurse. The delegated run has
+the same iteration budget as a normal run (`A2A_MAX_ITERATIONS`).
 
-**Files**: `src/finvet/tools/corroborate_sec.py`, `src/finvet/models/a2a.py`
+Two triggers reach `corroborate_with_filing` (`src/finvet/tools/corroborate_sec.py`):
+the model calls it during the loop, or the news node calls it afterwards for a
+corroboration metric with a ticker. A filing that closed before the event is
+`NOT_APPLICABLE_YET` and no nested run happens.
 
-Delegation runs **News -> SEC only**. A news claim about a fine or settlement is checked
-against the issuer's own filing: a 10-K's Legal Proceedings section is the primary source and
-press coverage is secondary. The two metrics that take this path are `fine_amount` and
-`settlement_amount`, the only numeric metrics with no XBRL concept behind them. Python, not
-the model, extracts the amount from the Legal Proceedings text, and only when exactly one
-unambiguous candidate is present. The reverse direction existed once and was removed — it fired 0
-times in 496 benchmark runs, because an audited filing is already the strongest source and the
-claims a filing cannot settle parse as `news` and never reach the SEC agent.
-
-Two triggers, one field. `trigger_mode="agent"` when the model called the tool itself (the
-result is lifted from ReAct provenance); `"policy"` when `run_news_agent` invoked it after the
-loop for a `CORROBORATION_METRICS` claim with a ticker — that call is absent from the message
-history, so the node attaches the result explicitly.
-
-```
-News Agent ReAct loop
-  +-- Verifies the event via search_financial_news()
-  +-- Calls corroborate_with_filing(finding, ticker, claimed_value, operator, period)
-       +-- Temporal gate: a filing that closed before the event cannot cover it
-       |    -> NOT_APPLICABLE_YET, no nested run
-       +-- Builds a real ParsedClaim carrying claimed_value, so _apply_override runs
-       +-- run_sec_agent_scoped(state, max_iterations=3, scope_retrieval=False)
-       +-- Returns the delegation result: status, verdict, retrieved_value, sources
-  +-- run_news_agent writes it to corroboration_result
-```
-
-Recursion is structurally impossible: the SEC agent holds no delegation tool, so News -> SEC
-terminates by construction.
-
-<p align="center">
-  <a href="diagrams/finvet-delegation-evidence.png"><img src="diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent"></a>
-  <br><sub>A delegated run's evidence panel: every tool call with its arguments and raw response,
-  including the delegation itself and what the SEC agent sent back. The run view is in the
-  README.</sub>
-</p>
-
-`status=CONTRADICTS` adds the `source_disagreement` HITL trigger. **Nothing else does.** The
-other statuses record why the delegation could not contradict anything:
-
-| status | meaning |
+| Status | Meaning |
 |---|---|
 | `PENDING_CLASSIFICATION` | placeholder before the parent verdict exists |
-| `CORROBORATES` | the press reading and the filing figure agree |
-| `CONTRADICTS` | they disagree — the only escalation |
-| `NO_MATCHING_DISCLOSURE` | an applicable filing **was searched** and came back empty |
-| `FOUND_UNCERTIFIED` | passages were read and no amount could be extracted from them |
+| `CORROBORATES` | the press figure and the filing figure agree |
+| `CONTRADICTS` | they disagree; the only status that escalates |
+| `NO_MATCHING_DISCLOSURE` | an applicable filing was searched and said nothing |
+| `FOUND_UNCERTIFIED` | passages were read and no amount could be extracted |
 | `NOT_APPLICABLE_YET` | the newest filing closed before the event |
 | `SOURCE_UNAVAILABLE` | nothing was successfully searched |
 | `NO_CORPUS` | no filing is indexed for the issuer |
 | `FAILED` | the delegation or its search errored |
 
-`NO_MATCHING_DISCLOSURE` requires a *successful* `search_filing_text` in the nested agent's
-provenance. Without one the result is `SOURCE_UNAVAILABLE`: a claim about what a filing says
-may only be made by something that read one, and calling an unread filing "silent" turns an
-absence of evidence into evidence of absence.
+`CONTRADICTS` adds the `source_disagreement` review trigger; no other status does.
+`NO_MATCHING_DISCLOSURE` requires a successful `search_filing_text` in the nested run;
+without one the status is `SOURCE_UNAVAILABLE`, because only something that read a
+filing may say what it does not contain. Silence never escalates: a periodic report
+omits most things, and routing every omission to a reviewer would teach them to ignore
+the flag (`src/finvet/models/a2a.py`).
 
-Filing silence never escalates. A periodic report omits most things, and treating that as a
-conflict would route much of the traffic to a reviewer and teach them to ignore the flag.
+<p align="center">
+  <a href="diagrams/finvet-delegation-evidence.png"><img src="diagrams/finvet-delegation-evidence.png" alt="Every tool call with its arguments and raw response, including the delegation to the SEC agent"></a>
+  <br><sub>A delegated run's evidence panel: every tool call with its arguments and raw
+  response, including the delegation and what the SEC agent returned.</sub>
+</p>
 
----
+## 7. Controls
 
-### 2.6 PostgreSQL Schema (3 Tables, plus the LangGraph store when memory is on)
+**Guards** (`src/finvet/guards/`):
 
-**Image**: `pgvector/pgvector:pg16` via Docker Compose.
+| Provider | When | Checks |
+|---|---|---|
+| `RegexGuardProvider` | always, input | injection patterns, PII, length 10 to 2000, NFKC normalisation, language |
+| `LlamaGuardProvider` | optional, input and output | Llama Guard 3 via Ollama; category S6 tuned for finance |
+| `FinancialGuardProvider` | always, output | investment-advice patterns |
+| `CompositeGuardProvider` | chain | runs the providers in order and stops at the first failure |
 
-#### `audit_events` (Append-Only Event Log)
+If Ollama is down, Llama Guard reports safe with the flag `llama_guard_unavailable`; the
+regex guard still runs.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `event_id` | `VARCHAR(50)` PK | `"evt_<8-hex>"` |
-| `request_id` | `VARCHAR(50)` | Indexed |
-| `parent_event_id` | `VARCHAR(50)` | FK to self |
-| `event_type` | `VARCHAR(50)` | Indexed |
-| `timestamp` | `VARCHAR(50)` | Indexed |
-| `agent` | `VARCHAR(50)` | sec/market/news |
-| `data` | `JSONB` | Event payload |
-| `created_at` | `VARCHAR(50)` | |
+**Review gate.** Three triggers send a claim to a human (`src/finvet/graph/nodes/output_guardrails.py`):
+`low_confidence` below `CONFIDENCE_THRESHOLD_HITL` (0.70), `output_safety_violation`, and
+`source_disagreement`. The graph pauses before `hitl_gate`, the API answers
+`pending_review`, and the reviewer approves, overrides or rejects.
 
-**Event types**: `input_received`, `period_resolved`, `output_guardrails_checked`, `hitl_gate_reached`, `hitl_approved`, `hitl_overridden`, `hitl_rejected`, `memory_cache_accepted`, `prior_verification_attached`, `guardrail_violation`
-
-#### `audit_executions` (Execution Summary)
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `execution_id` | `INTEGER` PK | Auto-increment |
-| `request_id` | `VARCHAR(50)` UNIQUE | |
-| `claim_text` | `TEXT` | |
-| `claim_hash` | `VARCHAR(64)` | SHA256, indexed |
-| `verdict` | `VARCHAR(50)` | Indexed |
-| `confidence` | `FLOAT` | |
-| `agents_run` | `JSONB` | `["sec"]` |
-| `execution_time_ms` | `INTEGER` | |
-| `execution_hash` | `VARCHAR(64)` | SHA-256 integrity checksum over `full_trace`; re-verified on read |
-| `full_trace` | `JSONB` | The canonical execution envelope — exactly the object the checksum covers |
-| `data_sources` | `JSONB` | `{xbrl, rag, a2a}` GIN indexed |
-
-#### Claim memory (LangGraph `PostgresStore`, only when `ENABLE_CLAIM_MEMORY=true`)
-
-Not a FinVet table. `main.py` opens a LangGraph `PostgresStore` with a vector index
-over the claim text (768-dim `nomic-embed-text`, embedded through the same local Ollama
-path the RAG layer uses), and the store creates and owns its own tables. Each episode is
-a document keyed by `request_id` holding the claim, ticker, agent, verdict, confidence,
-retrieved value and summary (`memory/store_service.py`).
-
-#### `filing_chunks` (RAG Store)
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `INTEGER` PK | |
-| `ticker` | `VARCHAR(10)` | Composite index |
-| `cik` | `VARCHAR(20)` | |
-| `filing_type` | `VARCHAR(10)` | |
-| `period_end` | `VARCHAR(20)` | |
-| `section` | `VARCHAR(50)` | Indexed |
-| `chunk_text` | `TEXT` | |
-| `token_count` | `INTEGER` | |
-| `embedding` | `Vector(768)` | HNSW index (m=16, ef=64) |
-| `tsv` | `tsvector` GENERATED | GIN indexed |
-
----
-
-### 2.7 Memory System (Episodic Claim Store)
-
-> **Experimental, and off by default** (`ENABLE_CLAIM_MEMORY=false`). This is the one
-> subsystem whose output is prior *model* output rather than a source: reusing a cached
-> verdict, or feeding a past summary back to an agent, moves something the system said into
-> the position of something it found. The implementation stays in the repository; the default
-> does not enable it. With it off, `/memory-check` answers `{"matches": []}` and the UI goes
-> straight to verification.
-
-**File**: `src/finvet/memory/store_service.py`
-
-Embeddings: `nomic-embed-text` (768 dims), the same local Ollama embedder the RAG
-layer uses — `main.py` passes `rag.service._embed_texts` straight into the
-LangGraph `PostgresStore`, so there is one embedding path, not two. Similarity is
-computed in Postgres by pgvector.
-
-| Mode | Threshold | Use Case |
-|------|-----------|----------|
-| **Cache** | >= 0.95 | Near-identical claim, skip pipeline |
-| **Context** | >= 0.75 | Inject prior result as agent context |
-| **Similar** | >= 0.60 | "People Also Verified" UI display |
-
-**Write**: After successful verification, store the episode in the LangGraph store, which embeds the claim text. Skips PENDING/REJECTED/ERROR.
-
-**Read** (`/memory-check`): `store.search` with the claim as the query, pgvector similarity in Postgres, twice the requested limit fetched and the thresholds above applied before the top matches are returned.
-
----
-
-### 2.8 Guardrail System
-
-**File**: `src/finvet/guards/`
-
-| Provider | Type | Speed | Checks |
-|----------|------|-------|--------|
-| **RegexGuardProvider** | Always on | <1ms | Injection patterns, PII (SSN/CC/email/phone), length (10-2000), NFKC normalization, English detection |
-| **LlamaGuardProvider** | Optional | ~200ms | Llama Guard 3 via Ollama. S1-S13 taxonomy. S6 customized for financial domain |
-| **FinancialGuardProvider** | Output only | <1ms | Investment advice patterns ("you should buy", "price target", etc.) |
-| **CompositeGuardProvider** | Chain | Sum | Runs providers in order, short-circuits on failure |
-
-**Graceful degradation**: If Ollama is down, LlamaGuard returns safe=True with flag `"llama_guard_unavailable"`.
-
-**Violation types**: `INJECTION_DETECTED`, `PII_DETECTED`, `CLAIM_TOO_SHORT`, `CLAIM_TOO_LONG`, `UNSUPPORTED_LANGUAGE`, `LLAMA_GUARD_UNSAFE`
-
----
-
-### 2.9 LLM Configuration
-
-**File**: `src/finvet/llm/factory.py`
-
-Three independently configurable endpoints:
-
-| Purpose | Default Model | Temperature | Used By |
-|---------|--------------|-------------|---------|
-| `parser` | deepseek-chat | 0.0 | Claim parser |
-| `agent` | deepseek-chat | 0.0 | ReAct loop |
-| `verdict` | deepseek-chat | 0.0 | Verdict extraction |
-
-DeepSeek does NOT support `json_schema` response_format. Uses `method="json_mode"` with schema in prompt text.
-
-Configurable via `LLM_PARSER__MODEL`, `LLM_AGENT__TEMPERATURE`, etc.
-
----
-
-### 2.10 Constants
-
-**File**: `src/finvet/config/constants.py`
-
-| Category | Constant | Value |
-|----------|----------|-------|
-| **Tolerances** | `TOLERANCE_SEC_LARGE_VALUES` | 1.5% (>$1B) |
-| | `TOLERANCE_SEC_SMALL_VALUES` | 2% (<=$1B) |
-| | `TOLERANCE_MARKET` | 5% |
-| | `TOLERANCE_NEWS` | 5% |
-| **Confidence** | `CONFIDENCE_LARGE_DIFF_PENALTY` | -0.10 |
-| | `CONFIDENCE_CLOSE_MATCH_BONUS` | +0.05 |
-| | `CONFIDENCE_THOROUGH_BONUS` | +0.05 |
-| | `CONFIDENCE_AUTOMATED_CAP` | 0.95 |
-| **Agent** | `AGENT_MAX_ITERATIONS` | 8 |
-| | `AGENT_MAX_RESULT_CHARS` | 50,000 |
-| **Confidence** | `CONFIDENCE_HIGH_THRESHOLD` | 0.85 |
-| | `CONFIDENCE_MODERATE_THRESHOLD` | 0.70 |
-| **RAG** | `EMBEDDING_MODEL` | `nomic-embed-text` |
-| | `EMBEDDING_DIMS` | 768 |
-| | `RRF_K` | 60 |
-| | `RAG_MIN_VECTOR_SIMILARITY` | 0.55 (calibrated, see constants.py) |
-| **Memory** | `MEMORY_CACHE_THRESHOLD` | 0.95 |
-| | `MEMORY_CONTEXT_THRESHOLD` | 0.75 |
-| | `MEMORY_SIMILAR_THRESHOLD` | 0.60 |
-
----
-
-## 3. Key Design Decisions
-
-### ReAct + Separate Verdict + Python Override
-
-Three-phase verdict extraction prevents LLM number comparison errors:
-1. **ReAct loop**: Agent reasons freely, calls tools
-2. **Verdict LLM**: Separate structured call (skips agent's final reasoning to prevent anchoring)
-3. **Python override**: Deterministic comparison with tolerance thresholds
-
-### Hybrid retrieval (pgvector similarity + Postgres full-text, fused with RRF)
-
-Combines semantic similarity with keyword matching. Prevents pure-semantic false positives
-on financial terms (e.g. "revenue" matching "cost of revenue").
-
-Three properties matter beyond the fusion itself:
-
-- **Period scope.** Retrieval is filtered to the resolved period, injected out of band
-  exactly as the XBRL path does. A chunk from the wrong fiscal year is the wrong
-  evidence, not weak evidence, and nothing downstream can tell.
-- **Relevance floor.** pgvector always returns a nearest neighbour, so a query about a
-  disclosure that does not exist would otherwise come back with the closest passages.
-  `RAG_MIN_VECTOR_SIMILARITY` was measured, not chosen: 30 positive and 30 negative
-  query/ticker pairs over the 1,398-chunk corpus put positives at min 0.5752 and off-topic
-  negatives at max 0.5307, and **0.55** sits in that gap with margin on both sides. It was
-  0.53 against the previous 988-chunk index, whose gap was (0.5168, 0.5469); re-ingestion
-  moved both edges up and left 0.53 marginally *below* the worst negative. The threshold
-  follows the corpus, and `scripts/build_rag_manifest.py` regenerates the evidence.
-
-  Below the floor, `search_filing_text` returns
-  `success=True, chunks=[], reason="no_relevant_evidence"` -- an answer, not a failure.
-  When the issuer has no indexed filing at all it returns `reason="no_corpus"` instead:
-  a filing that was read and said nothing, and no filing to read, are opposite facts.
-- **Untrusted by construction.** Excerpts reach the model wrapped in `<filing_excerpt>`
-  delimiters, and the SEC prompt states that text inside them is evidence to weigh and
-  never an instruction to follow.
-
-### HITL Gate with MemorySaver
-
-LangGraph `interrupt_before` pauses the graph. API returns `pending_review`. Human review
-resumes via `update_state()` + `invoke(None, config)`.
-
-The checkpointer is `MemorySaver`, so paused state lives in the API process only: **pending
-reviews do not survive an API restart.** The claim's PENDING execution row remains in
-Postgres and is still listed, but the paused graph it belongs to is gone and cannot be
-resumed. Persistent PostgreSQL checkpointing is out of scope for this release.
-
-#### Review lifecycle
-
-The `verdict` column doubles as review-lifecycle state, so the transitions are:
+**Review lifecycle** (`src/finvet/api/routes/review.py`). The verdict column doubles as
+the review state:
 
 ```
-PENDING --claim--> REVIEWING --finalize--> <terminal verdict>
+PENDING --claim--> REVIEWING --finalize--> terminal verdict
                        |
-                       +-- failure before invoke --> PENDING   (retryable)
-                       |
-                       +-- invoke began, no durable outcome -->
-                                     REVIEW_FINALIZATION_FAILED
+                       +-- failure before invoke --> PENDING (retryable)
+                       +-- invoke began, no durable outcome --> REVIEW_FINALIZATION_FAILED
 ```
 
-**The boundary is the call to `invoke`, not its return.** Before it, nothing of the graph has
-run and the claim may safely go back to `PENDING`. From the call onward the checkpoint may
-have advanced, so the claim is never released: releasing it would let a second reviewer
-resume a partially-executed graph. A row with no durable audited outcome moves to
-`REVIEW_FINALIZATION_FAILED` instead, which is explicit, listed in the review queue with
-`review_status: "finalization_failed"`, and retryable.
+The call to `invoke` is the point of no return: before it, nothing of the graph has run
+and the claim goes back to `PENDING`; from it onward the claim is never released, because
+a second reviewer could resume a partly executed graph. `POST /review/{id}/reconcile`
+retries the audit write from the checkpoint and never re-runs the graph. Checkpoints live
+in process memory (`MemorySaver`), so pending reviews do not survive a restart; after one,
+reconcile answers `checkpoint_unavailable` and the claim must be re-run.
 
-`POST /review/{request_id}/reconcile` retries the audit write. It reads the outcome the
-checkpoint already holds and never calls `update_state` or `invoke` — the human decided once
-and the graph ran once, so re-entering it would produce a second answer for one decision.
+**Integrity** (`GET /audit/{id}`, `src/finvet/audit/integrity.py`). Three statuses:
+`verified`, the checksum recomputes and every displayed field matches the envelope;
+`failed`, the checksum mismatched or a field diverges; `unavailable`, not checkable, with
+the reason `no_checksum_recorded`, `review_in_progress` or `review_finalization_failed`.
+The checksum is recomputed before any lifecycle reasoning, so a corrupted row under
+review reports `failed`.
 
-**Reconciliation is same-process recovery only.** It depends on the `MemorySaver` checkpoint,
-so it works only while the API process that ran the review is still alive. After a restart the
-checkpoint is gone and reconcile reports `checkpoint_unavailable`; the claim must be re-run.
-This is not cross-process or restart-durable recovery, and nothing here should be described as
-such.
+## 8. What is stored
 
-If the database is unreachable at the moment of failure, the marker cannot be written and the
-row stays in `REVIEWING`. `scripts/report_audit_operations.py` is the read-only report that
-surfaces those, alongside events with no execution row and rows awaiting reconciliation.
+PostgreSQL 16 with pgvector (`src/finvet/audit/models.py`, `src/finvet/rag/models.py`).
 
-#### Integrity and review state
+- **`audit_events`**: append-only, one row per event. Twelve event types:
+  `input_received`, `claim_parsed`, `period_resolved`, `tool_called`,
+  `output_guardrails_checked`, `hitl_gate_reached`, `hitl_approved`, `hitl_overridden`,
+  `hitl_rejected`, `memory_cache_accepted`, `prior_verification_attached`,
+  `guardrail_violation`.
+- **`audit_executions`**: one row per request. `full_trace` is the execution envelope
+  and `execution_hash` the SHA-256 over it, re-verified on read. `data_sources` holds
+  `{xbrl, rag, a2a}` and is indexed.
+- **`filing_chunks`**: passage text with its filing identity (ticker, CIK, form, filing
+  date, period end, part, item, section, chunk index, a content-derived `evidence_id`),
+  an embedding with an HNSW index, and a generated full-text vector with a GIN index.
+- **Claim memory**: a LangGraph `PostgresStore` opened by `main.py` only when
+  `ENABLE_CLAIM_MEMORY=true` (`src/finvet/memory/store_service.py`). Its output is prior
+  model output, not a source. Thresholds: 0.95 to reuse a verdict, 0.75 to give an
+  agent context, 0.60 to show similar claims.
 
-`GET /audit/{request_id}` returns exactly three integrity statuses:
+Every retrieved passage keeps its chunk id, filing, period, section, the query that found
+it, both arm scores and a SHA-256 of its text, through response metadata into
+`data_sources`, so what the model read can be reconstructed exactly.
 
-| status | meaning |
-|---|---|
-| `verified` | the checksum recomputes and every displayed field matches the envelope |
-| `failed` | the checksum mismatched, or a row/event diverges from what was hashed |
-| `unavailable` | not checkable — the reason says why |
-
-`unavailable` carries one of three reasons: `no_checksum_recorded` for rows written before
-the scheme existed, `review_in_progress` for a row a reviewer has claimed, and
-`review_finalization_failed` for one awaiting reconciliation.
-
-**Order matters.** The checksum is recomputed **before** any lifecycle reasoning, so a
-corrupted row under review reports `failed`, not "not checked". Only once it passes does a
-row in `REVIEWING` or `REVIEW_FINALIZATION_FAILED` report `unavailable`: its verdict column
-and its review events are written outside the committed envelope by design, so the projection
-comparison cannot speak for it. Lifecycle state excuses the comparison, never the checksum.
-
-A terminal row is then compared field by field against the envelope, events included.
-
-### Provenance for Audit Compliance
-
-The SEC agent captures full untruncated RAG results and the News agent its delegation
-result. These flow through as `rag_chunks_retrieved` and `corroboration_result` into
-response metadata and the audit DB's `data_sources` JSONB. Each retrieved passage keeps
-its identity -- chunk id, filing, period, section, the query that found it, both raw arm
-scores, and a SHA-256 of the text -- because counts and section names cannot reconstruct
-what the model actually read.
-
-### Security Properties
+## 9. Security properties
 
 Properties of the code, not of configuration. A regression in any of them is a security
-bug (see [SECURITY.md](../SECURITY.md) for how to report one):
+bug ([SECURITY.md](../SECURITY.md) says how to report one).
 
-- **Claim text cannot steer the model unchecked.** Input passes a regex guard and, when
-  enabled, Llama Guard. The request model rejects unknown fields; the only context it
-  accepts is an identifier the server resolves itself. A free-form context field was
+- **Claim text cannot steer the model unchecked.** Input passes the regex guard and, when
+  enabled, Llama Guard. Requests reject unknown fields; a free-form context field was
   removed because it was an injection channel.
-- **No model-authored number reaches a verdict.** Numeric verdicts are computed from a
-  structured observation carrying its own provenance. Without one, the claim returns
-  `NOT_ENOUGH_INFO` rather than the model's reading of prose.
-- **Agents stay in their lanes.** Each agent binds only its own tools, and the SEC agent
-  holds no delegation tool, so agent-to-agent recursion cannot occur.
-- **Credentials do not cross providers.** Each LLM role names the environment variable
-  holding its own key. Pointing a role at a new provider without that key raises rather
-  than falling back to another provider's credential.
+- **No model-authored number reaches a verdict.** Verdicts are computed from a trusted
+  observation with provenance; without one the claim returns `NOT_ENOUGH_INFO`.
+- **Agents stay in their lanes.** Each binds only its own tools, and the SEC agent holds
+  no delegation tool.
+- **Credentials do not cross providers.** Each model role names the environment variable
+  holding its key; a role pointed at a new provider without that key raises
+  (`src/finvet/llm/factory.py`).
 
-### Non-Critical Memory and Similar Claims
-
-All memory operations wrapped in try/except. Failures log warnings but never block verification.
-
----
-
-## 4. Infrastructure
-
-### Docker Compose
-
-| Service | Image | Port | Purpose |
-|---------|-------|------|---------|
-| `postgres` | `pgvector/pgvector:pg16` | 5432 | Audit, memory, RAG |
-| `api` | `docker/Dockerfile` | 8000 | FastAPI |
-| `ui` | `docker/Dockerfile` | 8501 | Streamlit |
-| `sec-edgar-mcp` | `docker/Dockerfile.sec` (profile `sec`) | 9870 | SEC EDGAR MCP server |
-| `ollama` | `ollama/ollama` | 11434 | Embeddings; Llama Guard when enabled |
-
-Every port binds to `${FINVET_BIND_ADDR:-127.0.0.1}`.
-
-### Startup Order (native)
-
-1. PostgreSQL and the SEC MCP server (`docker compose --profile sec up -d postgres sec-edgar-mcp`)
-2. Ollama with `nomic-embed-text` pulled
-3. FastAPI (`uvicorn finvet.main:app --port 8000 --app-dir src`)
-4. Streamlit UI (`streamlit run ui/app.py --server.port 8501`)
-
-### Dependencies
-
-Declared in `pyproject.toml` and pinned in `uv.lock`; licences and the external
-components are recorded in `THIRD_PARTY_NOTICES.md`.
-
----
-
-## 5. Module Dependency Graph
-
-```
-config/
-  settings.py      <-- .env
-  constants.py     <-- (standalone)
-  database.py      <-- settings
-
-llm/
-  factory.py       <-- config/settings
-
-models/
-  claim.py         <-- (standalone Pydantic)
-  state.py         <-- models/claim
-
-agents/
-  base.py          <-- config/constants, llm/factory, models/state
-  prompts/*.txt    <-- (loaded at import time)
-  sec_agent/       <-- base, tools/sec_tools, tools/filing_search, tools/memory_tools
-  market_agent/    <-- base, tools/market_tools
-  news_agent/      <-- base, tools/news_tools, tools/corroborate_sec
-
-graph/
-  nodes/           <-- agents, models/state
-  workflow.py      <-- nodes, config/constants
-
-tools/
-  market_tools.py  <-- mcp/finnhub
-  sec_tools.py     <-- mcp/sec_edgar
-  news_tools.py    <-- tools/tavily_search
-  filing_search.py <-- rag/service
-  corroborate_sec.py <-- graph/nodes/domain_agents (runtime import)
-
-rag/
-  service.py       <-- config/constants, config/database
-  parser.py        <-- (standalone)
-
-memory/
-  store_service.py <-- config/constants (LangGraph PostgresStore, wired in main.py)
-
-audit/
-  logger.py        <-- audit/database
-  database.py      <-- config/database
-
-guards/
-  composite.py     <-- regex.py, llama_guard.py, financial.py
-
-api/
-  routes/*.py      <-- api/deps, api/models, audit, memory, graph
-  deps.py          <-- (module-level graph reference)
-  models.py        <-- (standalone Pydantic)
-
-main.py            <-- api/routes, graph/workflow, config
-```
-
----
-
-## 6. Extension Guide
-
-### Adding a New Agent
-
-1. Create `src/finvet/agents/<name>_agent/react_agent.py` extending `BaseVerificationAgent`
-2. Add prompt to `src/finvet/agents/prompts/<name>_system.txt`
-3. Create tools in `src/finvet/tools/<name>_tools.py`
-4. Add wrapper to `src/finvet/graph/nodes/domain_agents.py`
-5. Register node + routing in `src/finvet/graph/workflow.py`
-6. Update `_route_after_parsing` with new claim_type
-
-### Adding a New Tool
-
-1. Create tool function with `@tool` decorator and Pydantic return model
-2. Add to the agent's tool list in `tools/__init__.py`
-3. If provenance needed, add tool name to `_provenance_tool_names`
-
-### Adding a Guard
-
-1. Implement `GuardProvider` protocol in `src/finvet/guards/`
-2. Add to `CompositeGuardProvider` chain in the guardrails node
-
----
-
-## 7. Configuration Reference
+## 10. Configuration
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DEEPSEEK_API_KEY` | Yes | -- | DeepSeek API key for LLM |
-| `TAVILY_API_KEY` | Yes | -- | Tavily API key for news search |
-| `POSTGRES_PASSWORD` | Yes | -- | PostgreSQL password |
-| `FINNHUB_API_KEY` | No | -- | Finnhub API key; without it market claims decline as NOT_ENOUGH_INFO |
-| `FINNHUB_MOCK_MODE` | No | false | Use mock market data (tests only) |
-| `SEC_EDGAR_USER_AGENT` | No | `FinVet (your@email.com)` | Contact string SEC requires on automated requests; set it to your own |
+|---|---|---|---|
+| `DEEPSEEK_API_KEY` | Yes | — | Key for the default model provider |
+| `TAVILY_API_KEY` | Yes | — | News search |
+| `POSTGRES_PASSWORD` | Yes | — | Database password |
+| `FINNHUB_API_KEY` | No | — | Market data; without it market claims decline as NOT_ENOUGH_INFO |
+| `FINNHUB_MOCK_MODE` | No | false | Mock market data, tests only |
+| `SEC_EDGAR_USER_AGENT` | No | `FinVet (your@email.com)` | Contact string SEC requires; set your own |
 | `FINVET_BIND_ADDR` | No | 127.0.0.1 | Address the compose ports bind to; see SECURITY.md before changing |
-| `ENABLE_LLAMA_GUARD` | No | false | Enable Llama Guard semantic safety |
-| `ENABLE_CLAIM_MEMORY` | No | **false** | Enable claim memory (experimental; its output is prior model output, not a source) |
-| `CONFIDENCE_THRESHOLD_HITL` | No | 0.70 | Below this triggers HITL |
+| `ENABLE_LLAMA_GUARD` | No | false | Llama Guard on input and output |
+| `ENABLE_CLAIM_MEMORY` | No | **false** | Claim memory (experimental; its output is prior model output, not a source) |
+| `CONFIDENCE_THRESHOLD_HITL` | No | 0.70 | Below this, a claim goes to review |
 | `LOG_LEVEL` | No | INFO | Logging level |
-| `LLM_PARSER__MODEL` | No | deepseek-chat | Override parser LLM |
-| `LLM_AGENT__MODEL` | No | deepseek-chat | Override agent LLM |
-| `LLM_VERDICT__MODEL` | No | deepseek-chat | Override verdict LLM |
+| `LLM_PARSER__MODEL`, `LLM_AGENT__MODEL`, `LLM_VERDICT__MODEL` | No | deepseek-chat | Model per role; `__BASE_URL` and `__API_KEY_ENV` point a role at any OpenAI-compatible endpoint |
 
-### Tracing (LangSmith)
+All three roles run at temperature 0. DeepSeek has no `json_schema` response mode, so
+structured output uses `json_mode` with the schema in the prompt.
 
-Off by default. Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, and `LANGCHAIN_PROJECT`
-in `.env` and restart the API. Every verification then appears as one trace named
-`finvet-verify` (`finvet-verify-stream`, `finvet-review-resume`, `finvet-review-reconcile`
-for the other entry points) carrying the `request_id` in its metadata, so a trace joins to
-its audit row at `GET /audit/{request_id}`. A trace holds every graph node, model call, and
-tool call with latency and token counts. The same total is on every response as
-`metadata.total_tokens_used`, delegated runs included, so cost per claim needs no tracing.
+**Tracing.** Off by default. Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY` and
+`LANGCHAIN_PROJECT`, then restart the API; each request becomes one LangSmith trace
+carrying its `request_id`. Enabling it sends claim text, tool outputs and prompts to
+LangSmith.
 
-Three sample traces, default provider, 2026-09 (not a benchmark; one claim each):
+## 11. Running it
 
-| Claim | Wall time | Tokens | Model calls | Note |
-|---|---|---|---|---|
-| SEC, XBRL lookup | ~20 s | ~20.8k | 6 (~7 s in total) | the XBRL fetch behind `get_income_statement` was 11-15 s; latency is dominated by the data source, not the model |
-| News, delegated to SEC | ~21 s | ~38.9k | -- | the news loop plus the scoped SEC run |
+| Service | Image | Port | Purpose |
+|---|---|---|---|
+| `postgres` | `pgvector/pgvector:pg16` | 5432 | audit, memory, filing index |
+| `api` | `docker/Dockerfile` | 8000 | FastAPI |
+| `ui` | `docker/Dockerfile` | 8501 | Streamlit |
+| `sec-edgar-mcp` | `docker/Dockerfile.sec`, profile `sec` | 9870 | SEC EDGAR MCP server |
+| `ollama` | `ollama/ollama` | 11434 | embeddings; Llama Guard when enabled |
 
-Prompt tokens are ~96% of the total in both: the ReAct loop re-sends the growing context on
-each step.
-
-Tracing is data egress: the claim text, tool outputs (filing excerpts, quotes, news
-snippets), and model prompts leave the machine for LangSmith. Do not enable it on claims you
-would not send to a third party.
-
----
-
-## 8. UI Output (Brief)
-
-The Streamlit UI at port 8501 renders:
-- **Verify page**: Claim input, example claims, pipeline progress, verdict cards (white bg + colored left border), evidence panel, data comparison strip, tool call details, source badges (XBRL / RAG / delegation), raw API expander
-- **Memory match card** (only with `ENABLE_CLAIM_MEMORY=true`): Similar verification found (>=0.95), Use/Fresh/Context buttons
-- **Pending Reviews page**: HITL-queued claims list
-- **Review Detail page**: Preliminary analysis + approve/override/reject submission
-
----
-
-## Diagrams
-
-Architecture diagrams are in `docs/diagrams/`:
-- `finvet-linkedin.png` -- LangGraph pipeline overview, exported from `finvet-pipeline.drawio`
-- `finvet-delegation-run.png` -- a News -> SEC delegated run as the UI shows it (embedded in the README)
-- `finvet-delegation-evidence.png` -- the same run's evidence panel, every tool call with arguments and raw response (embedded above, section 2)
+Every port binds to `${FINVET_BIND_ADDR:-127.0.0.1}`. To run the API and UI natively,
+start only the services in containers (`docker compose --profile sec up -d postgres
+sec-edgar-mcp`), pull `nomic-embed-text` into Ollama, then start `uvicorn finvet.main:app
+--port 8000 --app-dir src` and `streamlit run ui/app.py --server.port 8501`.
