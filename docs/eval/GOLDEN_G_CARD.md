@@ -132,15 +132,13 @@ seconds, with zero tool calls — before any agent runs.
 
 ## History
 
-- 2026-09-28 — 256 rows drafted, ids 1001–1257 with one gap at **1171**: the
-  fines stratum was resized from 21 rows to 20 after review dropped one
-  candidate whose only reachable figure was the size of a penalty *reduction*
-  rather than a penalty. The id was retired rather than reused, as ids 35/36/97
-  are in set C. Criteria A1–A13 pre-registered in the same commit as this
-  card, before any run of this set existed.
-- 2026-09-28 — four redundant Chevron threshold-boilerplate observe rows
-  (1158, 1159, 1161, 1162) removed before freeze; 1157 and 1160 kept.
+- 2026-09-28 — 256 rows drafted, ids 1001–1257 with one gap at **1171**, retired after
+  review dropped a fines candidate; criteria A1–A13 pre-registered in the same commit as
+  this card, before any run of this set existed.
+- 2026-09-28 — four redundant boilerplate rows (1158, 1159, 1161, 1162)
+  removed before freeze.
 - 2026-09-28 — ids 1079, 1151, 1186 burned by publication here.
 - 2026-09-29 — frozen at the hash above, as a component of the combined run set
-  `golden_u.jsonl` ([`DATASET_CARD.md`](DATASET_CARD.md)). The set every
-  reported run uses.
+  ([`DATASET_CARD.md`](DATASET_CARD.md)). The set every reported run uses.
+- 2026-10-15 — the baseline artifact named under A3 was removed from the tree; A3's
+  baseline is now computed from the same run (`--baseline auto`).
