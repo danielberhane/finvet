@@ -1,83 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-label="FinVet's trust boundary. The claim steps down a staircase, alternating between the model side and the code side: code receives and guards it, the model parses it, code resolves the period, the model runs the agent loop over its sources, code computes the verdict from the retrieved figure, guards the output, pauses for a human when triggered, and records every step." font-family="Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 880" role="img" aria-label="FinVet's trust boundary. The claim steps down between the model side and the code side. Guards sit on the boundary. The model parses the claim and runs the agent loop over its sources; code resolves the period, computes the verdict from the retrieved figure, checks the output, consults a human only when triggered, and records every step." font-family="Helvetica, Arial, sans-serif">
   <defs>
-    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#111111"/></marker>
-    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/></marker>
+    <marker id="n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker>
+    <marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+    <marker id="l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/></marker>
   </defs>
-  <rect width="1200" height="800" fill="#ffffff"/>
+  <rect width="1200" height="880" fill="#ffffff"/>
 
-  <!-- model side: a single light field; code side: white -->
-  <rect x="40" y="60" width="520" height="690" fill="#f3f4f6"/>
-  <line x1="600" y1="60" x2="600" y2="750" stroke="#111111" stroke-width="1.5" stroke-dasharray="2 6"/>
+  <!-- surfaces: neutral tint for the model side, primary tint for the code side -->
+  <rect x="40" y="60" width="520" height="770" rx="10" fill="#f3f4f6"/>
+  <rect x="640" y="60" width="520" height="770" rx="10" fill="#eff6ff"/>
+  <line x1="600" y1="60" x2="600" y2="830" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="2 6"/>
   <text x="300" y="92" text-anchor="middle" font-size="12" letter-spacing="2" fill="#6b7280">MODEL · PROPOSES</text>
-  <text x="900" y="92" text-anchor="middle" font-size="12" letter-spacing="2" fill="#6b7280">CODE · DECIDES</text>
-  <text x="600" y="776" text-anchor="middle" font-size="11" fill="#6b7280">trust boundary · every crossing is labelled with what crosses</text>
+  <text x="900" y="92" text-anchor="middle" font-size="12" letter-spacing="2" fill="#1d4ed8">CODE · DECIDES</text>
+  <text x="600" y="858" text-anchor="middle" font-size="11" fill="#6b7280">trust boundary · guards sit on the line: code that may consult a classifier model</text>
 
-  <!-- 1 · entry -->
-  <g fill="#ffffff" stroke="#111111" stroke-width="1">
-    <rect x="660" y="120" width="190" height="50"/>
-    <rect x="890" y="120" width="230" height="50"/>
-  </g>
-  <text x="755" y="141" text-anchor="middle" font-size="14" fill="#111111">API</text>
-  <text x="755" y="158" text-anchor="middle" font-size="11" fill="#6b7280">one claim in</text>
-  <text x="1005" y="141" text-anchor="middle" font-size="14" fill="#111111">Input guards</text>
-  <text x="1005" y="158" text-anchor="middle" font-size="11" fill="#6b7280">regex · PII · Llama Guard</text>
-  <line x1="850" y1="145" x2="888" y2="145" stroke="#111111" stroke-width="1" marker-end="url(#a)"/>
+  <!-- 1 · API and input guard -->
+  <rect x="930" y="120" width="190" height="50" rx="6" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <text x="1025" y="150" text-anchor="middle" font-size="14" fill="#111827">API · one claim in</text>
+  <rect x="485" y="120" width="230" height="50" rx="6" fill="#fffbeb" stroke="#f59e0b" stroke-width="1"/>
+  <text x="600" y="141" text-anchor="middle" font-size="14" fill="#111827">Input guard</text>
+  <text x="600" y="158" text-anchor="middle" font-size="11" fill="#6b7280">regex · PII · Llama Guard</text>
+  <path d="M930,145 H717" stroke="#6b7280" stroke-width="1" fill="none" marker-end="url(#n)"/>
 
   <!-- 2 · parse -->
-  <rect x="80" y="210" width="230" height="50" fill="#ffffff" stroke="#111111" stroke-width="1"/>
-  <text x="195" y="231" text-anchor="middle" font-size="14" fill="#111111">Claim parser</text>
+  <rect x="80" y="210" width="230" height="50" rx="6" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <text x="195" y="231" text-anchor="middle" font-size="14" fill="#111827">Claim parser</text>
   <text x="195" y="248" text-anchor="middle" font-size="11" fill="#6b7280">seven fields, or reject</text>
-  <path d="M1005,170 V235 H312" stroke="#111111" stroke-width="1" fill="none" marker-end="url(#a)"/>
-  <text x="660" y="228" text-anchor="middle" font-size="11" fill="#111111">claim</text>
+  <path d="M600,170 V235 H312" stroke="#6b7280" stroke-width="1" fill="none" marker-end="url(#n)"/>
+  <text x="450" y="228" text-anchor="middle" font-size="11" fill="#4b5563">claim</text>
 
   <!-- 3 · period -->
-  <rect x="660" y="300" width="230" height="50" fill="#ffffff" stroke="#111111" stroke-width="1"/>
-  <text x="775" y="321" text-anchor="middle" font-size="14" fill="#111111">Period resolver</text>
+  <rect x="660" y="300" width="230" height="50" rx="6" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <text x="775" y="321" text-anchor="middle" font-size="14" fill="#111827">Period resolver</text>
   <text x="775" y="338" text-anchor="middle" font-size="11" fill="#6b7280">period text → fiscal dates</text>
-  <path d="M195,260 V325 H658" stroke="#111111" stroke-width="1" fill="none" marker-end="url(#a)"/>
-  <text x="450" y="318" text-anchor="middle" font-size="11" fill="#111111">ticker · metric · operator · value · period</text>
+  <path d="M195,260 V325 H658" stroke="#6b7280" stroke-width="1" fill="none" marker-end="url(#n)"/>
+  <text x="450" y="318" text-anchor="middle" font-size="11" fill="#4b5563">parsed claim</text>
 
   <!-- 4 · agent loop -->
-  <rect x="80" y="390" width="440" height="110" fill="#ffffff" stroke="#111111" stroke-width="1"/>
-  <text x="300" y="416" text-anchor="middle" font-size="14" fill="#111111">Agent loop · SEC, market or news</text>
+  <rect x="80" y="390" width="440" height="96" rx="6" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <text x="300" y="416" text-anchor="middle" font-size="14" fill="#111827">Agent loop · SEC, market or news</text>
   <text x="300" y="434" text-anchor="middle" font-size="11" fill="#6b7280">picks a tool, reads the result, picks again · at most 8 steps</text>
-  <line x1="100" y1="448" x2="500" y2="448" stroke="#e5e7eb" stroke-width="1"/>
-  <text x="300" y="468" text-anchor="middle" font-size="11" fill="#111111">SEC EDGAR facts · filing text · Finnhub quotes · Tavily news</text>
-  <text x="300" y="486" text-anchor="middle" font-size="11" fill="#6b7280">news may delegate to SEC once · one way · cannot recurse</text>
-  <path d="M775,350 V415 H522" stroke="#111111" stroke-width="1" fill="none" marker-end="url(#a)"/>
-  <text x="660" y="408" text-anchor="middle" font-size="11" fill="#111111">resolved period</text>
+  <text x="300" y="466" text-anchor="middle" font-size="11" fill="#4b5563">SEC EDGAR · filing text · Finnhub · Tavily</text>
+  <path d="M775,350 V415 H522" stroke="#6b7280" stroke-width="1" fill="none" marker-end="url(#n)"/>
+  <text x="660" y="408" text-anchor="middle" font-size="11" fill="#4b5563">resolved period</text>
 
-  <!-- 5 · comparator: the decision -->
-  <rect x="660" y="540" width="230" height="90" fill="#ffffff" stroke="#111111" stroke-width="2.5"/>
-  <text x="775" y="566" text-anchor="middle" font-size="14" font-weight="bold" fill="#111111">Comparator</text>
-  <text x="775" y="585" text-anchor="middle" font-size="11" fill="#6b7280">figure vs claim, fixed tolerance</text>
-  <text x="775" y="601" text-anchor="middle" font-size="11" fill="#6b7280">no trusted figure → declined</text>
-  <text x="775" y="617" text-anchor="middle" font-size="11" fill="#6b7280">disagreement → both shown</text>
-  <path d="M360,500 V565 H658" stroke="#111111" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
-  <text x="480" y="558" text-anchor="middle" font-size="12" font-weight="bold" fill="#111111">retrieved figure + provenance</text>
-  <path d="M440,500 V605 H658" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 4" fill="none" marker-end="url(#g)"/>
-  <text x="490" y="620" text-anchor="middle" font-size="11" fill="#6b7280">model's verdict · advice only</text>
+  <!-- 5 · comparator: the decision, in the primary hue -->
+  <rect x="660" y="530" width="230" height="76" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <text x="775" y="556" text-anchor="middle" font-size="14" font-weight="bold" fill="#1d4ed8">Comparator</text>
+  <text x="775" y="575" text-anchor="middle" font-size="11" fill="#6b7280">figure vs claim, fixed tolerance</text>
+  <text x="775" y="591" text-anchor="middle" font-size="11" fill="#6b7280">no trusted figure → declined</text>
+  <path d="M360,486 V553 H658" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#p)"/>
+  <text x="480" y="546" text-anchor="middle" font-size="12" font-weight="bold" fill="#1d4ed8">retrieved figure + provenance</text>
+  <path d="M440,486 V588 H658" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 4" fill="none" marker-end="url(#l)"/>
+  <text x="490" y="603" text-anchor="middle" font-size="11" fill="#6b7280">model's verdict · advice only</text>
 
-  <rect x="930" y="540" width="190" height="50" fill="#ffffff" stroke="#111111" stroke-width="1"/>
-  <text x="1025" y="561" text-anchor="middle" font-size="14" fill="#111111">Output guards</text>
-  <text x="1025" y="578" text-anchor="middle" font-size="11" fill="#6b7280">safety · review triggers</text>
-  <line x1="890" y1="565" x2="928" y2="565" stroke="#111111" stroke-width="1" marker-end="url(#a)"/>
+  <!-- 6 · output guard on the boundary -->
+  <rect x="485" y="640" width="230" height="50" rx="6" fill="#fffbeb" stroke="#f59e0b" stroke-width="1"/>
+  <text x="600" y="661" text-anchor="middle" font-size="14" fill="#111827">Output guard</text>
+  <text x="600" y="678" text-anchor="middle" font-size="11" fill="#6b7280">safety · review triggers</text>
+  <path d="M775,606 V665 H717" stroke="#6b7280" stroke-width="1" fill="none" marker-end="url(#n)"/>
+  <text x="790" y="658" text-anchor="start" font-size="11" fill="#4b5563">verdict</text>
 
-  <!-- 6 · review and response -->
-  <rect x="930" y="640" width="190" height="50" fill="#ffffff" stroke="#111111" stroke-width="1" stroke-dasharray="4 3"/>
-  <text x="1025" y="661" text-anchor="middle" font-size="14" fill="#111111">Human review</text>
-  <text x="1025" y="678" text-anchor="middle" font-size="11" fill="#6b7280">only when triggered</text>
-  <path d="M1025,590 V638" stroke="#111111" stroke-width="1" stroke-dasharray="4 3" fill="none" marker-end="url(#a)"/>
-  <rect x="660" y="640" width="230" height="50" fill="#ffffff" stroke="#111111" stroke-width="1"/>
-  <text x="775" y="661" text-anchor="middle" font-size="14" fill="#111111">Response</text>
-  <text x="775" y="678" text-anchor="middle" font-size="11" fill="#6b7280">verdict · figure · evidence</text>
-  <path d="M775,630 V638" stroke="#111111" stroke-width="1" fill="none" marker-end="url(#a)"/>
-  <path d="M930,665 H892" stroke="#111111" stroke-width="1" fill="none" marker-end="url(#a)"/>
+  <!-- 7 · response and human review -->
+  <rect x="660" y="720" width="230" height="50" rx="6" fill="#ffffff" stroke="#d1d5db" stroke-width="1"/>
+  <text x="775" y="741" text-anchor="middle" font-size="14" fill="#111827">Response</text>
+  <text x="775" y="758" text-anchor="middle" font-size="11" fill="#6b7280">verdict · figure · evidence</text>
+  <rect x="930" y="720" width="190" height="50" rx="6" fill="#ecfdf5" stroke="#10b981" stroke-width="1"/>
+  <text x="1025" y="741" text-anchor="middle" font-size="14" fill="#111827">Human review</text>
+  <text x="1025" y="758" text-anchor="middle" font-size="11" fill="#6b7280">only when triggered</text>
+  <path d="M600,690 V745 H658" stroke="#6b7280" stroke-width="1" fill="none" marker-end="url(#n)"/>
+  <path d="M700,690 V705 H1025 V718" stroke="#10b981" stroke-width="1" stroke-dasharray="4 3" fill="none" marker-end="url(#n)"/>
+  <text x="860" y="700" text-anchor="middle" font-size="11" fill="#6b7280">triggered</text>
+  <path d="M930,745 H892" stroke="#6b7280" stroke-width="1" fill="none" marker-end="url(#n)"/>
 
-  <!-- 7 · audit: where everything lands -->
-  <rect x="660" y="716" width="460" height="34" fill="#111111"/>
-  <text x="890" y="738" text-anchor="middle" font-size="12" fill="#ffffff">Audit trail · every tool call and verdict · one checksummed envelope per request</text>
-  <path d="M775,690 V714" stroke="#111111" stroke-width="1" stroke-dasharray="2 3" fill="none" marker-end="url(#a)"/>
-  <path d="M120,500 V733 H658" stroke="#9ca3af" stroke-width="1" stroke-dasharray="2 3" fill="none" marker-end="url(#g)"/>
-  <text x="390" y="726" text-anchor="middle" font-size="11" fill="#6b7280">every tool call</text>
+  <!-- 8 · audit -->
+  <rect x="660" y="794" width="460" height="30" rx="6" fill="#1d4ed8"/>
+  <text x="890" y="814" text-anchor="middle" font-size="12" fill="#ffffff">Audit trail · every tool call and verdict · one checksummed envelope per request</text>
+  <path d="M775,770 V792" stroke="#2563eb" stroke-width="1" stroke-dasharray="2 3" fill="none" marker-end="url(#p)"/>
 </svg>
