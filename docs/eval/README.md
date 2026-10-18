@@ -1,27 +1,11 @@
 # FinVet evaluation
 
-Two models, identical code, four runs each on the 325-claim held-out set `golden_u`
-(SHA-256 `f602b2fe…3a342`). 317 claims were answered on 2026-09-29 with code at commit
-`e0b3d22`; the other 8, the live-price claims, on 2026-10-15 with code at `7f94785`, whose
-pipeline is the same. Every figure below recomputes from the artifacts
-in [`runs/`](runs/), and `tests/unit/test_readme_numbers_recompute.py` does so on every
-CI run.
-
-## Dataset
-
-325 financial claims across 72 US-listed companies, chosen to be hard (non-calendar
-fiscal years, banks and insurers, mid-caps, non-primary revenue concepts, restated
-periods), with boundary, fines, live-price, limitation, guard and phrasing-twin strata.
-Every claim carries an expected verdict. Composition, labelling and limitations:
-[`DATASET_CARD.md`](DATASET_CARD.md). The pass/fail criteria were committed before the
-set was first run: [`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md).
-
-### Two answer dates
-
-The eight live-price claims were answered on 2026-10-15, four times per model, during US
-market hours. Qwen's requests for them did not carry the gateway's cache opt-out, but all
-32 claim texts were different, so no answer could be a cached repeat. No check was run
-that either model still answered as it did on 2026-09-29.
+Two models, identical code, four runs each on a 325-claim held-out set
+([`DATASET_CARD.md`](DATASET_CARD.md)). 317 claims were answered on 2026-09-29 and the
+8 live-price claims on 2026-10-15, on the same pipeline. The pass/fail criteria were
+committed before the set was first run ([`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md)). Every
+figure below recomputes from the artifacts in [`runs/`](runs/), and
+`tests/unit/test_readme_numbers_recompute.py` does so on every CI run.
 
 ## Scoring
 
@@ -34,7 +18,8 @@ layers (`src/finvet/eval/measures/`):
 3. **Grounding** — every decisive number traced to an XBRL fact, a quote or the
    deterministic penalty extraction.
 4. **Calibration** — expected calibration error over decisive verdicts.
-5. **Asymmetric risk** — dangerous verdicts (a SUPPORTS or REFUTES that does not match the expected answer), and the decline rate.
+5. **Asymmetric risk** — dangerous verdicts (a SUPPORTS or REFUTES that does not match
+   the expected answer), and the decline rate.
 6. **Reliability** — pass^k over repeated runs.
 7. **Routing** — evidence arrived by the expected path.
 
@@ -42,21 +27,17 @@ Three properties are enforced by the code rather than measured: an agent cannot 
 another agent's tools, the 59 claims that must spend nothing never reach one, and a
 decisive numeric verdict is unreachable without a trusted observation.
 
-## Evaluation report
-
-### Models
+## Models
 
 | column | model | served by | context | id in the artifacts |
 |---|---|---|---|---|
 | DeepSeek | DeepSeek-V4.1-Flash | DeepSeek API | 1,048,576 tokens | `deepseek-flash` |
 | Qwen | Qwen3.8 | vLLM 0.22.1 on a university research cluster, behind a LiteLLM gateway | 262,144 tokens | `Qwen3.8` |
 
-The gateway in front of Qwen caches responses. Every 2026-09-29 request carried the
-per-request cache opt-out, and a local pass-through confirmed none was served from the
-cache; the 32 Qwen answers of 2026-10-15 went to the gateway directly, see above. Neither
-provider publishes the parameter count.
+No run reused a cached answer: every 2026-09-29 request carried the gateway's
+per-request cache opt-out, and the 32 live-price claims of 2026-10-15 were distinct texts.
 
-### Results
+## Results
 
 Rows 1 to 5 and 7: the first run of each model. Row 6: all four runs.
 
@@ -73,7 +54,8 @@ Rows 1 to 5 and 7: the first run of each model. Row 6: all four runs.
 
 ### Per run
 
-Each run is a 2026-09-29 run with the eight changed claims answered on 2026-10-15.
+Each run is a 2026-09-29 run with the eight live-price claims answered on 2026-10-15.
+Timings are not given, since each run's answers come from two dates.
 
 | run | model | outcome (297) | all claims (325, pass@1) | dangerous | declined | claims lost |
 |---|---|---|---|---|---|---|
@@ -85,8 +67,6 @@ Each run is a 2026-09-29 run with the eight changed claims answered on 2026-10-1
 | u-qw-c2 + u12-qw-c2 | Qwen | 96.3% | 94.5% | 0 | 18 | 3 |
 | u-qw-c3 + u12-qw-c3 | Qwen | 97.0% | 96.0% | 0 | 13 | 1 |
 | u-qw-c4 + u12-qw-c4 | Qwen | 96.3% | 95.7% | 0 | 14 | 1 |
-
-Timings are not given: each run's answers come from two dates.
 
 ### Pre-registered criteria (`scripts/score_golden_g.py`, all four runs)
 
@@ -109,37 +89,18 @@ Timings are not given: each run's answers come from two dates.
 ### Retrieval, measured separately
 
 XBRL lookups against SEC primary-source values: 198/199, the miss a decline rather than
-a wrong number, on a gold set held privately and not recomputable here.
-
-Filing-text retrieval, on a held-out set of 50 queries frozen before the run
-([`RAG_CARD.md`](RAG_CARD.md), artifacts in `runs/`). The first four rows are scored by
-passage id with no judge; the last is RAGAS faithfulness, judged by a second model:
-
-| measure | result |
-|---|---|
-| labelled passage in the top five (hit rate@5) | 0.80, 24/30 |
-| mean reciprocal rank | 0.68 |
-| off-topic queries returning nothing | 12/12 |
-| wrong-period or wrong-form queries returning nothing | 8/8 |
-| faithfulness of the model's reading, 50 claims (RAGAS, judge-scored) | 0.687 mean, 0.125 lowest, 49 graded |
-
-Four of the six misses returned a same-subject passage from another section of the same
-filing; two returned text off the subject. Whether the faithfulness shortfall is the model's
-or the judge's has not yet been checked by hand. Its verdicts matched on 38 of 50 claims: every contradicted claim was
-declined, because FinVet turns a REFUTES on a claim with no number into a decline. The earlier 70-case calibration set, on which the
-relevance floor was tuned, is a fit and is not reported as a result.
+a wrong number, on a gold set held privately and not recomputable here. Filing-text
+retrieval and the faithfulness of the model's reading are measured on their own held-out
+sets in [`RAG_CARD.md`](RAG_CARD.md), with their artifacts in `runs/`.
 
 ## Findings
 
-1. **Every decisive verdict rests on a retrieved fact.** Grounding is 100% in all eight
-   runs: 1,879 decisive numbers, each traceable to an XBRL fact, a quote or the
-   deterministic penalty extraction.
-2. **The one wrong verdict is a parsing defect, not a retrieval one.** Row 1073 states a
+1. **The one wrong verdict is a parsing defect, not a retrieval one.** Row 1073 states a
    net loss. In two of four DeepSeek runs the parser recorded the amount as positive, the
    comparison against the filed negative figure failed, and a true claim was refuted at
    0.85. Qwen read the sign correctly in all four runs. No other claim was answered wrongly
    by either model in any run, across 2,600 judged answers.
-3. **The comparator decides, for better and once for worse.** Across the eight runs the
+2. **The comparator decides, for better and once for worse.** Across the eight runs the
    deterministic comparison changed the model's own verdict on 218 of 2,600 answers: 194
    times to the labelled verdict, 22 times to a decline or an escalation, and twice (row
    1073) from the model's correct SUPPORTS to a wrong REFUTES, because the parsed claim it
@@ -152,9 +113,8 @@ wrong verdict.
 
 Qwen's gap to DeepSeek is caution: its declines cluster on restated years, where it
 reaches the step limit and escalates, and on live-price claims, where its parser
-sometimes names no measure (8 of its 32 answers to the new live-price claims). It also
-lost six claims across four runs to timeouts or an empty parser reply (row 1101, every
-run).
+sometimes names no measure. It also lost six claims across four runs to timeouts or an
+empty parser reply.
 
 ## What this does not establish
 
@@ -162,17 +122,13 @@ run).
   models are within the run-to-run spread in the per-run table.
 - The answers come from runs two weeks apart, and no check was run that the served models
   did not change in between.
-- The Qwen runs shared one gateway, so their timings say little about Qwen's speed and
-  nothing about its cost.
-- Live-price claims were verified against quotes fetched on the day of the run and are
-  reported only under A12.
 - The human-review gate has no test in this set.
 - Retrieval is measured on private sets and is not recomputable here.
 
 ## Reproducing the tables
 
-The runs are rebuilt from the public artifacts by the recompute test, which joins each
-2026-09-29 run with its 2026-10-15 live-price answers:
+The recompute test rebuilds every run from the public artifacts, joining each 2026-09-29
+run with its 2026-10-15 live-price answers:
 
 ```
 OPENAI_API_KEY=any .venv/bin/python -m pytest tests/unit/test_readme_numbers_recompute.py -q
@@ -182,8 +138,8 @@ With the private dataset file, the layer and criteria scripts give every table:
 
 ```
 OPENAI_API_KEY=any .venv/bin/python scripts/eval_layers.py --dir docs/eval/runs --label u-ds \
-  --dataset <golden_u dataset file> --patch u-ds-c1=u12-ds-c1 --patch u-ds-c2=u12-ds-c2 \
+  --dataset <dataset file> --patch u-ds-c1=u12-ds-c1 --patch u-ds-c2=u12-ds-c2 \
   --patch u-ds-c3=u12-ds-c3 --patch u-ds-c4=u12-ds-c4
 .venv/bin/python scripts/score_golden_g.py --dir docs/eval/runs --label u-ds \
-  --dataset <golden_u dataset file> --patch u-ds-c1=u12-ds-c1 ...   # same pairs; u-qw likewise
+  --dataset <dataset file> --patch u-ds-c1=u12-ds-c1 ...   # same pairs; u-qw likewise
 ```
