@@ -8,24 +8,13 @@ This document follows a claim through the system. The README has the picture
 
 ## 1. System overview
 
-Three candidate drawings of the same system; one will be kept.
+A claim steps down a staircase, crossing the trust boundary at each step. The model
+parses the claim and runs the agent loop over its tools; code receives and guards the
+claim, resolves the period, computes the verdict from the retrieved figure, guards the
+output, pauses for a human when a trigger fires, and records every step. The model's own
+verdict crosses as advice; only a figure with provenance decides.
 
-**Option A — four layers.** Interface, pipeline, evidence, storage; the agent loop reads
-the sources, and every step writes to the audit trail.
-
-<p align="center"><img src="diagrams/overview-a-layers.svg" alt="FinVet in four layers" width="1000"></p>
-
-**Option B — the trust boundary.** What the model does on the left, what code decides on
-the right, and what crosses between them: claim text, a parse, a resolved period, a figure
-with provenance; the model's own verdict crosses as advice only.
-
-<p align="center"><img src="diagrams/overview-b-trust.svg" alt="FinVet's trust boundary between model and code" width="1000"></p>
-
-**Option C — one claim, start to finish.** Seven steps left to right, the two exits where a
-claim is declined, the review loop, the sources under the agent loop, and the audit trail
-collecting every step.
-
-<p align="center"><img src="diagrams/overview-c-journey.svg" alt="One claim's journey through FinVet" width="1000"></p>
+<p align="center"><img src="diagrams/overview-b-trust.svg" alt="FinVet's trust boundary: the model proposes on the left, code decides on the right, and each crossing is labelled with what crosses" width="1000"></p>
 
 ## 2. Interfaces
 
