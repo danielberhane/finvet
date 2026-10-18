@@ -140,5 +140,5 @@ seconds, with zero tool calls — before any agent runs.
 - 2026-09-28 — ids 1079, 1151, 1186 burned by publication here.
 - 2026-09-29 — frozen at the hash above, as a component of the combined run set
   ([`DATASET_CARD.md`](DATASET_CARD.md)). The set every reported run uses.
-- 2026-10-15 — the baseline artifact named under A3 was removed from the tree; A3's
+- 2026-09-30 — the baseline artifact named under A3 was removed from the tree; A3's
   baseline is now computed from the same run (`--baseline auto`).
