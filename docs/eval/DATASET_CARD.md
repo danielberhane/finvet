@@ -12,14 +12,9 @@ released test enters training corpora and stops measuring anything. This card is
 public record of what the set contains, how it was built and sealed, and how a result
 on it can be checked without seeing it.
 
-| | |
-|---|---|
-| Claims | 325 |
-| Filers | 72 US-listed companies |
-| Scored | all 325 carry an expected verdict |
-
 The pre-registration card, [`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md), records the pass/fail
-criteria A1–A13, committed before the set was run; it is not edited after the fact.
+criteria A1–A13, committed before the set was run and scored by
+`scripts/score_golden_g.py`; it is not edited after the fact.
 
 ## Uses
 
@@ -53,12 +48,8 @@ One claim per line (JSONL). Removed ids are never renumbered or reused.
 `sec/tolerance` 26 · `guard` 16 · `reject` 15 · `a2a` 14 (fines via News→SEC delegation) ·
 `sec/qualitative` 12.
 
-**Strata.** Generalization pairs (one SUPPORTS and one REFUTES per filer, in five
-hardness classes: non-calendar fiscal years, banks and insurers, mid-caps, non-primary
-revenue concepts, restated periods), tolerance boundary, fines and settlements,
-limitation controls, guard, live-price recipes and phrasing twins.
-
-**Hardness classes** (13 filers each, membership checked by script from SEC data):
+**Hardness classes.** The generalization rows are one SUPPORTS and one REFUTES per filer
+in five classes of 13 filers each, membership checked by script from SEC data:
 
 - `non_calendar_fye`: fiscal period-end month is not December.
 - `financials`: banks and insurers, whose income statements carry no gross profit or cost
@@ -66,7 +57,7 @@ limitation controls, guard, live-price recipes and phrasing twins.
 - `mid_cap`: market-cap tier, where XBRL tagging is sparser.
 - `nonprimary_revenue`: revenue filed under `Revenues` rather than the primary concept.
 - `restated`: one reporting period carries two filed values differing by more than 0.5%;
-  all thirteen are spin-off or divestiture recasts.
+  all thirteen are spin-off or divestiture recasts, not error corrections.
 
 ## Creation
 
@@ -108,42 +99,17 @@ rows asking the same fact unless one is a phrasing twin of the other.
   rates carry no statistical weight.
 - **Market labels are live, not frozen.** The 28 live-price rows are labelled from a
   quote at run start and excluded from cross-run comparison.
-- **The restated class tests recasts**, not error corrections: all 13 qualifying filers
-  are spin-off or divestiture recasts. No 10-K/A appears in the set.
-- **Guard rows test wiring, not resistance.** All 16 match documented patterns.
-- **Data gaps**: non-US filers; numeric news claims other than fines; historical share
-  prices as an answerable question; claims with more than one assertion; news claims that
-  name a period; accounting restatements as distinct from recasts.
-- **No canary string.** Contamination would not be detectable from model output; the
-  freeze and the published hash mitigate but do not replace one.
 
 ## How results are checked without the data
 
 1. **Redacted run artifacts** in [`runs/`](runs/): every per-row record of each published
    run — expected and actual verdicts, confidence, tools, timings — with the claim text
    withheld, along with the parsed ticker, value and period and the retrieved figure,
-   which together would rebuild it. `scripts/redact_run.py` produces them, strips the dataset path
-   and any non-public endpoint, and refuses to write a file that still carries either.
-   Every published figure recomputes from these files, and CI does so on every run.
-2. **The [evaluation report](README.md)**, whose layer tables `scripts/eval_layers.py`
-   regenerates from the run artifacts.
-3. **The recipe**: labels come from public primary sources under the rules above, so an
+   which together would rebuild it. `scripts/redact_run.py` produces them, strips the
+   dataset path and any non-public endpoint, and refuses to write a file that still
+   carries either. Every published figure recomputes from these files, and CI does so on
+   every run.
+2. **The recipe**: labels come from public primary sources under the rules above, so an
    equivalent set can be built independently and the pipeline re-scored on it.
-4. **Hash commitment**: the SHA-256 above pins every published result to one file.
-5. **Access on request**: available privately to reviewers; verify what you receive
-   against the hash.
-
-
-## Which criteria apply where
-
-- The **verdict contract** (the verdict must match the label) applies to all 325 claims
-  and is judged by `tests/integration/test_golden.py`.
-- The pre-registered **A1–A13** apply via `scripts/score_golden_g.py`. A3's baseline is
-  computed from the same run (`--baseline auto`).
-
-## Run procedure
-
-Run with `--dataset` pointing at the set's file in the private evaluation repository, with
-vendor-free labels (`u-ds-c1`, `u-qw-c1`). Before any paid run,
-`scripts/replay_fact_selection.py` replays the XBRL-backed rows through the production
-path with no model and must report no unexplained miss.
+3. **The hash and access on request**: the SHA-256 above pins every published result to
+   one file, available privately to reviewers, who verify what they receive against it.
