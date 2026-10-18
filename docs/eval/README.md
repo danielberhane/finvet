@@ -34,8 +34,9 @@ decisive numeric verdict is unreachable without a trusted observation.
 | DeepSeek | DeepSeek-V4.1-Flash | DeepSeek API | 1,048,576 tokens | `deepseek-flash` |
 | Qwen | Qwen3.8 | vLLM 0.22.1 on a university research cluster, behind a LiteLLM gateway | 262,144 tokens | `Qwen3.8` |
 
-No run reused a cached answer: every 2026-09-29 request carried the gateway's
-per-request cache opt-out, and the 32 live-price claims of 2026-10-15 were distinct texts.
+The gateway in front of Qwen caches responses. Every 2026-09-29 request to it carried
+the per-request cache opt-out, and each of the 32 live-price requests of 2026-10-15
+carried a distinct claim text, so no run reused a cached answer.
 
 ## Results
 
