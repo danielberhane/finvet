@@ -141,8 +141,7 @@ rather than fail.
 
 ## Contributing
 
-Bug reports and focused fixes are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). For
-vulnerability reports, see [SECURITY.md](SECURITY.md).
+Bug reports and focused fixes are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
 
