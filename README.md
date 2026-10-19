@@ -65,7 +65,7 @@ hand-off to a human reviewer.
 **2) RAG component.** The search was evaluated on 50 held-out queries and the model's
 explanations on 50 held-out claims.
 
-| Test | n | Result |
+| Test | Sample | Result |
 |---|---|---|
 | Finds the right passage in its top five | 30 queries | 24 of 30 (80%) |
 | Ranks it near the top (mean reciprocal rank) | 30 queries | 0.68 |
