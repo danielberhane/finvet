@@ -142,3 +142,5 @@ seconds, with zero tool calls — before any agent runs.
   ([`DATASET_CARD.md`](DATASET_CARD.md)). The set every reported run uses.
 - 2026-09-30 — the baseline artifact named under A3 was removed from the tree; A3's
   baseline is now computed from the same run (`--baseline auto`).
+- 2026-10-18 — commit messages on main were rewritten; the commit cited above as
+  `cdd039e` is now `6ae0832`.
