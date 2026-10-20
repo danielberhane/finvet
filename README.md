@@ -129,9 +129,8 @@ fine or settlement stated in a filing. Claims about other measures, such as marg
 analyst price targets or economic indicators, are declined with a stated reason. Market data is
 the current delayed quote only; claims about past prices are declined.
 
-**Evaluation.** Two models were evaluated, and no baseline system was run on the same claims,
-so the contribution of the design, as distinct from the models, is not isolated. The RAGAS
-faithfulness score is a second model's judgement and has not been verified by hand.
+**Evaluation.** Only two models were evaluated. The RAGAS faithfulness score is a second
+model's judgement and has not been verified by hand.
 
 **Deployment.** A single-process research system with no authentication, rate limiting or
 tenant isolation ([SECURITY.md](SECURITY.md)); pending reviews are held in memory and do not
