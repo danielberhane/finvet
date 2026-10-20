@@ -123,10 +123,11 @@ claims are not decomposed; ranges, relative changes, and figures derived from ot
 such as a fourth quarter computed from annual and nine-month totals, are declined rather than
 estimated.
 
-**Evidence.** A numeric verdict requires a structured source: an XBRL fact, a market quote, or
-the deterministic fine and settlement extraction. The other 45 metrics the parser accepts
-decline with a stated reason. Market data is the current delayed quote only; historical
-prices fail closed.
+**Evidence.** FinVet gives a verdict on a number only when it can fetch that number from a
+trusted source: a figure the company reported in its SEC filings, a current market quote, or a
+fine or settlement stated in a filing. Claims about other measures, such as margins, EBITDA,
+analyst price targets or economic indicators, are declined with a stated reason. Market data is
+the current delayed quote only; claims about past prices are declined.
 
 **Evaluation.** Two models were evaluated, and no baseline system was run on the same claims,
 so the contribution of the design, as distinct from the models, is not isolated. The RAGAS

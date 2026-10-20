@@ -249,24 +249,25 @@ class TestTheStabilityFiguresRecompute:
 
 class TestTheClaimsAboutTheCodeHold:
 
-    def test_the_count_of_declined_metrics_is_the_real_one(self):
-        """'The other 45 metrics the parser accepts' comes from the routing
-        table, not from a run, so it drifts whenever a metric is added."""
+    def test_the_measures_the_readme_names_as_declined_are_declined(self):
+        """The Evidence limitation names margins, EBITDA, analyst price targets
+        and economic indicators as declined. Each example must route to the
+        unsupported strategy, or the README is describing a system that
+        verifies them."""
         from types import SimpleNamespace
 
         from finvet.config.metrics import METRIC_WHITELIST, verification_strategy_for
 
-        unsupported = sum(
-            1
-            for claim_type, metrics in METRIC_WHITELIST.items()
-            for metric in metrics
-            if verification_strategy_for(
-                SimpleNamespace(claim_type=claim_type, metric=metric))
-            == "unsupported")
-        published = int(re.search(r"other (\d+) metrics",
-                                  README.read_text()).group(1))
-
-        assert published == unsupported
+        text = " ".join(README.read_text().split())
+        assert "such as margins, EBITDA, analyst price targets or economic indicators" in text
+        named = {"sec": ["gross_margin", "net_margin", "operating_margin", "ebitda"],
+                 "news": ["price_target", "cpi_inflation", "gdp_growth", "unemployment_rate"]}
+        for claim_type, metrics in named.items():
+            for metric in metrics:
+                assert metric in METRIC_WHITELIST[claim_type], metric
+                strategy = verification_strategy_for(
+                    SimpleNamespace(claim_type=claim_type, metric=metric))
+                assert strategy == "unsupported", (metric, strategy)
 
     def test_the_zero_spend_claim_counts_the_right_rows(self):
         """The published count must be the rows that *must* spend nothing, not
