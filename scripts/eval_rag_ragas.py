@@ -23,7 +23,7 @@ What it measures
 Who does what
     generator  FinVet's configured model (DeepSeek), reached through /verify --
                the thing being graded is FinVet exactly as it runs
-    judge      Qwen3.8 on the GMU ORC gateway: a different model family, so
+    judge      Qwen3.8 behind a LiteLLM gateway: a different model family, so
                the grader has no reason to favour the generator's writing
     embedder   nomic-embed-text on local Ollama, for answer relevancy only
 
@@ -53,18 +53,16 @@ Outputs
              reasoning, passages and judge reasons, for the human check.
 
 Two phases, because the generator and the judge are reached over different
-networks (the GMU VPN blocks DeepSeek's replies; the judge is only reachable on
-it). Answers are frozen before grading, so the grader cannot affect them and
+networks. Answers are frozen before grading, so the grader cannot affect them and
 they can be re-graded later without asking FinVet again.
 
-    # 1. answer -- VPN off; FinVet API up on DeepSeek
+    # 1. answer -- FinVet API up
     FINVET_GOLDEN_DIR=... uv run scripts/eval_rag_ragas.py answer \\
-        --extra-claims notes/rag_ragas_claims_v1.jsonl \\
-        --record notes/rag-ragas-record.json
+        --extra-claims <claims file> --record <record file>
 
-    # 2. grade -- VPN on; Ollama up
-    LITELLM_API_KEY=... uv run scripts/eval_rag_ragas.py grade \\
-        --record notes/rag-ragas-record.json
+    # 2. grade -- Ollama up
+    LITELLM_BASE_URL=... LITELLM_API_KEY=... uv run scripts/eval_rag_ragas.py grade \\
+        --record <record file>
 
 The pure helpers at the top import nothing outside the standard library, so
 tests/unit/test_rag_ragas_inputs.py can test them from the project environment.
@@ -84,7 +82,6 @@ CLAIM_IDS = list(range(37, 49))
 # The 38 further claims, frozen 2026-10-01 before any answer was collected.
 EXTRA_CLAIMS_SHA256 = "46402ac00989873b620dc0bf7b31dd02fae1c2af9514e665f5e526e0b2996a2c"
 JUDGE_MODEL = "Qwen3.8"
-JUDGE_BASE_URL = "https://llm.orc.gmu.edu/v1"
 EMBED_MODEL = "nomic-embed-text"
 EMBED_BASE_URL = "http://localhost:11434/v1"
 # Sent with every judge request; both verified against the gateway on 2026-09-30.
@@ -228,9 +225,10 @@ def build_scorers():
     )
 
     key = os.environ.get("LITELLM_API_KEY", "")
-    if not key:
-        raise SystemExit("LITELLM_API_KEY is unset; the judge needs it")
-    judge = llm_factory(JUDGE_MODEL, client=AsyncOpenAI(api_key=key, base_url=JUDGE_BASE_URL),
+    base_url = os.environ.get("LITELLM_BASE_URL", "")
+    if not key or not base_url:
+        raise SystemExit("LITELLM_API_KEY and LITELLM_BASE_URL must be set; the judge needs both")
+    judge = llm_factory(JUDGE_MODEL, client=AsyncOpenAI(api_key=key, base_url=base_url),
                         temperature=0, max_tokens=JUDGE_MAX_TOKENS, extra_body=JUDGE_EXTRA_BODY)
     embedder = embedding_factory("openai", model=EMBED_MODEL,
                                  client=AsyncOpenAI(api_key="ollama", base_url=EMBED_BASE_URL))
@@ -347,11 +345,11 @@ def public_view(rec: dict) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="RAGAS evaluation of FinVet's filing-text answers")
     sub = parser.add_subparsers(dest="phase", required=True)
-    a = sub.add_parser("answer", help="phase 1: FinVet answers the 50 claims (VPN off)")
+    a = sub.add_parser("answer", help="phase 1: FinVet answers the 50 claims")
     a.add_argument("--api", default=os.environ.get("FINVET_API_URL", "http://127.0.0.1:8000"))
     a.add_argument("--extra-claims", required=True, help="the frozen 38-claim file (notes/)")
     a.add_argument("--record", required=True, help="private record to write (notes/)")
-    g = sub.add_parser("grade", help="phase 2: RAGAS grades the saved answers (VPN on)")
+    g = sub.add_parser("grade", help="phase 2: RAGAS grades the saved answers")
     g.add_argument("--record", required=True, help="private record from the answer phase (notes/)")
     g.add_argument("--out", default=None, help="public artifact path")
     args = parser.parse_args()
@@ -383,7 +381,7 @@ def main() -> int:
     run_utc = datetime.now(timezone.utc)
     record.update({
         "graded_utc": run_utc.isoformat(timespec="seconds"),
-        "judge": {"model": JUDGE_MODEL, "via": "GMU ORC LiteLLM gateway", "temperature": 0,
+        "judge": {"model": JUDGE_MODEL, "via": "LiteLLM gateway", "temperature": 0,
                   "extra_body": JUDGE_EXTRA_BODY, "passes": 2},
         "embedder": {"model": EMBED_MODEL, "via": "local Ollama"},
         "inputs": "user_input = claim; response = model reasoning with FinVet's appended "
