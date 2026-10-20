@@ -162,7 +162,8 @@ them, the project environment is untouched):
 ```
 FINVET_GOLDEN_DIR=... uv run scripts/eval_rag_ragas.py answer \
     --extra-claims <claims file> --record <record file>
-LITELLM_API_KEY=... uv run scripts/eval_rag_ragas.py grade --record <record file>
+LITELLM_BASE_URL=... LITELLM_API_KEY=... uv run scripts/eval_rag_ragas.py grade \
+    --record <record file>
 ```
 
 The runner refuses to score a corpus whose hash differs from the frozen one, and refuses
