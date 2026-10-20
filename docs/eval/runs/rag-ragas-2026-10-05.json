@@ -14,7 +14,7 @@
  "graded_utc": "2026-10-05T21:26:43+00:00",
  "judge": {
   "model": "Qwen3.8",
-  "via": "GMU ORC LiteLLM gateway",
+  "via": "LiteLLM gateway",
   "temperature": 0,
   "extra_body": {
    "chat_template_kwargs": {
