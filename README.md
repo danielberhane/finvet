@@ -128,9 +128,9 @@ the deterministic fine and settlement extraction. The other 45 metrics the parse
 decline with a stated reason. Market data is the current delayed quote only; historical
 prices fail closed.
 
-**Evaluation.** Both evaluated models are mid-sized; no frontier model and no baseline system
-were run on the same claims. The RAGAS faithfulness score rests on a second model's judgement
-that has not been checked by hand.
+**Evaluation.** Two models were evaluated, and no baseline system was run on the same claims,
+so the contribution of the design, as distinct from the models, is not isolated. The RAGAS
+faithfulness score is a second model's judgement and has not been verified by hand.
 
 **Deployment.** A single-process research system with no authentication, rate limiting or
 tenant isolation ([SECURITY.md](SECURITY.md)); pending reviews are held in memory and do not
