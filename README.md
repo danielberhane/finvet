@@ -85,8 +85,8 @@ Four of the six queries whose passage was absent from the top five returned a pa
 same subject from another section of the same filing. No explanation determines a verdict: a
 claim without a figure is declined.
 
-The dataset, method and every run's results, with the files each number is computed from, are
-in [`docs/eval/`](docs/eval/).
+The dataset, method and every run's results, with the files the verification and RAG numbers
+are computed from, are in [`docs/eval/`](docs/eval/).
 
 ---
 
