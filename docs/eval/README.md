@@ -123,10 +123,12 @@ their own held-out sets ([`RAG_CARD.md`](RAG_CARD.md); artifacts
    0.85. Qwen read the sign correctly in all four runs. No other claim was answered wrongly
    by either model in any run, across 2,600 judged answers.
 2. **The comparator decides, for better and once for worse.** Across the eight runs the
-   deterministic comparison changed the model's own verdict on 218 of 2,600 answers: 194
+   deterministic comparison changed the model's own verdict on 193 of 2,600 answers: 169
    times to the labelled verdict, 22 times to a decline or an escalation, and twice (row
    1073) from the model's correct SUPPORTS to a wrong REFUTES, because the parsed claim it
-   was handed carried the wrong sign. Nine answers, on two restated-period claims, were
+   was handed carried the wrong sign. In 25 further answers, all on fines claims, the
+   comparison set the news agent's verdict aside and the company's filing then settled the
+   claim with the same verdict. Nine answers, on two restated-period claims, were
    declined because they matched a figure the issuer had since replaced.
 
 **Stability.** Four runs per model. DeepSeek-V4.1-Flash: pass^4 95.4%, 15 misses on at
