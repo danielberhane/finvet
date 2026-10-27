@@ -4,9 +4,9 @@ Two models, identical code, four runs each on a 325-claim held-out set
 ([`DATASET_CARD.md`](DATASET_CARD.md)). 317 claims were answered on 2026-09-29 and the
 8 live-price claims on 2026-10-15, on the same pipeline. The pass/fail criteria were
 committed before the set was first run ([`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md)). Every
-figure below except the claim-parsing table recomputes from the artifacts in
-[`runs/`](runs/), and `tests/unit/test_readme_numbers_recompute.py` does so on every CI
-run.
+figure below except the claim-parsing table and the XBRL lookup count recomputes from the
+artifacts in [`runs/`](runs/), and `tests/unit/test_readme_numbers_recompute.py` checks
+the verification results on every CI run.
 
 ## Claim parsing
 
@@ -102,9 +102,18 @@ Timings are not given, since each run's answers come from two dates.
 ### Retrieval, measured separately
 
 XBRL lookups against SEC primary-source values: 198/199, the miss a decline rather than
-a wrong number, on a gold set held privately and not recomputable here. Filing-text
-retrieval and the faithfulness of the model's reading are measured on their own held-out
-sets in [`RAG_CARD.md`](RAG_CARD.md), with their artifacts in `runs/`.
+a wrong number, on a gold set held privately and not recomputable here.
+
+Filing-text retrieval (RAG) and the faithfulness of the model's reading are measured on
+their own held-out sets ([`RAG_CARD.md`](RAG_CARD.md); artifacts
+`runs/rag-heldout-2026-10-01.json` and `runs/rag-ragas-2026-10-05.json`):
+
+| Test | Sample | Result |
+|---|---|---|
+| Finds the right passage in its top five | 30 queries | 24 of 30 (80%) |
+| Ranks it near the top (mean reciprocal rank) | 30 queries | 0.68 |
+| Returns nothing for off-topic or wrong-filing queries | 20 queries | 20 of 20 |
+| Explanation stays inside the passages (RAGAS faithfulness) | 49 of 50 claims graded | 0.687 mean, 0.125 lowest |
 
 ## Findings
 

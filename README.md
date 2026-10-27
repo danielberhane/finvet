@@ -34,12 +34,21 @@ figure, the claim is declined as not enough information.
 
 ## Evaluation
 
-FinVet is evaluated at two levels: the full pipeline, from claim to verdict, and its RAG
-component in isolation. The RAG component is a hybrid search over filing text that the SEC
-agent invokes as a tool for claims about a filing's narrative sections, such as risk factors
-or legal proceedings, where no reported figure applies.
+FinVet is evaluated at three levels: the claim parser, the full pipeline from claim to
+verdict, and its RAG component in isolation. The RAG component is a hybrid search over
+filing text that the SEC agent invokes as a tool for claims about a filing's narrative
+sections, such as risk factors or legal proceedings, where no reported figure applies.
 
-**1) Claim verification.** The pipeline was evaluated on 325 held-out claims about 72
+**1) Claim parsing.** The claim parser performs structured extraction, mapping each claim
+to a JSON object. A parse is correct when every field matches the gold parse. Scored over
+four runs on the held-out claim set described below: 309 of its 325 claims reach the
+parser, and the other 16 are refused by the input guardrails before parsing.
+
+| | DeepSeek-V4.1-Flash | Qwen3.8 |
+|---|---|---|
+| Exact match | **97.5%** | **89.3%** |
+
+**2) Claim verification.** The pipeline was evaluated on 325 held-out claims about 72
 US-listed companies, each labelled with an expected verdict. Two models were run on identical
 code, four runs each, so that the reliability of a verdict could be measured alongside its
 accuracy. The claim set was constructed by the author; its composition and labelling are
@@ -62,7 +71,7 @@ depend on the day of the run. Across all eight runs, one claim was answered wron
 the four DeepSeek runs: a net loss was read as a gain. Every other miss was a decline or a
 hand-off to a human reviewer.
 
-**2) RAG component.** The search was evaluated on 50 held-out queries and the model's
+**3) RAG component.** The search was evaluated on 50 held-out queries and the model's
 explanations on 50 held-out claims.
 
 | Test | Sample | Result |
@@ -76,8 +85,8 @@ Four of the six queries whose passage was absent from the top five returned a pa
 same subject from another section of the same filing. No explanation determines a verdict: a
 claim without a figure is declined.
 
-The dataset, method and every run's results, with the files each number is computed from, are
-in [`docs/eval/`](docs/eval/).
+The dataset, method and every run's results, with the files the verification and RAG numbers
+are computed from, are in [`docs/eval/`](docs/eval/).
 
 ---
 
