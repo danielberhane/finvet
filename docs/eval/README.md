@@ -4,8 +4,20 @@ Two models, identical code, four runs each on a 325-claim held-out set
 ([`DATASET_CARD.md`](DATASET_CARD.md)). 317 claims were answered on 2026-09-29 and the
 8 live-price claims on 2026-10-15, on the same pipeline. The pass/fail criteria were
 committed before the set was first run ([`GOLDEN_G_CARD.md`](GOLDEN_G_CARD.md)). Every
-figure below recomputes from the artifacts in [`runs/`](runs/), and
-`tests/unit/test_readme_numbers_recompute.py` does so on every CI run.
+figure below except the claim-parsing table recomputes from the artifacts in
+[`runs/`](runs/), and `tests/unit/test_readme_numbers_recompute.py` does so on every CI
+run.
+
+## Claim parsing
+
+The claim parser performs structured extraction, mapping each claim to a JSON object. A
+parse is correct when every field matches the gold parse. Scored on the 309 claims that
+reach the parser; the other 16 are refused by the input guardrails before parsing.
+Averaged over all four runs.
+
+| | DeepSeek-V4.1-Flash | Qwen3.8 |
+|---|---|---|
+| Exact match | **97.5%** | **89.3%** |
 
 ## Scoring
 
