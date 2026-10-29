@@ -105,9 +105,10 @@ One agent runs per claim, chosen by claim type.
   <br><sub>A news claim settled by delegation: the SEC agent found the same &euro;500 million in Apple's filing.</sub>
 </p>
 
-**Controls.** Regex and PII guards screen every claim, with Llama Guard optional. Low
-confidence, unsafe output, or a conflict between press and filing pauses the graph at a
-checkpoint until a reviewer decides. Every tool call and verdict is persisted.
+**Controls.** Pattern checks screen every claim for injection attempts and block Social
+Security and card numbers; emails and phone numbers are masked for the parser. Llama Guard is
+optional. Low confidence, unsafe output, or a conflict between press and filing pauses the
+graph at a checkpoint until a reviewer decides. Every tool call and verdict is persisted.
 
 Full design, node by node: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
