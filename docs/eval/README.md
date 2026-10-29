@@ -24,7 +24,8 @@ Averaged over all four runs.
 A claim is correct when its verdict matches the label. Each run is scored on seven
 layers (`src/finvet/eval/measures/`):
 
-1. **Outcome** — verdict accuracy, excluding the 28 live-price claims.
+1. **Outcome** — verdict accuracy over all 325 claims. The per-run table also gives it
+   without the 28 live-price claims.
 2. **Tool trajectory** — DeepEval's `ToolCorrectnessMetric` over the claims whose
    strategy requires a tool.
 3. **Grounding** — every decisive number traced to an XBRL fact, a quote or the
@@ -56,7 +57,7 @@ Rows 1 to 5 and 7: the first run of each model. Row 6: all four runs.
 
 | Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
-| 1. Outcome — verdict accuracy (297 claims) | **97.3%** | **97.0%** |
+| 1. Outcome — verdict accuracy (325 claims) | **97.5%** | **96.9%** |
 | 2. Tool trajectory — required tools called (252 / 253) | 100% | 98.8% |
 | 3. Grounding — decisive numbers traced (238 / 235) | **100%** | **100%** |
 | 4. Calibration — decisive-verdict ECE | 0.049 | 0.050 |
