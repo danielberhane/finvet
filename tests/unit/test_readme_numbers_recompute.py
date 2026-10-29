@@ -96,12 +96,21 @@ def _pct(cell):
     return float(cell.rstrip("%"))
 
 
+def _outcome_all_claims(runs):
+    """The headline figure: every scored row of the first run.
+
+    The same 325 claims the risk and pass^4 rows count, so the table's
+    accuracy and its stability figure describe one population.
+    """
+    scored = [r for r in runs[0].rows.values() if A.is_scored(r)]
+    return 100 * sum(A.is_correct(r) for r in scored) / len(scored)
+
+
 def _outcome_excluding_live_market(runs):
-    """The headline figure: scored rows, minus the live-market category.
+    """Accuracy without the live-market category, stated beneath the table.
 
     Market quotes move between runs, so a vendor outage during one run would
-    otherwise read as a model difference. The exclusion is stated in the row
-    label itself, and this is the arithmetic behind it.
+    otherwise read as a model difference.
     """
     rows = runs[0].rows
     scored = {i: r for i, r in rows.items() if A.is_scored(r)}
@@ -112,7 +121,7 @@ def _outcome_excluding_live_market(runs):
 
 
 LAYERS = [
-    ("1. Outcome", lambda runs: _outcome_excluding_live_market(runs), _pct, 0.1),
+    ("1. Outcome", lambda runs: _outcome_all_claims(runs), _pct, 0.1),
     ("2. Tool trajectory",
      lambda runs: 100 * trajectory.measure(runs).required_met
      / trajectory.measure(runs).scored, _pct, 0.1),
@@ -141,6 +150,21 @@ class TestTheResultsTableRecomputes:
         assert abs(published - actual) <= tolerance, (
             f"README row {prefix!r} column {label} publishes {published}, "
             f"the artifact gives {actual:.4f}")
+
+
+class TestTheLiveMarketExclusionRecomputes:
+    """The sentence under the table gives accuracy without live prices."""
+
+    def test_the_stated_figures_match_the_artifacts(self):
+        text = " ".join(README.read_text().split())
+        m = re.search(r"excluding the 28 claims about live stock prices, whose answers "
+                      r"depend on the day of the run, it is ([\d.]+)% and ([\d.]+)%", text)
+        assert m, "the live-price sentence under the results table changed"
+        for published, label in zip(m.groups(), ("u-ds-c1", "u-qw-c1")):
+            actual = _outcome_excluding_live_market(_runs(label))
+            assert abs(float(published) - actual) <= 0.1, (
+                f"README states {published}% without live prices for {label}; "
+                f"the artifact gives {actual:.4f}")
 
 
 def _paragraph(marker: str, doc: Path = README) -> str:

@@ -56,7 +56,7 @@ composition and labelling are described in the [dataset card](docs/eval/DATASET_
 
 | Layer | DeepSeek-V4.1-Flash | Qwen3.8 |
 |---|---|---|
-| 1. Outcome — verdict accuracy | **97.3%** | **97.0%** |
+| 1. Outcome — verdict accuracy | **97.5%** | **96.9%** |
 | 2. Tool trajectory — tools called | 100% | 98.8% |
 | 3. Grounding — numbers traced | **100%** | **100%** |
 | 4. Calibration — decisive ECE | 0.049 | 0.050 |
@@ -66,10 +66,10 @@ composition and labelling are described in the [dataset card](docs/eval/DATASET_
 | 7. Routing — expected path | 95.4% | 98.5% |
 
 Rows 1 to 5 and 7 report each model's first run; the pass^4 row uses all four runs. Accuracy
-is computed over 297 claims, excluding the 28 claims about live stock prices, whose answers
-depend on the day of the run. Across all eight runs, one claim was answered wrongly, in two of
-the four DeepSeek runs: a net loss was read as a gain. Every other miss was a decline or a
-hand-off to a human reviewer.
+is computed over all 325 claims; excluding the 28 claims about live stock prices, whose answers
+depend on the day of the run, it is 97.3% and 97.0%. Across all eight runs, one claim was
+answered wrongly, in two of the four DeepSeek runs: a net loss was read as a gain. Every other
+miss was a decline or a hand-off to a human reviewer.
 
 **3) RAG component.** The search was evaluated on 50 held-out queries and the model's
 explanations on 50 held-out claims.
